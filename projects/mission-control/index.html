@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mission Control</title>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system; margin: 0; background:#0b0f14; color:#e7eef7; }
+    header { padding: 16px 20px; border-bottom: 1px solid #1f2a37; display:flex; justify-content:space-between; align-items:center; }
+    h1 { font-size: 16px; margin:0; letter-spacing:0.3px; }
+    .meta { font-size: 12px; color:#9aa6b2; }
+    main { padding: 16px 20px; display:grid; grid-template-columns: 1fr; gap: 12px; max-width: 980px; margin: 0 auto; }
+    .card { background:#0f1620; border:1px solid #1f2a37; border-radius: 10px; padding: 14px; }
+    .card h2 { font-size: 14px; margin: 0 0 8px; }
+    .pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:12px; border:1px solid #2b3a4b; color:#b7c3cf; }
+    ul { margin: 8px 0 0 18px; }
+    a { color:#8ab4ff; }
+    .cols { display:grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 900px){ .cols{ grid-template-columns: 1fr; } }
+    pre { white-space: pre-wrap; word-break: break-word; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1 id="title">Mission Control</h1>
+      <div class="meta" id="updated">Loading…</div>
+    </div>
+    <div class="meta">
+      Local dashboard · MVP
+    </div>
+  </header>
+  <main>
+    <div class="cols">
+      <div class="card">
+        <h2>Workstreams</h2>
+        <div id="workstreams"></div>
+      </div>
+      <div class="card">
+        <h2>Sub-agents</h2>
+        <div id="subagents"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Notes</h2>
+      <div id="notes"></div>
+    </div>
+
+    <div class="card">
+      <h2>How to run</h2>
+      <pre>python3 -m http.server 8099 --directory projects/mission-control
+open http://localhost:8099</pre>
+    </div>
+  </main>
+
+<script>
+async function load(){
+  const res = await fetch('./state.json?_=' + Date.now());
+  const s = await res.json();
+  document.getElementById('title').textContent = s.title || 'Mission Control';
+  document.getElementById('updated').textContent = 'Updated: ' + (s.updatedAt || '(not set yet)');
+
+  const ws = (s.workstreams||[]).map(w => `
+    <div style="margin:10px 0; padding:10px; border:1px solid #1f2a37; border-radius:10px;">
+      <div style="display:flex; gap:8px; align-items:center;">
+        <strong>${w.name}</strong>
+        <span class="pill">${w.status||'unknown'}</span>
+      </div>
+      <div class="meta" style="margin-top:6px;">Focus: ${w.focus||''}</div>
+      <ul>${(w.next||[]).map(x=>`<li>${x}</li>`).join('')}</ul>
+    </div>
+  `).join('');
+  document.getElementById('workstreams').innerHTML = ws || '<div class="meta">No workstreams.</div>';
+
+  const sa = (s.subagents||[]).map(a => `
+    <div style="margin:10px 0; padding:10px; border:1px solid #1f2a37; border-radius:10px;">
+      <div style="display:flex; gap:8px; align-items:center;">
+        <strong>${a.label||a.sessionKey||'subagent'}</strong>
+        <span class="pill">${a.status||'unknown'}</span>
+      </div>
+      <div class="meta" style="margin-top:6px;">${a.summary||''}</div>
+    </div>
+  `).join('');
+  document.getElementById('subagents').innerHTML = sa || '<div class="meta">No sub-agents yet.</div>';
+
+  document.getElementById('notes').innerHTML = '<ul>' + (s.notes||[]).map(x=>`<li>${x}</li>`).join('') + '</ul>';
+}
+load();
+setInterval(load, 5000);
+</script>
+</body>
+</html>

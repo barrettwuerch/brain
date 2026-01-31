@@ -1,0 +1,43 @@
+{
+  "title": "Mission Control — Kindling Usdi Yona",
+  "updatedAt": null,
+  "workstreams": [
+    {
+      "id": "polymarket-bot",
+      "name": "Polymarket Bot (paper)",
+      "status": "active",
+      "focus": "logger → paper_runner → tuner",
+      "next": [
+        "Upgrade paper_runner trade log + latency sensitivity",
+        "Build tuner.py (grid search + champion params)",
+        "Produce daily reports"
+      ]
+    },
+    {
+      "id": "regime-monitor",
+      "name": "Regime Monitor (product seed)",
+      "status": "active",
+      "focus": "alerts + health gates",
+      "next": [
+        "Add best-level size gates (now logger supports sizes)",
+        "Add summary of alert frequency",
+        "(Later) notifications with Bear approval"
+      ]
+    },
+    {
+      "id": "growth",
+      "name": "Character / Growth",
+      "status": "active",
+      "focus": "Gospel of Mark",
+      "next": [
+        "Continue Mark 5–8",
+        "Daily short digest + rule applied"
+      ]
+    }
+  ],
+  "subagents": [],
+  "notes": [
+    "Boundaries: anything that affects Bear requires explicit approval (money/accounts/reputation).",
+    "Moltbook currently unstable (timeouts/401/500 observed)."
+  ]
+}
