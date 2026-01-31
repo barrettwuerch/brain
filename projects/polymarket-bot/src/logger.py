@@ -193,13 +193,15 @@ def seconds_remaining(now_iso: str, end_iso: str) -> Optional[int]:
         return None
 
 
-def get_coinbase_spot(asset: str) -> Optional[float]:
+def get_coinbase_spot(asset: str) -> Tuple[Optional[float], Optional[int]]:
+    """Return (spot_price, fetch_ts_ms)."""
     url = COINBASE_TICKER[asset]
     try:
         j = fetch_json(url)
-        return float(j["price"])
+        price = float(j["price"])
+        return price, int(time.time() * 1000)
     except Exception:
-        return None
+        return None, None
 
 
 def ensure_data_dir(path: str) -> None:
@@ -258,7 +260,7 @@ def run(poll_seconds: float, out_path: str, max_minutes: Optional[float]) -> Non
                 mi = market_cache.get(asset)
                 if not mi:
                     continue
-                spot = get_coinbase_spot(asset)
+                spot, spot_fetch_ts_ms = get_coinbase_spot(asset)
                 rem = seconds_remaining(ts_iso, mi.end_date) if mi.end_date else None
                 asset_rec = {
                     "slug": mi.slug,
@@ -266,12 +268,14 @@ def run(poll_seconds: float, out_path: str, max_minutes: Optional[float]) -> Non
                     "end_date": mi.end_date,
                     "remaining_s": rem,
                     "spot": spot,
+                    "spot_fetch_ts_ms": spot_fetch_ts_ms,
                     "books": {},
                 }
 
                 for outcome, token_id in mi.token_ids.items():
                     try:
                         book = get_orderbook(token_id)
+                        book_fetch_ts_ms = int(time.time() * 1000)
                         bid, bid_sz, ask, ask_sz = best_levels(book)
                         asset_rec["books"][outcome] = {
                             "token_id": token_id,
@@ -282,6 +286,7 @@ def run(poll_seconds: float, out_path: str, max_minutes: Optional[float]) -> Non
                             "bid_count": len(book.get("bids") or []),
                             "ask_count": len(book.get("asks") or []),
                             "book_ts": int(book.get("timestamp")) if book.get("timestamp") else None,
+                            "book_fetch_ts_ms": book_fetch_ts_ms,
                         }
                     except Exception as e:
                         asset_rec["books"][outcome] = {"token_id": token_id, "error": str(e)}
