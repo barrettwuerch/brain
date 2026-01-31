@@ -17,8 +17,9 @@
 - [x] Bind positions to token_id/slug across entry/exit (no rollover cheating)
 - [x] Add integrity gates: remaining_s buffer, skew/book-age, depth checks
 - [ ] Compute PnL distribution + drawdown over larger samples
-- [ ] Add fee model (Polymarket taker curve)
-- [ ] Walk-forward / out-of-sample parameter tuning (avoid overfit)
+- [ ] Add fee model (Polymarket taker curve; see notes/fees.md)
+- [ ] Walk-forward / out-of-sample parameter tuning (avoid overfit; see notes/walkforward-tuner.md)
+- [ ] (Optional realism) Add deeper-book logging + VWAP fill simulation (see notes/rohonchain-arbitrage-notes.md)
 
 ## Phase 3 (Tiny live)
 - [ ] Determine auth / keys / wallet flow
