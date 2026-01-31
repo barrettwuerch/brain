@@ -17,7 +17,7 @@ import datetime as dt
 import json
 from collections import deque, defaultdict
 from dataclasses import dataclass
-from typing import Deque, Dict, List, Optional, Tuple
+from typing import Deque, Dict, List, Optional, Tuple, Literal
 
 
 @dataclass
@@ -53,6 +53,58 @@ def get_book_by_token(snapshot_asset: dict, token_id: str) -> Optional[dict]:
     return None
 
 
+FeeModel = Literal["flat", "curve", "none"]
+
+# price -> effective fee bps (anchored to Polymarket docs for fee_rate_bps=1000)
+FEE_ANCHOR = [
+    (0.10, 20),
+    (0.20, 65),
+    (0.30, 110),
+    (0.40, 145),
+    (0.50, 156),
+    (0.60, 143),
+    (0.70, 110),
+    (0.80, 64),
+    (0.90, 20),
+]
+
+
+def interp_effective_bps(px: float) -> float:
+    """Effective fee bps for fee_rate_bps=1000, interpolated from docs table."""
+    if px <= FEE_ANCHOR[0][0]:
+        return float(FEE_ANCHOR[0][1])
+    if px >= FEE_ANCHOR[-1][0]:
+        return float(FEE_ANCHOR[-1][1])
+
+    for (p0, b0), (p1, b1) in zip(FEE_ANCHOR, FEE_ANCHOR[1:]):
+        if p0 <= px <= p1:
+            t = (px - p0) / (p1 - p0)
+            return float(b0 + t * (b1 - b0))
+    return float(FEE_ANCHOR[-1][1])
+
+
+def curve_effective_bps(px: float, fee_rate_bps: int) -> float:
+    """Scale the doc curve by fee_rate_bps/1000.
+
+    Note: Polymarket's `fee_rate_bps` is a required signing parameter;
+    docs provide example effective rates for fee_rate_bps=1000.
+    """
+    base = interp_effective_bps(px)
+    return base * (fee_rate_bps / 1000.0)
+
+
+def taker_fee_usdc(px: float, shares: float, fee_model: FeeModel, fee_bps: float, fee_rate_bps: int) -> float:
+    """Fee in USDC for one taker leg at price px and quantity shares."""
+    notional = float(px) * float(shares)
+    if fee_model == "none":
+        return 0.0
+    if fee_model == "flat":
+        return (fee_bps / 10_000.0) * notional
+    # curve
+    bps = curve_effective_bps(float(px), int(fee_rate_bps))
+    return (bps / 10_000.0) * notional
+
+
 def run(path: str,
         spread_max: float,
         horizon_s: int,
@@ -60,7 +112,9 @@ def run(path: str,
         hold_s: int,
         stop_spread: float,
         min_depth: float,
+        fee_model: FeeModel,
         fee_bps: float,
+        fee_rate_bps: int,
         size: float,
         buffer_s: int,
         max_skew_ms: int,
@@ -124,9 +178,9 @@ def run(path: str,
                                 "exit_ts": t,
                                 "entry_px": p.entry_px,
                                 "exit_px": 0.0,
-                                "gross": -p.entry_px,
-                                "fee": 0.0,
-                                "net": -p.entry_px,
+                                "gross": -p.entry_px * p.size,
+                                "fee": taker_fee_usdc(p.entry_px, p.size, fee_model, fee_bps, fee_rate_bps),
+                                "net": (-p.entry_px * p.size) - taker_fee_usdc(p.entry_px, p.size, fee_model, fee_bps, fee_rate_bps),
                                 "entry_slug": p.slug,
                                 "exit_slug": a.get("slug"),
                                 "token_id": p.token_id,
@@ -146,7 +200,7 @@ def run(path: str,
 
                         exit_px = float(bid)  # taker sell
                         gross = (exit_px - p.entry_px) * p.size
-                        fee = (fee_bps / 10000.0) * (p.entry_px + exit_px) * p.size
+                        fee = taker_fee_usdc(p.entry_px, p.size, fee_model, fee_bps, fee_rate_bps) + taker_fee_usdc(exit_px, p.size, fee_model, fee_bps, fee_rate_bps)
                         net = gross - fee
                         trades.append({
                             "asset": asset,
@@ -300,7 +354,9 @@ def run(path: str,
             "buffer_s": buffer_s,
             "max_skew_ms": max_skew_ms,
             "max_book_age_ms": max_book_age_ms,
+            "fee_model": fee_model,
             "fee_bps": fee_bps,
+            "fee_rate_bps": fee_rate_bps,
         },
         "trades": trades,
         "rejects": dict(rejects),
@@ -326,7 +382,13 @@ def main():
     ap.add_argument("--buffer", type=int, default=10, help="Seconds buffer before window end (default 10)")
     ap.add_argument("--max-skew-ms", type=int, default=1500, help="Max allowed spot vs book fetch skew (ms)")
     ap.add_argument("--max-book-age-ms", type=int, default=5000, help="Max allowed book timestamp age (ms)")
-    ap.add_argument("--fee-bps", type=float, default=0.0)
+
+    ap.add_argument("--fee-model", choices=("flat", "curve", "none"), default="flat",
+                    help="Fee model: flat (uses --fee-bps), curve (uses --fee-rate-bps), or none")
+    ap.add_argument("--fee-bps", type=float, default=0.0, help="Flat fee bps (used when --fee-model flat)")
+    ap.add_argument("--fee-rate-bps", type=int, default=1000,
+                    help="Polymarket feeRateBps parameter (used when --fee-model curve; docs show curve for 1000)")
+
     ap.add_argument("--out", type=str, default="")
     args = ap.parse_args()
 
@@ -338,7 +400,9 @@ def main():
         hold_s=args.hold,
         stop_spread=args.stop_spread,
         min_depth=args.min_depth,
+        fee_model=args.fee_model,
         fee_bps=args.fee_bps,
+        fee_rate_bps=args.fee_rate_bps,
         size=args.size,
         buffer_s=args.buffer,
         max_skew_ms=args.max_skew_ms,
