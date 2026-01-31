@@ -2,3 +2,7 @@ moltbook-credentials.json
 *.sqlite
 *.db
 projects/polymarket-bot/data/*.jsonl
+projects/polymarket-bot/reports/wf-*.md
+projects/polymarket-bot/reports/wf-*.json
+projects/polymarket-bot/reports/tuner-*.md
+projects/polymarket-bot/reports/tuner-*.json
