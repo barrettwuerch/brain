@@ -143,21 +143,54 @@ def get_market_info(asset: str, slug: str) -> MarketInfo:
     )
 
 
-def best_bid_ask(book: dict) -> Tuple[Optional[float], Optional[float]]:
-    """Compute best bid/ask from a CLOB book snapshot.
+def best_levels(book: dict) -> Tuple[Optional[float], Optional[float], Optional[float], Optional[float]]:
+    """Return best bid/ask price and *size at those levels*.
 
     Do NOT assume the API returns bids/asks pre-sorted.
     """
     bids = book.get("bids") or []
     asks = book.get("asks") or []
 
-    best_bid = max((float(x["price"]) for x in bids), default=None)
-    best_ask = min((float(x["price"]) for x in asks), default=None)
-    return best_bid, best_ask
+    best_bid = None
+    best_bid_sz = None
+    for x in bids:
+        try:
+            p = float(x["price"])
+            s = float(x.get("size") or 0)
+        except Exception:
+            continue
+        if best_bid is None or p > best_bid:
+            best_bid = p
+            best_bid_sz = s
+
+    best_ask = None
+    best_ask_sz = None
+    for x in asks:
+        try:
+            p = float(x["price"])
+            s = float(x.get("size") or 0)
+        except Exception:
+            continue
+        if best_ask is None or p < best_ask:
+            best_ask = p
+            best_ask_sz = s
+
+    return best_bid, best_bid_sz, best_ask, best_ask_sz
 
 
 def get_orderbook(token_id: str) -> dict:
     return fetch_json(CLOB_BOOK_URL, params={"token_id": token_id})
+
+
+def seconds_remaining(now_iso: str, end_iso: str) -> Optional[int]:
+    try:
+        if end_iso.endswith('Z'):
+            end_iso = end_iso.replace('Z', '+00:00')
+        t_end = dt.datetime.fromisoformat(end_iso).timestamp()
+        t_now = dt.datetime.fromisoformat(now_iso).timestamp()
+        return int(t_end - t_now)
+    except Exception:
+        return None
 
 
 def get_coinbase_spot(asset: str) -> Optional[float]:
@@ -219,16 +252,19 @@ def run(poll_seconds: float, out_path: str, max_minutes: Optional[float]) -> Non
                         f.flush()
 
             # Snapshot
-            snap = {"ts": now_utc_iso(), "type": "snapshot", "assets": {}}
+            ts_iso = now_utc_iso()
+            snap = {"ts": ts_iso, "type": "snapshot", "assets": {}}
             for asset in ("BTC", "ETH"):
                 mi = market_cache.get(asset)
                 if not mi:
                     continue
                 spot = get_coinbase_spot(asset)
+                rem = seconds_remaining(ts_iso, mi.end_date) if mi.end_date else None
                 asset_rec = {
                     "slug": mi.slug,
                     "title": mi.title,
                     "end_date": mi.end_date,
+                    "remaining_s": rem,
                     "spot": spot,
                     "books": {},
                 }
@@ -236,11 +272,13 @@ def run(poll_seconds: float, out_path: str, max_minutes: Optional[float]) -> Non
                 for outcome, token_id in mi.token_ids.items():
                     try:
                         book = get_orderbook(token_id)
-                        bid, ask = best_bid_ask(book)
+                        bid, bid_sz, ask, ask_sz = best_levels(book)
                         asset_rec["books"][outcome] = {
                             "token_id": token_id,
                             "best_bid": bid,
+                            "best_bid_size": bid_sz,
                             "best_ask": ask,
+                            "best_ask_size": ask_sz,
                             "bid_count": len(book.get("bids") or []),
                             "ask_count": len(book.get("asks") or []),
                             "book_ts": int(book.get("timestamp")) if book.get("timestamp") else None,
