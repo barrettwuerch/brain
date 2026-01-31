@@ -54,6 +54,13 @@ Principle: **don’t fool ourselves**. Any backtest/paper sim must be *instrumen
   - `status: stale|ok`
 
 ## Next planned work (high level)
-1) Fee modeling: incorporate Polymarket taker fee curve and token-specific fee rates if available.
-2) Walk-forward / OOS-first tuning (avoid overfitting): small parameter sweeps, holdout windows, sanity checks.
+1) Collect enough logs for meaningful OOS folds (non-zero trades) and run the walk-forward tuner regularly.
+2) Add one major realism upgrade (VWAP-through-book fills) before believing any positive result.
 3) Only then: tiny-live with strict risk caps and kill-switches (Bear approval required).
+
+## Kill criteria (project stop-loss)
+To avoid infinite tinkering, we stop this strategy direction if:
+- after ~500+ slug windows the best out-of-sample net PnL is ≤ 0 (after fees), and
+- there isn’t a single realism upgrade likely to improve results (our model is already conservative).
+
+(Full PRD: `notes/PRD.md`)

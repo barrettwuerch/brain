@@ -193,6 +193,7 @@ def run_fold(
     test_slugs: Sequence[str],
     params: Dict[str, Any],
     score_key: str,
+    min_test_trades: int,
 ) -> dict:
     pr = importlib.import_module(paper_runner_mod)
 
@@ -238,6 +239,14 @@ def run_fold(
             max_book_age_ms=int(params.get("max_book_age_ms", 5000)),
         )
 
+        train_trades = len(res_train.get("trades") or [])
+        test_trades = len(res_test.get("trades") or [])
+
+        test_score = extract_score(res_test, score_key)
+        # Zero-trade folds are a *signal*; treat as invalid if below minimum.
+        if test_trades < int(min_test_trades):
+            test_score = float("-inf")
+
         return {
             "asset": asset,
             "train_slugs": list(train_slugs),
@@ -249,14 +258,16 @@ def run_fold(
                 "net": res_train.get("net"),
                 "gross": res_train.get("gross"),
                 "rejects": res_train.get("rejects"),
-                "trades": len(res_train.get("trades") or []),
+                "trades": train_trades,
             },
             "test": {
-                "score": extract_score(res_test, score_key),
+                "score": test_score,
                 "net": res_test.get("net"),
                 "gross": res_test.get("gross"),
                 "rejects": res_test.get("rejects"),
-                "trades": len(res_test.get("trades") or []),
+                "trades": test_trades,
+                "min_trades_required": int(min_test_trades),
+                "valid": test_trades >= int(min_test_trades),
             },
         }
 
@@ -273,6 +284,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap.add_argument("--step-windows", type=int, default=2, help="Stride in 15m slugs")
 
     ap.add_argument("--score", choices=("net_sum", "net_mean", "net_min", "net_p50"), default="net_sum")
+    ap.add_argument("--min-test-trades", type=int, default=1,
+                    help="Require at least this many test trades per fold; otherwise fold score is treated as -inf")
 
     args = ap.parse_args(list(argv) if argv is not None else None)
 
@@ -314,16 +327,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 test_slugs=fold["test_slugs"],
                 params=params,
                 score_key=args.score,
+                min_test_trades=args.min_test_trades,
             )
             fold_details.append(fr)
             fold_scores.append(fr["test"]["score"])
+
+        # Filter -inf (invalid folds) out of mean; also track validity ratio.
+        valid_scores = [s for s in fold_scores if s != float("-inf")]
+        valid_fold_ratio = (len(valid_scores) / len(fold_scores)) if fold_scores else 0.0
 
         all_param_results.append(
             {
                 "params": params,
                 "param_key": param_key,
                 "fold_test_scores": fold_scores,
-                "mean_test_score": (sum(fold_scores) / len(fold_scores)) if fold_scores else 0.0,
+                "valid_fold_ratio": valid_fold_ratio,
+                "mean_test_score": (sum(valid_scores) / len(valid_scores)) if valid_scores else float("-inf"),
                 "folds": fold_details,
             }
         )
