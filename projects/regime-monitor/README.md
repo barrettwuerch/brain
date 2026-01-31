@@ -19,7 +19,11 @@ python3 projects/polymarket-bot/src/logger.py --poll 2
 
 2) Run the monitor:
 ```bash
-python3 projects/regime-monitor/monitor.py projects/polymarket-bot/data/2026-01-31.jsonl --spread 0.03 --streak 5
+python3 projects/regime-monitor/monitor.py projects/polymarket-bot/data/2026-01-31.jsonl \
+  --spread 0.03 --streak 5 \
+  --min-remaining 60 \
+  --other-spread-max 0.10 \
+  --log projects/regime-monitor/alerts.log
 ```
 
 ## Next steps
