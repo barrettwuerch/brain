@@ -10,7 +10,15 @@ This MVP is designed to **learn fast and safely**:
 
 ## Key reality check (microstructure)
 - The displayed probability/price can be the **midpoint** of bid/ask, or **last trade** when spread is wide.
-- If we don’t measure **best bid/ask** + actual fills, we can fool ourselves.
+- If we don’t measure **best bid/ask** + depth + timestamp skew, we can fool ourselves.
+
+## Project hygiene (so chat context isn’t required)
+- Specs/decisions live in `projects/polymarket-bot/notes/`.
+- Important assumptions are enforced in code (runner gates) and reported (reject reasons).
+- If you change a rule, update:
+  1) `notes/DECISIONS.md`
+  2) the code
+  3) README/TODO as needed
 
 ## MVP Phases
 ### Phase 0 — Research & constraints (1–2 hrs)

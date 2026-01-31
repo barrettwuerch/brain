@@ -23,7 +23,24 @@ python3 projects/regime-monitor/monitor.py projects/polymarket-bot/data/2026-01-
   --spread 0.03 --streak 5 \
   --min-remaining 60 \
   --other-spread-max 0.10 \
+  --mode json \
   --log projects/regime-monitor/alerts.log
+```
+
+### Filtering
+- Assets:
+  - `--asset BTC --asset ETH` or `--assets BTC,ETH`
+- Outcomes:
+  - `--outcome Up --outcome Down` or `--outcomes Up,Down`
+
+### Health / watchdog
+- `--stale-after 15` (seconds)
+- `--health-interval 60` (seconds)
+
+### Text mode
+If you want human-readable output instead of JSON:
+```bash
+python3 projects/regime-monitor/monitor.py projects/polymarket-bot/data/2026-01-31.jsonl --mode text
 ```
 
 ## Next steps
