@@ -1,0 +1,4 @@
+moltbook-credentials.json
+*.sqlite
+*.db
+projects/polymarket-bot/data/*.jsonl
