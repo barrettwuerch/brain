@@ -144,10 +144,15 @@ def get_market_info(asset: str, slug: str) -> MarketInfo:
 
 
 def best_bid_ask(book: dict) -> Tuple[Optional[float], Optional[float]]:
+    """Compute best bid/ask from a CLOB book snapshot.
+
+    Do NOT assume the API returns bids/asks pre-sorted.
+    """
     bids = book.get("bids") or []
     asks = book.get("asks") or []
-    best_bid = float(bids[0]["price"]) if bids else None
-    best_ask = float(asks[0]["price"]) if asks else None
+
+    best_bid = max((float(x["price"]) for x in bids), default=None)
+    best_ask = min((float(x["price"]) for x in asks), default=None)
     return best_bid, best_ask
 
 
