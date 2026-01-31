@@ -119,6 +119,7 @@ def run(path: str,
         buffer_s: int,
         max_skew_ms: int,
         max_book_age_ms: int,
+        decision_lag_s: int,
         ) -> dict:
 
     # Rolling spot history per asset
@@ -233,12 +234,20 @@ def run(path: str,
                 # Timestamp skew + recency gates (if present)
                 spot_fetch = a.get("spot_fetch_ts_ms")
 
-                # Signal: spot return over horizon
-                past = spot_n_seconds_ago(asset, t, horizon_s)
+                # Signal: spot return over horizon (optionally lagged)
+                # If decision_lag_s > 0, we simulate slower reaction by computing the signal
+                # using spot history as-of (t - decision_lag_s), while still executing at time t.
+                t_sig = t - float(decision_lag_s)
+                past = spot_n_seconds_ago(asset, t_sig, horizon_s)
                 if past is None:
                     rejects["no_spot_history"] += 1
                     continue
-                r = (float(spot) - past) / past
+                # Use spot at (t - decision_lag_s) for the signal.
+                spot_sig = spot_n_seconds_ago(asset, t, decision_lag_s) if decision_lag_s > 0 else float(spot)
+                if spot_sig is None:
+                    rejects["no_spot_history"] += 1
+                    continue
+                r = (float(spot_sig) - past) / past
                 if abs(r) < ret_threshold:
                     rejects["no_signal"] += 1
                     continue
@@ -357,6 +366,7 @@ def run(path: str,
             "fee_model": fee_model,
             "fee_bps": fee_bps,
             "fee_rate_bps": fee_rate_bps,
+            "decision_lag_s": decision_lag_s,
         },
         "trades": trades,
         "rejects": dict(rejects),
@@ -389,6 +399,9 @@ def main():
     ap.add_argument("--fee-rate-bps", type=int, default=1000,
                     help="Polymarket feeRateBps parameter (used when --fee-model curve; docs show curve for 1000)")
 
+    ap.add_argument("--decision-lag", type=int, default=0,
+                    help="Simulated reaction delay in seconds: signal uses data as-of (t-decision_lag) but execution stays at t")
+
     ap.add_argument("--out", type=str, default="")
     args = ap.parse_args()
 
@@ -407,6 +420,7 @@ def main():
         buffer_s=args.buffer,
         max_skew_ms=args.max_skew_ms,
         max_book_age_ms=args.max_book_age_ms,
+        decision_lag_s=args.decision_lag,
     )
 
     lines=[]

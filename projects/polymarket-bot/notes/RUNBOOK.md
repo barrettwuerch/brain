@@ -100,6 +100,19 @@ Interpretation:
 If those are missing, runner/monitor may disable skew/age logic or reject trades.
 
 ## Next planned work
-- Fee modeling (taker curve, token fee rates).
-- Walk-forward / out-of-sample tuning.
+- Improve OOS evaluation: min-trades constraints + richer fold reporting.
+- Add latency sensitivity runs (+2s/+5s) via paper runner `--decision-lag`.
+- Add data retention: gzip old logs (`scripts/retain_logs.py`).
+- Consider deeper-book logging + VWAP fills (see `notes/vwap-depth-plan.md`).
 - Only then: tiny-live with strict risk caps (Bear approval required).
+
+## Data retention / disk hygiene
+List data sizes:
+```bash
+python3 projects/polymarket-bot/scripts/retain_logs.py --data-dir projects/polymarket-bot/data --list
+```
+
+Gzip logs older than 1 day (keeps original .jsonl):
+```bash
+python3 projects/polymarket-bot/scripts/retain_logs.py --data-dir projects/polymarket-bot/data --gzip-older-days 1
+```
