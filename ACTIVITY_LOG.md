@@ -12,7 +12,7 @@ Format:
 
 ## 2026-02-01
 
-### 10:xx CT — WRP Postgres backend + CLI ops
+### Morning — WRP Postgres backend + CLI ops
 - Summary: Implemented Postgres storage backend and expanded CLI for ops workflows.
 - Changes:
   - Added: `projects/agent-economy/webhook-reliability-pack/wrp/postgres_store.py`
@@ -23,18 +23,18 @@ Format:
 - Notes:
   - Verified SQLite tests via `python3 -m pytest`.
 
-### 10:xx CT — Ops docs + toolkit templates
+### Morning — Ops docs + toolkit templates
 - Summary: Wrote operator docs for WRP and expanded Agent Ops Hardening Toolkit templates.
 - Changes:
   - Added: WRP `docs/OPERATIONS.md`, `docs/RECEIVER_VERIFICATION.md`
   - Added: toolkit templates `DEFINITION_OF_HEALTHY.md`, `TRIAGE_RUBRIC.md`
 
-### 10:xx CT — Laptop-first docs improvements
+### Morning — Laptop-first docs improvements
 - Summary: Added explicit SQLite-first guide and updated ops docs to include SQLite commands.
 - Changes:
   - Added: `docs/LAPTOP_MODE.md`
 
-### 10:xx CT — Postgres.app environment takeover + test
+### Morning — Postgres.app environment takeover + test
 - Summary: Set up Postgres.app (v18) locally and validated WRP end-to-end against it.
 - Changes:
   - Local system setup:
@@ -44,7 +44,7 @@ Format:
   - Added: `tests/test_end_to_end_postgres.py` (skips unless `WRP_TEST_DSN` set)
   - Updated: `tests/test_end_to_end_sqlite.py` (reset in-memory sink between tests)
 
-### 10:xx CT — Postgres.app ops doc + launchd worker
+### Morning — Postgres.app ops doc + launchd worker
 - Summary: Added Postgres.app laptop ops guide and created a launchd guide, then installed/started launchd worker.
 - Changes:
   - Added: `docs/POSTGRES_APP_LAPTOP.md`
@@ -54,5 +54,14 @@ Format:
     - Created: `~/Library/LaunchAgents/ai.openclaw.wrp.worker.plist`
     - Started service: `ai.openclaw.wrp.worker`
     - Logs: `~/wrp/wrp-worker.out.log`, `~/wrp/wrp-worker.err.log`
+
+### Late morning — Sprint scaffolding (ops-first)
+- Summary: Added an operator quickstart, a local dev receiver, and an acceptance checklist to bridge into spec/tests.
+- Changes:
+  - Added: `projects/agent-economy/webhook-reliability-pack/docs/QUICKSTART_OPERATOR.md`
+  - Added: `projects/agent-economy/webhook-reliability-pack/tools/dev_receiver.py`
+  - Added: `projects/agent-economy/webhook-reliability-pack/docs/ACCEPTANCE_CHECKLIST.md`
+- Notes:
+  - `dev_receiver.py` can verify signatures if `WRP_ENDPOINT_SECRET` is set.
 
 ---
