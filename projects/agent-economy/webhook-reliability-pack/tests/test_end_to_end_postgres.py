@@ -15,7 +15,9 @@ from tests.test_integration_server import Sink, run_server
 def _dsn() -> str:
     dsn = os.environ.get("WRP_TEST_DSN")
     if not dsn:
-        raise RuntimeError("Set WRP_TEST_DSN to run Postgres integration tests")
+        import pytest
+
+        pytest.skip("WRP_TEST_DSN not set (skipping Postgres integration test)")
     return dsn
 
 

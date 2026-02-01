@@ -4,6 +4,10 @@ This document is for **operators** running Webhook Reliability Pack (WRP) in a l
 
 If you’re integrating WRP into an app, see the project README. If you’re receiving webhooks, see `docs/RECEIVER_VERIFICATION.md`.
 
+Laptop guides:
+- SQLite-first: `docs/LAPTOP_MODE.md`
+- Postgres.app: `docs/POSTGRES_APP_LAPTOP.md`
+
 ---
 
 ## What WRP does (operator view)

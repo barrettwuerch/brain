@@ -5,6 +5,7 @@ Implements the PRD: `projects/agent-economy/PRD_webhook_reliability_pack.md`.
 Operator docs:
 - `docs/OPERATIONS.md`
 - `docs/LAPTOP_MODE.md` (SQLite-first)
+- `docs/POSTGRES_APP_LAPTOP.md` (Mac Postgres.app)
 - `docs/RECEIVER_VERIFICATION.md`
 
 ## What it is
