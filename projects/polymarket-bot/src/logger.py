@@ -20,7 +20,9 @@ import argparse
 import datetime as dt
 import json
 import os
+import random
 import re
+import signal
 import sys
 import time
 from dataclasses import dataclass
@@ -37,6 +39,17 @@ COINBASE_TICKER = {
     "ETH": "https://api.exchange.coinbase.com/products/ETH-USD/ticker",
 }
 
+# Shared HTTP session + UA
+SESSION = requests.Session()
+SESSION.headers.update({"User-Agent": "openclaw-polymarket-bot/0.1", "Accept": "application/json"})
+
+# Tunable HTTP behavior (set by CLI in main)
+HTTP_TIMEOUT_S = 20
+HTTP_TRIES = 3
+HTTP_BACKOFF_S = 0.5
+HTTP_JITTER_S = 0.25
+HTTP_MAX_BACKOFF_S = 5.0
+
 
 @dataclass
 class MarketInfo:
@@ -51,16 +64,67 @@ def now_utc_iso() -> str:
     return dt.datetime.now(dt.timezone.utc).isoformat()
 
 
-def fetch_text(url: str, timeout: int = 20) -> str:
-    r = requests.get(url, timeout=timeout, headers={"User-Agent": "openclaw-polymarket-bot/0.1"})
-    r.raise_for_status()
-    return r.text
+def sleep_backoff(attempt: int, base_s: float, jitter_s: float, max_s: float) -> None:
+    # attempt is 1-indexed
+    s = min(max_s, base_s * (2 ** (attempt - 1)))
+    if jitter_s:
+        s += random.random() * jitter_s
+    time.sleep(s)
 
 
-def fetch_json(url: str, params: Optional[dict] = None, timeout: int = 20) -> dict:
-    r = requests.get(url, params=params, timeout=timeout, headers={"User-Agent": "openclaw-polymarket-bot/0.1"})
-    r.raise_for_status()
-    return r.json()
+def fetch_text(
+    url: str,
+    timeout: Optional[float] = None,
+    tries: Optional[int] = None,
+    backoff_s: Optional[float] = None,
+    jitter_s: Optional[float] = None,
+    max_backoff_s: Optional[float] = None,
+) -> str:
+    timeout = HTTP_TIMEOUT_S if timeout is None else timeout
+    tries = HTTP_TRIES if tries is None else tries
+    backoff_s = HTTP_BACKOFF_S if backoff_s is None else backoff_s
+    jitter_s = HTTP_JITTER_S if jitter_s is None else jitter_s
+    max_backoff_s = HTTP_MAX_BACKOFF_S if max_backoff_s is None else max_backoff_s
+
+    last_err: Optional[Exception] = None
+    for attempt in range(1, int(tries) + 1):
+        try:
+            r = SESSION.get(url, timeout=timeout)
+            r.raise_for_status()
+            return r.text
+        except Exception as e:
+            last_err = e
+            if attempt < tries:
+                sleep_backoff(attempt, backoff_s, jitter_s, max_backoff_s)
+    raise RuntimeError(f"GET text failed after {tries} tries: {url}: {last_err}")
+
+
+def fetch_json(
+    url: str,
+    params: Optional[dict] = None,
+    timeout: Optional[float] = None,
+    tries: Optional[int] = None,
+    backoff_s: Optional[float] = None,
+    jitter_s: Optional[float] = None,
+    max_backoff_s: Optional[float] = None,
+) -> dict:
+    timeout = HTTP_TIMEOUT_S if timeout is None else timeout
+    tries = HTTP_TRIES if tries is None else tries
+    backoff_s = HTTP_BACKOFF_S if backoff_s is None else backoff_s
+    jitter_s = HTTP_JITTER_S if jitter_s is None else jitter_s
+    max_backoff_s = HTTP_MAX_BACKOFF_S if max_backoff_s is None else max_backoff_s
+
+    last_err: Optional[Exception] = None
+    for attempt in range(1, int(tries) + 1):
+        try:
+            r = SESSION.get(url, params=params, timeout=timeout)
+            r.raise_for_status()
+            return r.json()
+        except Exception as e:
+            last_err = e
+            if attempt < tries:
+                sleep_backoff(attempt, backoff_s, jitter_s, max_backoff_s)
+    raise RuntimeError(f"GET json failed after {tries} tries: {url}: {last_err}")
 
 
 def get_current_15m_slugs(max_tries: int = 2) -> Dict[str, str]:
@@ -208,15 +272,26 @@ def ensure_data_dir(path: str) -> None:
     os.makedirs(path, exist_ok=True)
 
 
-def run(poll_seconds: float, out_path: str, max_minutes: Optional[float]) -> None:
+def run(poll_seconds: float, out_path: str, max_minutes: Optional[float], poll_jitter_s: float) -> None:
     ensure_data_dir(os.path.dirname(out_path))
 
     t0 = time.time()
     last_slugs: Dict[str, str] = {}
     market_cache: Dict[str, MarketInfo] = {}
 
+    running = True
+
+    def _stop(_signum=None, _frame=None):
+        nonlocal running
+        running = False
+
+    signal.signal(signal.SIGINT, _stop)
+    signal.signal(signal.SIGTERM, _stop)
+
+    snap_count = 0
+
     with open(out_path, "a", encoding="utf-8") as f:
-        while True:
+        while running:
             if max_minutes is not None and (time.time() - t0) > max_minutes * 60:
                 return
 
@@ -227,7 +302,8 @@ def run(poll_seconds: float, out_path: str, max_minutes: Optional[float]) -> Non
                 rec = {"ts": now_utc_iso(), "type": "error", "where": "get_current_15m_slugs", "error": str(e)}
                 f.write(json.dumps(rec) + "\n")
                 f.flush()
-                time.sleep(poll_seconds)
+                sleep_s = poll_seconds + (random.random() * poll_jitter_s if poll_jitter_s else 0.0)
+                time.sleep(sleep_s)
                 continue
 
             for asset, slug in slugs.items():
@@ -271,6 +347,8 @@ def run(poll_seconds: float, out_path: str, max_minutes: Optional[float]) -> Non
                     "spot_fetch_ts_ms": spot_fetch_ts_ms,
                     "books": {},
                 }
+                if spot is None:
+                    asset_rec["spot_error"] = "fetch_failed"
 
                 for outcome, token_id in mi.token_ids.items():
                     try:
@@ -295,15 +373,41 @@ def run(poll_seconds: float, out_path: str, max_minutes: Optional[float]) -> Non
 
             f.write(json.dumps(snap) + "\n")
             f.flush()
-            time.sleep(poll_seconds)
+            snap_count += 1
+            if snap_count % 60 == 0:
+                # lightweight operator heartbeat
+                try:
+                    sz = os.path.getsize(out_path) / (1024 * 1024)
+                    sys.stderr.write(f"[logger] {snap_count} snapshots | file={sz:.2f}MB | out={out_path}\n")
+                except Exception:
+                    pass
+
+            sleep_s = poll_seconds + (random.random() * poll_jitter_s if poll_jitter_s else 0.0)
+            time.sleep(sleep_s)
 
 
 def main(argv: List[str]) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--poll", type=float, default=2.0, help="Polling interval in seconds (default: 2.0)")
+    ap.add_argument("--poll-jitter", type=float, default=0.3, help="Add up to N seconds of random jitter per poll (default: 0.3)")
+
+    ap.add_argument("--http-timeout", type=float, default=20.0, help="HTTP request timeout seconds (default: 20)")
+    ap.add_argument("--http-tries", type=int, default=3, help="HTTP retries (default: 3)")
+    ap.add_argument("--http-backoff", type=float, default=0.5, help="HTTP backoff base seconds (default: 0.5)")
+    ap.add_argument("--http-jitter", type=float, default=0.25, help="HTTP backoff jitter seconds (default: 0.25)")
+    ap.add_argument("--http-max-backoff", type=float, default=5.0, help="HTTP backoff cap seconds (default: 5.0)")
+
     ap.add_argument("--out", type=str, default="", help="Output JSONL path (default: ./data/YYYY-MM-DD.jsonl)")
     ap.add_argument("--minutes", type=float, default=None, help="Run for N minutes then exit")
     args = ap.parse_args(argv)
+
+    # Apply HTTP tuning
+    global HTTP_TIMEOUT_S, HTTP_TRIES, HTTP_BACKOFF_S, HTTP_JITTER_S, HTTP_MAX_BACKOFF_S
+    HTTP_TIMEOUT_S = float(args.http_timeout)
+    HTTP_TRIES = int(args.http_tries)
+    HTTP_BACKOFF_S = float(args.http_backoff)
+    HTTP_JITTER_S = float(args.http_jitter)
+    HTTP_MAX_BACKOFF_S = float(args.http_max_backoff)
 
     if args.out:
         out_path = args.out
@@ -312,7 +416,7 @@ def main(argv: List[str]) -> int:
         out_path = os.path.join(os.path.dirname(__file__), "..", "data", f"{day}.jsonl")
         out_path = os.path.abspath(out_path)
 
-    run(poll_seconds=args.poll, out_path=out_path, max_minutes=args.minutes)
+    run(poll_seconds=args.poll, out_path=out_path, max_minutes=args.minutes, poll_jitter_s=float(args.poll_jitter))
     return 0
 
 

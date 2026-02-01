@@ -1,0 +1,469 @@
+#!/usr/bin/env python3
+""" Logger — Polymarket 15m Crypto Bot
+
+Continuously polls Polymarket CLOB and Coinbase spot to produce JSONL snapshots for BTC/ETH 15-minute Up/Down markets.
+
+Output: one JSONL file per day in data/ with event types:
+- "rollover" → new slug detected for an asset
+- "snapshot" → full market + orderbook + spot snapshot
+- "error" → fetch or parse failure (with details)
+
+Usage:
+  python3 -m src.logger --poll 2
+  python3 -m src.logger --poll 5 --assets BTC --data-dir /tmp/poly-data
+"""
+
+import argparse
+import json
+import os
+import signal
+import sys
+import time
+import traceback
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
+
+import requests
+
+from src.config import (
+    ASSETS,
+    COINBASE_SPOT_URL,
+    DEFAULT_DATA_DIR,
+    DEFAULT_POLL_INTERVAL_S,
+    OUTCOMES,
+    POLYMARKET_CLOB_BASE,
+    POLYMARKET_GAMMA_BASE,
+)
+from src.utils import (
+    append_jsonl,
+    file_size_mb,
+    jsonl_path,
+    now_iso,
+    now_ms,
+    parse_remaining_seconds,
+    safe_float,
+    today_str,
+)
+
+# ─── Polymarket API Helpers ──────────────────────────────────────────────────
+
+SESSION = requests.Session()
+SESSION.headers.update({"Accept": "application/json"})
+
+# Track current slugs for rollover detection
+_current_slugs: Dict[str, str] = {}  # asset -> slug
+
+
+def find_current_event(asset: str) -> Optional[Dict[str, Any]]:
+    """ Find the current active 15-minute event for an asset via Gamma API.
+    Returns event metadata or None.
+    """
+    asset_cfg = ASSETS[asset]
+    try:
+        # Search for active 15-minute markets
+        params = {
+            "active": "true",
+            "closed": "false",
+            "limit": 20,
+            "order": "endDate",
+            "ascending": "true",
+        }
+        resp = SESSION.get(
+            f"{POLYMARKET_GAMMA_BASE}/events",
+            params=params,
+            timeout=10,
+        )
+        resp.raise_for_status()
+        events = resp.json()
+
+        # Filter for 15-minute crypto events matching our asset
+        for event in events:
+            title = event.get("title", "").lower()
+            slug = event.get("slug", "")
+
+            # Check if this matches our asset's 15m pattern
+            keywords = asset_cfg["slug_keywords"]
+            if all(kw.lower() in title.lower() for kw in keywords):
+                return event
+            if asset_cfg["slug_pattern"].search(slug):
+                return event
+        return None
+
+    except Exception as e:
+        return None
+
+
+def resolve_market_for_event(event: Dict) -> Optional[Dict[str, Any]]:
+    """ Given an event, extract the relevant market (the 15m up/down market).
+    Returns market metadata with token IDs.
+    """
+    markets = event.get("markets", [])
+
+    if not markets:
+        # Try fetching markets for this event
+        event_id = event.get("id")
+        if event_id:
+            try:
+                resp = SESSION.get(
+                    f"{POLYMARKET_GAMMA_BASE}/markets",
+                    params={"event_id": event_id},
+                    timeout=10,
+                )
+                resp.raise_for_status()
+                markets = resp.json()
+            except Exception:
+                return None
+
+    if markets:
+        # Usually one market per 15m event
+        return markets[0] if isinstance(markets, list) else markets
+
+    return None
+
+
+def parse_market_tokens(market: Dict) -> Dict[str, str]:
+    """ Extract token IDs for each outcome from market data.
+    Returns {outcome_name: token_id}.
+    """
+    tokens = {}
+
+    # Polymarket markets have "clobTokenIds" field (JSON string or list)
+    clob_ids = market.get("clobTokenIds")
+    outcomes_raw = market.get("outcomes")
+
+    if isinstance(clob_ids, str):
+        try:
+            clob_ids = json.loads(clob_ids)
+        except json.JSONDecodeError:
+            clob_ids = []
+
+    if isinstance(outcomes_raw, str):
+        try:
+            outcomes_raw = json.loads(outcomes_raw)
+        except json.JSONDecodeError:
+            outcomes_raw = []
+
+    if clob_ids and outcomes_raw and len(clob_ids) == len(outcomes_raw):
+        for outcome, token_id in zip(outcomes_raw, clob_ids):
+            # Normalize outcome names: "Yes" -> "Up", "No" -> "Down"
+            name = normalize_outcome(outcome)
+            tokens[name] = token_id
+
+    return tokens
+
+
+def normalize_outcome(raw: str) -> str:
+    """Normalize outcome name to Up/Down."""
+    raw_lower = raw.strip().lower()
+    if raw_lower in ("yes", "up"):
+        return "Up"
+    elif raw_lower in ("no", "down"):
+        return "Down"
+    return raw.strip()
+
+
+def fetch_orderbook(token_id: str) -> Tuple[Dict[str, Any], int]:
+    """ Fetch the CLOB orderbook for a token.
+    Returns (book_data, fetch_ts_ms).
+    """
+    fetch_ts = now_ms()
+    try:
+        resp = SESSION.get(
+            f"{POLYMARKET_CLOB_BASE}/book",
+            params={"token_id": token_id},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return data, fetch_ts
+    except Exception as e:
+        return {"error": str(e)}, fetch_ts
+
+
+def parse_book_levels(book_data: Dict) -> Dict[str, Any]:
+    """ Parse orderbook data to extract best bid/ask and sizes.
+    Returns dict with best_bid, best_ask, best_bid_size, best_ask_size, etc.
+    """
+    result = {
+        "best_bid": None,
+        "best_ask": None,
+        "best_bid_size": None,
+        "best_ask_size": None,
+        "bid_count": 0,
+        "ask_count": 0,
+        "book_ts": None,
+    }
+
+    if "error" in book_data:
+        result["error"] = book_data["error"]
+        return result
+
+    # Parse bids (highest first)
+    bids = book_data.get("bids", [])
+    asks = book_data.get("asks", [])
+
+    result["bid_count"] = len(bids)
+    result["ask_count"] = len(asks)
+    result["book_ts"] = book_data.get("timestamp") or book_data.get("t")
+
+    if bids:
+        # Sort descending by price
+        sorted_bids = sorted(bids, key=lambda x: safe_float(x.get("price", 0)), reverse=True)
+        best = sorted_bids[0]
+        result["best_bid"] = safe_float(best.get("price"))
+        result["best_bid_size"] = safe_float(best.get("size"))
+
+    if asks:
+        # Sort ascending by price
+        sorted_asks = sorted(asks, key=lambda x: safe_float(x.get("price", 1)))
+        best = sorted_asks[0]
+        result["best_ask"] = safe_float(best.get("price"))
+        result["best_ask_size"] = safe_float(best.get("size"))
+
+    return result
+
+
+# ─── Spot Price ──────────────────────────────────────────────────────────────
+
+def fetch_spot_price(pair: str) -> Tuple[Optional[float], int]:
+    """ Fetch spot price from Coinbase.
+    Returns (price, fetch_ts_ms). Price is None on failure.
+    """
+    fetch_ts = now_ms()
+    try:
+        url = COINBASE_SPOT_URL.format(pair=pair)
+        resp = SESSION.get(url, timeout=5)
+        resp.raise_for_status()
+        data = resp.json()
+        price = safe_float(data.get("data", {}).get("amount"))
+        return price if price > 0 else None, fetch_ts
+    except Exception:
+        return None, fetch_ts
+
+
+# ─── Snapshot Assembly ───────────────────────────────────────────────────────
+
+def build_snapshot(assets_to_poll: List[str]) -> Dict[str, Any]:
+    """ Build a complete snapshot across all requested assets.
+    Returns a dict ready for JSONL serialization.
+    """
+    global _current_slugs
+
+    ts = now_iso()
+    ts_ms = now_ms()
+
+    assets_data = {}
+    rollovers = []
+
+    for asset in assets_to_poll:
+        asset_cfg = ASSETS[asset]
+        asset_record: Dict[str, Any] = {"asset": asset}
+
+        # 1) Find current event
+        event = find_current_event(asset)
+        if not event:
+            asset_record["error"] = "no_active_event"
+            assets_data[asset] = asset_record
+            continue
+
+        slug = event.get("slug", "unknown")
+        title = event.get("title", "")
+        end_date = event.get("endDate") or event.get("end_date_iso", "")
+
+        # Check for rollover
+        prev_slug = _current_slugs.get(asset)
+        if prev_slug and slug != prev_slug:
+            rollovers.append({
+                "asset": asset,
+                "old_slug": prev_slug,
+                "new_slug": slug,
+            })
+        _current_slugs[asset] = slug
+
+        # 2) Get market and tokens
+        market = resolve_market_for_event(event)
+        tokens = parse_market_tokens(market) if market else {}
+
+        remaining_s = parse_remaining_seconds(end_date) if end_date else None
+
+        asset_record.update({
+            "slug": slug,
+            "title": title,
+            "end_date": end_date,
+            "remaining_s": round(remaining_s, 1) if remaining_s is not None else None,
+        })
+
+        # 3) Fetch spot price
+        spot_price, spot_fetch_ts = fetch_spot_price(asset_cfg["spot_pair"])
+        asset_record["spot"] = spot_price
+        asset_record["spot_fetch_ts_ms"] = spot_fetch_ts
+        if spot_price is None:
+            asset_record["spot_error"] = "fetch_failed"
+
+        # 4) Fetch orderbooks for each outcome
+        books = {}
+        for outcome in OUTCOMES:
+            token_id = tokens.get(outcome)
+            if not token_id:
+                books[outcome] = {
+                    "token_id": None,
+                    "error": "no_token_id",
+                }
+                continue
+
+            book_data, book_fetch_ts = fetch_orderbook(token_id)
+            parsed = parse_book_levels(book_data)
+            parsed["token_id"] = token_id
+            parsed["book_fetch_ts_ms"] = book_fetch_ts
+            books[outcome] = parsed
+
+        asset_record["books"] = books
+        assets_data[asset] = asset_record
+
+    return {
+        "type": "snapshot",
+        "ts": ts,
+        "ts_ms": ts_ms,
+        "assets": assets_data,
+        "rollovers": rollovers if rollovers else None,
+    }
+
+
+# ─── Main Loop ───────────────────────────────────────────────────────────────
+
+_running = True
+
+
+def _signal_handler(signum, frame):
+    global _running
+    print(f" [Logger] Caught signal {signum}, shutting down gracefully...")
+    _running = False
+
+
+def run_logger(
+    poll_interval: float = DEFAULT_POLL_INTERVAL_S,
+    assets: Optional[List[str]] = None,
+    data_dir: str = DEFAULT_DATA_DIR,
+) -> None:
+    """Main logger loop."""
+    global _running
+    _running = True
+
+    signal.signal(signal.SIGINT, _signal_handler)
+    signal.signal(signal.SIGTERM, _signal_handler)
+
+    if assets is None:
+        assets = list(ASSETS.keys())
+
+    print(f"[Logger] Starting — assets={assets}, poll={poll_interval}s, data_dir={data_dir}")
+    print(f"[Logger] Press Ctrl+C to stop")
+
+    snapshot_count = 0
+    error_count = 0
+
+    current_date = today_str()
+    out_path = jsonl_path(data_dir, current_date)
+
+    while _running:
+        loop_start = time.time()
+        try:
+            # Check for date rollover (new log file each day)
+            new_date = today_str()
+            if new_date != current_date:
+                print(f"[Logger] Date rollover: {current_date} → {new_date}")
+                current_date = new_date
+                out_path = jsonl_path(data_dir, current_date)
+
+            # Build snapshot
+            snapshot = build_snapshot(assets)
+
+            # Write rollover events separately if any
+            rollovers = snapshot.pop("rollovers", None)
+            if rollovers:
+                for rv in rollovers:
+                    rollover_record = {
+                        "type": "rollover",
+                        "ts": snapshot["ts"],
+                        "ts_ms": snapshot["ts_ms"],
+                        **rv,
+                    }
+                    append_jsonl(out_path, rollover_record)
+                    print(f"[Logger] ROLLOVER {rv['asset']}: {rv['old_slug']} → {rv['new_slug']}")
+
+            # Write snapshot
+            append_jsonl(out_path, snapshot)
+            snapshot_count += 1
+
+            if snapshot_count % 30 == 0:
+                size_mb = file_size_mb(out_path)
+                print(
+                    f"[Logger] {snapshot_count} snapshots | "
+                    f"{error_count} errors | "
+                    f"file={size_mb:.2f}MB | "
+                    f"{out_path}"
+                )
+
+        except Exception as e:
+            error_count += 1
+            error_record = {
+                "type": "error",
+                "ts": now_iso(),
+                "ts_ms": now_ms(),
+                "error": str(e),
+                "traceback": traceback.format_exc(),
+            }
+            try:
+                append_jsonl(out_path, error_record)
+            except Exception:
+                print(f"[Logger] CRITICAL: Can't write error to log: {e}", file=sys.stderr)
+
+            if error_count % 10 == 1:
+                print(f"[Logger] ERROR #{error_count}: {e}", file=sys.stderr)
+
+        # Sleep remainder of poll interval
+        elapsed = time.time() - loop_start
+        sleep_time = max(0, poll_interval - elapsed)
+        if sleep_time > 0 and _running:
+            time.sleep(sleep_time)
+
+    print(f" [Logger] Stopped. Total: {snapshot_count} snapshots, {error_count} errors")
+    print(f"[Logger] Output: {out_path}")
+
+
+# ─── CLI ─────────────────────────────────────────────────────────────────────
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Polymarket 15m Crypto Bot — Logger",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "--poll",
+        type=float,
+        default=DEFAULT_POLL_INTERVAL_S,
+        help=f"Poll interval in seconds (default: {DEFAULT_POLL_INTERVAL_S})",
+    )
+    parser.add_argument(
+        "--assets",
+        nargs="+",
+        choices=list(ASSETS.keys()),
+        default=list(ASSETS.keys()),
+        help="Assets to monitor (default: all)",
+    )
+    parser.add_argument(
+        "--data-dir",
+        default=DEFAULT_DATA_DIR,
+        help=f"Data output directory (default: {DEFAULT_DATA_DIR})",
+    )
+
+    args = parser.parse_args()
+
+    run_logger(
+        poll_interval=args.poll,
+        assets=args.assets,
+        data_dir=args.data_dir,
+    )
+
+
+if __name__ == "__main__":
+    main()
