@@ -1,36 +1,49 @@
 import json
 import os
-import tempfile
 import threading
 import time
 
+import psycopg2
+
 from wrp.dispatcher import worker_loop
-from wrp.sqlite_store import SQLiteStorage
+from wrp.postgres_store import PostgresStorage
 from wrp.util import now_ms
 
 from tests.test_integration_server import Sink, run_server
 
 
-def test_end_to_end_sqlite_delivers_event():
+def _dsn() -> str:
+    dsn = os.environ.get("WRP_TEST_DSN")
+    if not dsn:
+        raise RuntimeError("Set WRP_TEST_DSN to run Postgres integration tests")
+    return dsn
+
+
+def _reset_db(dsn: str) -> None:
+    # Clean slate to keep tests deterministic.
+    with psycopg2.connect(dsn) as con:
+        with con.cursor() as cur:
+            cur.execute("TRUNCATE attempts, deliveries, events, endpoints")
+        con.commit()
+
+
+def test_end_to_end_postgres_delivers_event():
     Sink.calls = []
     Sink.statuses = []
-    httpd = run_server(8009)
+
+    dsn = _dsn()
+    _reset_db(dsn)
+
+    httpd = run_server(8011)
     try:
-        db = os.path.join(tempfile.gettempdir(), "wrp_it.db")
-        try:
-            os.remove(db)
-        except FileNotFoundError:
-            pass
-        st = SQLiteStorage(db)
+        st = PostgresStorage(dsn)
         st.init_schema()
-        ep = st.add_endpoint("http://127.0.0.1:8009/webhook", "sek", {"max_attempts": 2, "timeout_s": 2.0})
+        ep = st.add_endpoint("http://127.0.0.1:8011/webhook", "sek", {"max_attempts": 2, "timeout_s": 2.0})
         evt, dly = st.enqueue_event("test", {"hello": "world", "_created_at_ms": now_ms()}, ep.id)
 
-        # run worker in background briefly
-        th = threading.Thread(target=lambda: worker_loop(st, worker_id="t1", poll_ms=50), daemon=True)
+        th = threading.Thread(target=lambda: worker_loop(st, worker_id="pg1", poll_ms=50), daemon=True)
         th.start()
 
-        # wait for at least one call
         for _ in range(100):
             if Sink.calls:
                 break
