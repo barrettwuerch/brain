@@ -6,3 +6,6 @@ projects/polymarket-bot/reports/wf-*.md
 projects/polymarket-bot/reports/wf-*.json
 projects/polymarket-bot/reports/tuner-*.md
 projects/polymarket-bot/reports/tuner-*.json
+
+# ClawTasks secrets
+clawtasks-credentials.json
