@@ -52,21 +52,25 @@ Circuit breaker is per-endpoint.
 ---
 
 ## How to run WRP
-### Backend choice
-- SQLite: dev/single-machine only.
-- Postgres: recommended for any real ops usage (durable, concurrency-safe).
+### Backend choice (laptop-first)
+- **SQLite**: recommended for your "laptop only" phase. Single machine, single file (`wrp.db`), easy backups.
+- **Postgres**: recommended once you’re running multiple workers/hosts or you need stronger durability + concurrency under load.
+
+**Rule of thumb:** If you’re not making money yet and you’re on one laptop, SQLite is the right default.
 
 ### Start a worker
 WRP is currently a polling worker.
 
-SQLite:
+SQLite (laptop mode):
 ```bash
+python3 -m wrp.cli --sqlite wrp.db init
 python3 -m wrp.cli --sqlite wrp.db worker
 ```
 
-Postgres:
+Postgres (later):
 ```bash
 export WRP_DSN='postgres://user:pass@host:5432/wrp'
+python3 -m wrp.cli --postgres "$WRP_DSN" init
 python3 -m wrp.cli --postgres "$WRP_DSN" worker
 ```
 
@@ -84,18 +88,32 @@ python3 -m wrp.cli --postgres "$WRP_DSN" worker --worker-id wrp-2
 
 ## Operator workflows
 ### 1) Check health at a glance
+SQLite:
+```bash
+python3 -m wrp.cli --sqlite wrp.db status
+```
+
+Postgres:
 ```bash
 python3 -m wrp.cli --postgres "$WRP_DSN" status
 ```
+
 What to look for:
 - `deliveries.pending` growing continuously → workers aren’t keeping up OR receivers are unhealthy.
 - `deliveries.dlq` > 0 → investigate and decide replay.
 - `circuits.open` > 0 → receiver(s) likely failing.
 
 ### 2) Inspect DLQ
+SQLite:
+```bash
+python3 -m wrp.cli --sqlite wrp.db dlq --limit 50
+```
+
+Postgres:
 ```bash
 python3 -m wrp.cli --postgres "$WRP_DSN" dlq --limit 50
 ```
+
 You’re looking for patterns:
 - Same endpoint repeatedly failing → receiver config/availability issue.
 - Many endpoints failing at once → network/DNS or WRP environment issue.
@@ -103,9 +121,16 @@ You’re looking for patterns:
 ### 3) Replay a delivery
 Replays reschedule delivery immediately (state → `pending`, `next_attempt_at_ms = now`).
 
+SQLite:
+```bash
+python3 -m wrp.cli --sqlite wrp.db replay --delivery dly_...
+```
+
+Postgres:
 ```bash
 python3 -m wrp.cli --postgres "$WRP_DSN" replay --delivery dly_...
 ```
+
 **Best practice:** fix the underlying receiver issue first, then replay.
 
 ---
