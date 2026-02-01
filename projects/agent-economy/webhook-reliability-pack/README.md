@@ -2,6 +2,10 @@
 
 Implements the PRD: `projects/agent-economy/PRD_webhook_reliability_pack.md`.
 
+Operator docs:
+- `docs/OPERATIONS.md`
+- `docs/RECEIVER_VERIFICATION.md`
+
 ## What it is
 A drop-in webhook dispatcher providing:
 - at-least-once delivery
