@@ -29,7 +29,10 @@ class SQLiteStorage(Storage):
                   url TEXT NOT NULL,
                   secret TEXT NOT NULL,
                   status TEXT NOT NULL,
-                  policy_json TEXT NOT NULL
+                  policy_json TEXT NOT NULL,
+                  circuit_state TEXT NOT NULL DEFAULT 'closed',
+                  circuit_opened_at_ms INTEGER,
+                  circuit_cooldown_ms INTEGER NOT NULL DEFAULT 0
                 );
 
                 CREATE TABLE IF NOT EXISTS events (
@@ -80,12 +83,21 @@ class SQLiteStorage(Storage):
             row = con.execute("SELECT * FROM endpoints WHERE id=?", (endpoint_id,)).fetchone()
             if not row:
                 raise KeyError(f"endpoint not found: {endpoint_id}")
+            policy = json.loads(row["policy_json"])
+            policy.setdefault(
+                "circuit",
+                {
+                    "state": row["circuit_state"],
+                    "opened_at_ms": row["circuit_opened_at_ms"],
+                    "cooldown_ms": row["circuit_cooldown_ms"],
+                },
+            )
             return Endpoint(
                 id=row["id"],
                 url=row["url"],
                 secret=row["secret"],
                 status=row["status"],
-                policy=json.loads(row["policy_json"]),
+                policy=policy,
             )
 
     def list_endpoints(self) -> Iterable[Endpoint]:

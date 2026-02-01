@@ -13,6 +13,14 @@ from .util import now_ms
 def _sqlite_store(path: str) -> SQLiteStorage:
     st = SQLiteStorage(path)
     st.init_schema()
+    # lightweight forward migration for existing DBs
+    try:
+        from .migrate_sqlite import migrate_add_circuit_columns
+
+        with st._conn() as con:  # pylint: disable=protected-access
+            migrate_add_circuit_columns(con)
+    except Exception:
+        pass
     return st
 
 
