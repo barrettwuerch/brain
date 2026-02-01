@@ -7,6 +7,7 @@ Operator docs:
 - `docs/LAPTOP_MODE.md` (SQLite-first)
 - `docs/POSTGRES_APP_LAPTOP.md` (Mac Postgres.app)
 - `docs/RECEIVER_VERIFICATION.md`
+- `docs/LAUNCHD_WORKER.md` (keep the worker running on macOS)
 
 ## What it is
 A drop-in webhook dispatcher providing:

@@ -7,6 +7,7 @@ If you’re integrating WRP into an app, see the project README. If you’re rec
 Laptop guides:
 - SQLite-first: `docs/LAPTOP_MODE.md`
 - Postgres.app: `docs/POSTGRES_APP_LAPTOP.md`
+- Keep worker running (macOS): `docs/LAUNCHD_WORKER.md`
 
 ---
 
