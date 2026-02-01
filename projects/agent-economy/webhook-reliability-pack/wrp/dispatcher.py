@@ -142,12 +142,7 @@ def dispatch_one(storage: Storage, delivery: Delivery, *, worker_id: str, lease_
         # Close circuit if we were probing
         if cstate.state in ("open", "half_open"):
             try:
-                if hasattr(storage, "_conn"):
-                    with storage._conn() as con:  # type: ignore[attr-defined]
-                        con.execute(
-                            "UPDATE endpoints SET circuit_state='closed', circuit_opened_at_ms=NULL, circuit_cooldown_ms=0 WHERE id=?",
-                            (endpoint.id,),
-                        )
+                storage.set_endpoint_circuit(endpoint.id, state="closed", opened_at_ms=None, cooldown_ms=0)
             except Exception:
                 pass
 
@@ -164,15 +159,24 @@ def dispatch_one(storage: Storage, delivery: Delivery, *, worker_id: str, lease_
     # Update circuit state on failure
     try:
         attempts, failures, cons = storage.endpoint_failure_stats(endpoint.id, window_ms=5 * 60 * 1000, now_ms=now_ms())
-        cp = CircuitPolicy()
+
+        # Allow operator/test overrides of circuit policy.
+        cp_over = (policy.get("circuit_policy") or {})
+        cp = CircuitPolicy(
+            window_ms=int(cp_over.get("window_ms", CircuitPolicy.window_ms)),
+            min_attempts=int(cp_over.get("min_attempts", CircuitPolicy.min_attempts)),
+            open_failure_rate=float(cp_over.get("open_failure_rate", CircuitPolicy.open_failure_rate)),
+            consecutive_failures_fallback=int(cp_over.get("consecutive_failures_fallback", CircuitPolicy.consecutive_failures_fallback)),
+            cooldown_ms=int(cp_over.get("cooldown_ms", CircuitPolicy.cooldown_ms)),
+            cooldown_ms_after_fail=int(cp_over.get("cooldown_ms_after_fail", CircuitPolicy.cooldown_ms_after_fail)),
+        )
+
         if should_open(attempts, failures, cons, cp):
-            if hasattr(storage, "_conn"):
-                cooldown = cp.cooldown_ms if cstate.state != "half_open" else cp.cooldown_ms_after_fail
-                with storage._conn() as con:  # type: ignore[attr-defined]
-                    con.execute(
-                        "UPDATE endpoints SET circuit_state='open', circuit_opened_at_ms=?, circuit_cooldown_ms=? WHERE id=?",
-                        (now_ms(), cooldown, endpoint.id),
-                    )
+            cooldown = cp.cooldown_ms if cstate.state != "half_open" else cp.cooldown_ms_after_fail
+            try:
+                storage.set_endpoint_circuit(endpoint.id, state="open", opened_at_ms=now_ms(), cooldown_ms=cooldown)
+            except Exception:
+                pass
     except Exception:
         pass
 
@@ -199,7 +203,7 @@ def dispatch_one(storage: Storage, delivery: Delivery, *, worker_id: str, lease_
         storage.release_lease(d.id, worker_id)
         return
 
-    delay_ms = next_attempt_delay_ms(attempt_no, retry_after_s=retry_after_s)
+    delay_ms = next_attempt_delay_ms(attempt_no, retry_after_s=retry_after_s, backoff_s=policy.get("backoff_s"))
     storage.mark_delivery_state(
         d.id,
         state="pending",

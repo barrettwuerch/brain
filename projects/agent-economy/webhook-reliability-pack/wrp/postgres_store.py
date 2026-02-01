@@ -345,6 +345,15 @@ class PostgresStorage(Storage):
 
         return total, failures, cons
 
+    def set_endpoint_circuit(self, endpoint_id: str, *, state: str, opened_at_ms: Optional[int], cooldown_ms: int) -> None:
+        with self._conn() as con:
+            with con.cursor() as cur:
+                cur.execute(
+                    "UPDATE endpoints SET circuit_state=%s, circuit_opened_at_ms=%s, circuit_cooldown_ms=%s WHERE id=%s",
+                    (state, opened_at_ms, cooldown_ms, endpoint_id),
+                )
+            con.commit()
+
     # Convenience for CLI
     def status_counts(self) -> Dict[str, Any]:
         with self._conn() as con:

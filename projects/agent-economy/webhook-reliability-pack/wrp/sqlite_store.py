@@ -287,3 +287,10 @@ class SQLiteStorage(Storage):
                 break
 
         return total, failures, cons
+
+    def set_endpoint_circuit(self, endpoint_id: str, *, state: str, opened_at_ms: Optional[int], cooldown_ms: int) -> None:
+        with self._conn() as con:
+            con.execute(
+                "UPDATE endpoints SET circuit_state=?, circuit_opened_at_ms=?, circuit_cooldown_ms=? WHERE id=?",
+                (state, opened_at_ms, cooldown_ms, endpoint_id),
+            )

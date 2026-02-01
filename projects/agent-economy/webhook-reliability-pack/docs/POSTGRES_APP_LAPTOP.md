@@ -74,6 +74,29 @@ python3 -m wrp.cli --postgres "$WRP_DSN" status
 
 ---
 
+## Test database (recommended)
+If you run automated tests while also running the launchd worker, use a **separate test database** so tests don’t fight the live worker.
+
+Create:
+- `wrp` (live)
+- `wrp_test` (tests)
+
+Example:
+```bash
+createdb wrp_test || true
+psql -d postgres -c "ALTER DATABASE wrp_test OWNER TO wrp;"
+psql -d wrp_test -c "ALTER SCHEMA public OWNER TO wrp;"
+```
+
+Run tests:
+```bash
+export WRP_TEST_DSN='postgres://wrp:wrp_pw@localhost:5432/wrp_test'
+export WRP_TEST_EXCLUSIVE=1
+python3 -m pytest -q
+```
+
+---
+
 ## Backups (laptop-friendly)
 Postgres is not a single file like SQLite; do backups via `pg_dump`.
 

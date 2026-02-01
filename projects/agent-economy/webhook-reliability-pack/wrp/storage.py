@@ -71,3 +71,7 @@ class Storage(abc.ABC):
     def endpoint_failure_stats(self, endpoint_id: str, *, window_ms: int, now_ms: int) -> Tuple[int, int, int]:
         """Return (attempts, failures, consecutive_failures) for the endpoint."""
         ...
+
+    @abc.abstractmethod
+    def set_endpoint_circuit(self, endpoint_id: str, *, state: str, opened_at_ms: Optional[int], cooldown_ms: int) -> None:
+        ...

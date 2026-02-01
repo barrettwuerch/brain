@@ -64,4 +64,18 @@ Format:
 - Notes:
   - `dev_receiver.py` can verify signatures if `WRP_ENDPOINT_SECRET` is set.
 
+### Late morning — WRP acceptance gates (finish-line push)
+- Summary: Added automated acceptance tests covering PRD gates (retry/DLQ/circuit/crach-lease) and fixed circuit state updates for Postgres.
+- Changes:
+  - Added: `tests/test_acceptance_gates.py` (runs SQLite by default; runs Postgres if `WRP_TEST_DSN` and `WRP_TEST_EXCLUSIVE=1`)
+  - Updated: `wrp/storage.py` + both backends to support `set_endpoint_circuit(...)`
+  - Updated: `wrp/dispatcher.py` to update circuit state via storage interface and allow per-endpoint `circuit_policy` overrides
+  - Updated: `wrp/policy.py` to allow per-endpoint `backoff_s` override (useful for tests and tuning)
+  - Updated: `tests/test_integration_server.py` to support per-request extra headers/delays
+  - Updated: `docs/POSTGRES_APP_LAPTOP.md` with recommended separate `wrp_test` DB for tests
+- Notes:
+  - Created local test DB `wrp_test` and verified all tests pass with:
+    - `WRP_TEST_DSN=postgres://wrp:wrp_pw@localhost:5432/wrp_test`
+    - `WRP_TEST_EXCLUSIVE=1`
+
 ---
