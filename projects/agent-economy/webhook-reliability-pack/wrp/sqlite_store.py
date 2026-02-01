@@ -133,6 +133,14 @@ class SQLiteStorage(Storage):
             self.get_delivery(delivery_id),
         )
 
+    def get_event(self, event_id: str) -> Event:
+        with self._conn() as con:
+            row = con.execute("SELECT * FROM events WHERE id=?", (event_id,)).fetchone()
+            if not row:
+                raise KeyError(f"event not found: {event_id}")
+            payload = json.loads(row["payload_json"])
+            return Event(id=row["id"], type=row["type"], payload=payload, created_at_ms=row["created_at_ms"])
+
     def get_delivery(self, delivery_id: str) -> Delivery:
         with self._conn() as con:
             row = con.execute("SELECT * FROM deliveries WHERE id=?", (delivery_id,)).fetchone()

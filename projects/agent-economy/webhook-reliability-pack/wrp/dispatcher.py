@@ -85,32 +85,11 @@ def dispatch_one(storage: Storage, delivery: Delivery, *, worker_id: str, lease_
         storage.release_lease(d.id, worker_id)
         return
 
-    # Load event payload
-    # SQLite backend stores payload in events table; for now we re-encode via a join-like method.
-    # Storage interface keeps it simple; in v0.1 we re-fetch by reading delivery->event via SQL in concrete store.
-    # For SQLite we store payload in delivery by reloading event in store; implement a helper later.
-
-    # Hack for v0.1: have store include payload in delivery via deterministic lookup
-    if not hasattr(storage, "_conn"):
-        raise RuntimeError("dispatch_one requires storage with direct event access in v0.1")
-
-    # type: ignore[attr-defined]
-    with storage._conn() as con:  # pylint: disable=protected-access
-        row = con.execute("SELECT type,payload_json,created_at_ms FROM events WHERE id=?", (d.event_id,)).fetchone()
-        if not row:
-            storage.release_lease(d.id, worker_id)
-            raise RuntimeError(f"event missing: {d.event_id}")
-        event_type = row["type"]
-        payload = row["payload_json"]
-        created_at_ms = row["created_at_ms"]
-
-    payload_obj: Dict[str, Any] = {}
-    try:
-        import json
-
-        payload_obj = json.loads(payload)
-    except Exception:
-        payload_obj = {"raw": payload}
+    # Load event payload (backend-agnostic)
+    evt = storage.get_event(d.event_id)
+    event_type = evt.type
+    payload_obj = evt.payload or {}
+    created_at_ms = int(evt.created_at_ms)
 
     if now_ms() - int(created_at_ms) > max_age_s * 1000:
         storage.mark_delivery_state(

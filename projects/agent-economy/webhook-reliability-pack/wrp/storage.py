@@ -35,6 +35,10 @@ class Storage(abc.ABC):
         ...
 
     @abc.abstractmethod
+    def get_event(self, event_id: str) -> Event:
+        ...
+
+    @abc.abstractmethod
     def get_delivery(self, delivery_id: str) -> Delivery:
         ...
 
