@@ -270,11 +270,88 @@ function normalCdf(x) {
   return 0.5 * (1 + sign * erf);
 }
 
-function probBetween(lo, hi, mu, sigma) {
-  // inclusive-ish bracket: [lo, hi]
-  const zHi = (hi + 0.5 - mu) / sigma;
-  const zLo = (lo - 0.5 - mu) / sigma;
-  return clamp(normalCdf(zHi) - normalCdf(zLo), 0, 1);
+function bracketProbability(mu, sigma, lo, hi) {
+  // Continuous probability for interval [lo, hi) in a Normal(mu, sigma).
+  // lo can be -Infinity; hi can be +Infinity.
+  const cdf = (x) => {
+    if (x === Infinity) return 1;
+    if (x === -Infinity) return 0;
+    return normalCdf((x - mu) / sigma);
+  };
+  return clamp(cdf(hi) - cdf(lo), 0, 1);
+}
+
+function computeCoherentFVs(brackets, forecastHigh, sigma) {
+  // brackets: [{ticker, kind, lo?, hi?}] where kind in range|gt|lt
+  const raw = brackets.map(b => {
+    const lo = (b.kind === 'lt') ? -Infinity : b.lo;
+    const hi = (b.kind === 'gt') ? Infinity : b.hi;
+
+    // Inclusive integer bracket adjustment:
+    // "36-37" means {36,37} → [35.5, 37.5)
+    const adjLo = Number.isFinite(lo) ? (lo - 0.5) : lo;
+    const adjHi = Number.isFinite(hi) ? (hi + 0.5) : hi;
+
+    const prob = bracketProbability(forecastHigh, sigma, adjLo, adjHi);
+    return { ticker: b.ticker, prob };
+  });
+
+  const total = raw.reduce((s, r) => s + r.prob, 0);
+  const out = new Map();
+
+  if (!(total > 0) || raw.length === 0) {
+    const uniform = raw.length ? (1 / raw.length) : 0;
+    for (const r of raw) {
+      out.set(r.ticker, { prob: uniform, fvCents: clampInt(Math.round(uniform * 100), 1, 99) });
+    }
+    return out;
+  }
+
+  // Normalize probabilities
+  const norm = raw.map(r => ({ ticker: r.ticker, prob: r.prob / total }));
+
+  // Convert to cents that sum to exactly 100 using largest remainder.
+  // Start with floor, then distribute remaining cents by descending fractional parts.
+  const cents = norm.map(r => {
+    const exact = r.prob * 100;
+    const base = Math.floor(exact);
+    const frac = exact - base;
+    return { ticker: r.ticker, prob: r.prob, exact, base, frac };
+  });
+
+  // Apply min 1c / max 99c bounds before reconciliation.
+  for (const c of cents) {
+    c.base = clampInt(c.base, 1, 99);
+  }
+
+  let sum = cents.reduce((s, c) => s + c.base, 0);
+
+  // If sum != 100, adjust.
+  // Prefer adding to largest frac when sum < 100; subtract from smallest frac when sum > 100.
+  if (sum < 100) {
+    cents.sort((a, b) => b.frac - a.frac);
+    let i = 0;
+    while (sum < 100 && cents.length) {
+      const c = cents[i % cents.length];
+      if (c.base < 99) { c.base += 1; sum += 1; }
+      i++;
+      if (i > 1000) break;
+    }
+  } else if (sum > 100) {
+    cents.sort((a, b) => a.frac - b.frac);
+    let i = 0;
+    while (sum > 100 && cents.length) {
+      const c = cents[i % cents.length];
+      if (c.base > 1) { c.base -= 1; sum -= 1; }
+      i++;
+      if (i > 1000) break;
+    }
+  }
+
+  for (const c of cents) {
+    out.set(c.ticker, { prob: c.prob, fvCents: clampInt(c.base, 1, 99) });
+  }
+  return out;
 }
 
 async function main() {
@@ -341,6 +418,25 @@ async function main() {
           const mkResp = await client.getMarkets({ event_ticker: et, limit: String(cfg.marketSelection.maxBracketsPerEvent || 30), status: 'open' });
           const markets = mkResp?.markets || [];
 
+          // Build coherent FV map for this city+event by parsing all bracket bounds.
+          const closeMsEvent = Date.parse(ev?.close_time || ev?.closeTime || ev?.end_time || '');
+          const horizonH = Number.isFinite(closeMsEvent) ? Math.max(0, (closeMsEvent - nowMs()) / 3600000) : 24;
+          const sigma = sigmaForHorizonHours(horizonH, cfg.fv.sigmaByHorizonHours);
+
+          const brackets = [];
+          for (const mkt of markets) {
+            const ticker = mkt?.ticker;
+            if (!ticker) continue;
+            const floor = (mkt?.floor_strike != null) ? Number(mkt.floor_strike) : null;
+            const cap = (mkt?.cap_strike != null) ? Number(mkt.cap_strike) : null;
+            if (Number.isFinite(floor) && Number.isFinite(cap)) brackets.push({ ticker, kind: 'range', lo: floor, hi: cap });
+            else if (Number.isFinite(floor) && cap == null) brackets.push({ ticker, kind: 'gt', lo: floor });
+            else if (floor == null && Number.isFinite(cap)) brackets.push({ ticker, kind: 'lt', hi: cap });
+          }
+
+          const fvByMarket = computeCoherentFVs(brackets, fh.maxF, sigma);
+          log.write({ t: nowMs(), type: 'fv_group', city: code, event: et, forecastHighF: fh.maxF, sigmaF: sigma, brackets: brackets.length });
+
           for (const mkt of markets) {
             const ticker = mkt?.ticker;
             if (!ticker) continue;
@@ -354,22 +450,20 @@ async function main() {
             if (tob.mid == null || tob.spread == null) continue;
             if (tob.spread < cfg.strategy.minQuotedSpreadCents) continue;
 
-            // Bracket parsing (best-effort)
-            const title = String(mkt?.title || '');
-            const rules = String(mkt?.rules_primary || '') + '\n' + String(mkt?.rules_secondary || '');
-            const combined = (title + ' ' + rules).toLowerCase();
-            let lo = null;
-            let hi = null;
-            let m = combined.match(/(\d{1,3})\s*(?:–|-|to)\s*(\d{1,3})/);
-            if (m) { lo = Number(m[1]); hi = Number(m[2]); }
-            if (!(Number.isFinite(lo) && Number.isFinite(hi))) continue;
+            // Bracket parsing (structured)
+            const floor = (mkt?.floor_strike != null) ? Number(mkt.floor_strike) : null;
+            const cap = (mkt?.cap_strike != null) ? Number(mkt.cap_strike) : null;
 
-            // FV from Gaussian placeholder
-            const closeMs = Date.parse(mkt?.close_time || mkt?.closeTime || '');
-            const horizonH = Number.isFinite(closeMs) ? Math.max(0, (closeMs - nowMs()) / 3600000) : 24;
-            const sigma = sigmaForHorizonHours(horizonH, cfg.fv.sigmaByHorizonHours);
-            const p = probBetween(lo, hi, fh.maxF, sigma);
-            const fv = clampInt(Math.round(p * 100), 1, 99);
+            let bracket = null;
+            if (Number.isFinite(floor) && Number.isFinite(cap)) bracket = { ticker, kind: 'range', lo: floor, hi: cap };
+            else if (Number.isFinite(floor) && cap == null) bracket = { ticker, kind: 'gt', lo: floor };
+            else if (floor == null && Number.isFinite(cap)) bracket = { ticker, kind: 'lt', hi: cap };
+            if (!bracket) continue;
+
+            // FV from coherent Gaussian placeholder for the entire event group
+            const coh = fvByMarket.get(ticker);
+            if (!coh) continue;
+            const fv = coh.fvCents;
 
             // Quote around FV
             const half = Math.max(1, Number(cfg.strategy.quoteHalfSpreadCents));
