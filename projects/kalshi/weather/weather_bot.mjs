@@ -474,6 +474,7 @@ async function main() {
               forecastHighF: fh.maxF,
               horizonHours: horizonH,
               baseRates,
+              horizonWeights: cfg?.forecast?.horizonWeights,
             });
             fvByMarket = emp.fvByTicker;
             fvModel = emp.model;
@@ -487,6 +488,15 @@ async function main() {
             fvMeta = { sigmaF: sigma };
           }
 
+          // Flag: very large shifts relative to climatological month σ.
+          let shiftSigma = null;
+          let largeShift = false;
+          const climStd = baseRates?.stats?.months?.[code]?.[String(eventMonth).padStart(2,'0')]?.stdDevF;
+          if (fvMeta?.shiftF != null && Number.isFinite(climStd) && climStd > 0) {
+            shiftSigma = fvMeta.shiftF / climStd;
+            largeShift = Math.abs(shiftSigma) >= 2;
+          }
+
           log.write({
             t: nowMs(),
             type: 'fv_group',
@@ -498,6 +508,8 @@ async function main() {
             horizonHours: horizonH,
             sigmaF: sigma,
             brackets: brackets.length,
+            shiftSigma,
+            largeShift,
             ...fvMeta,
           });
 

@@ -23,10 +23,17 @@ function mean(xs) {
   return xs.reduce((s, x) => s + x, 0) / xs.length;
 }
 
-function forecastWeightByHorizonHours(h) {
-  // Heuristic blend schedule:
-  // - short horizon: mostly forecast-shifted
-  // - long horizon: mostly climatology
+function forecastWeightByHorizonHours(h, table) {
+  // Piecewise-constant schedule matching sigmaByHorizonHours style.
+  // table: [{maxH:number, w:number}]
+  if (Array.isArray(table) && table.length) {
+    for (const row of table) {
+      if (h <= Number(row.maxH)) return clamp(Number(row.w), 0, 1);
+    }
+    return clamp(Number(table[table.length - 1]?.w ?? 0.6), 0, 1);
+  }
+
+  // Fallback heuristic.
   const pts = [
     { h: 0, w: 0.97 },
     { h: 6, w: 0.95 },
@@ -135,6 +142,7 @@ export function computeEmpiricalFVs({
   forecastHighF,
   horizonHours,
   baseRates,
+  horizonWeights,
 }) {
   const mm = String(month).padStart(2, '0');
   const values = baseRates?.sortedValues?.[cityCode]?.[mm] || [];
@@ -157,7 +165,7 @@ export function computeEmpiricalFVs({
   }
 
   const shiftF = haveForecast ? (forecastHighF - climMean) : 0;
-  const w = haveForecast ? forecastWeightByHorizonHours(horizonHours) : 0;
+  const w = haveForecast ? forecastWeightByHorizonHours(horizonHours, horizonWeights) : 0;
 
   // Forecast-shifted samples
   const shifted = haveForecast ? values.map(v => v + shiftF) : values;

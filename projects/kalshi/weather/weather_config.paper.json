@@ -19,6 +19,17 @@
     "forecastWeight": 0.7
   },
 
+  "forecast": {
+    "horizonWeights": [
+      { "maxH": 6, "w": 0.95 },
+      { "maxH": 12, "w": 0.90 },
+      { "maxH": 24, "w": 0.80 },
+      { "maxH": 48, "w": 0.60 },
+      { "maxH": 72, "w": 0.40 },
+      { "maxH": 9999, "w": 0.20 }
+    ]
+  },
+
   "fv": {
     "model": "empirical_shifted_cdf",
     "baseRatesPath": "/Users/bear/.openclaw/workspace/projects/kalshi/weather/weather_base_rates.json",
