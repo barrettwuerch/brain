@@ -1,6 +1,176 @@
 {
   "version": 1,
-  "generated_at": null,
+  "generated_at": 1770108102,
   "source": "https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm",
-  "events": []
+  "year_hint": 2028,
+  "events": [
+    {
+      "t_ms": 1830513600000,
+      "label": "January 03"
+    },
+    {
+      "t_ms": 1830600000000,
+      "label": "January 04"
+    },
+    {
+      "t_ms": 1830686400000,
+      "label": "January 05"
+    },
+    {
+      "t_ms": 1830945600000,
+      "label": "January 08"
+    },
+    {
+      "t_ms": 1832414400000,
+      "label": "January 25-26"
+    },
+    {
+      "t_ms": 1832673600000,
+      "label": "January 28"
+    },
+    {
+      "t_ms": 1834315200000,
+      "label": "February 16"
+    },
+    {
+      "t_ms": 1834401600000,
+      "label": "February 17"
+    },
+    {
+      "t_ms": 1834574400000,
+      "label": "February 19"
+    },
+    {
+      "t_ms": 1834747200000,
+      "label": "February 21"
+    },
+    {
+      "t_ms": 1834833600000,
+      "label": "February 22"
+    },
+    {
+      "t_ms": 1838635200000,
+      "label": "April 06"
+    },
+    {
+      "t_ms": 1838721600000,
+      "label": "April 07"
+    },
+    {
+      "t_ms": 1838894400000,
+      "label": "April 09"
+    },
+    {
+      "t_ms": 1838980800000,
+      "label": "April 10"
+    },
+    {
+      "t_ms": 1839153600000,
+      "label": "April 12"
+    },
+    {
+      "t_ms": 1842350400000,
+      "label": "May 19"
+    },
+    {
+      "t_ms": 1842609600000,
+      "label": "May 22"
+    },
+    {
+      "t_ms": 1842782400000,
+      "label": "May 24"
+    },
+    {
+      "t_ms": 1842868800000,
+      "label": "May 25"
+    },
+    {
+      "t_ms": 1843128000000,
+      "label": "May 28"
+    },
+    {
+      "t_ms": 1846238400000,
+      "label": "July 03"
+    },
+    {
+      "t_ms": 1846411200000,
+      "label": "July 05"
+    },
+    {
+      "t_ms": 1846497600000,
+      "label": "July 06"
+    },
+    {
+      "t_ms": 1846584000000,
+      "label": "July 07"
+    },
+    {
+      "t_ms": 1846756800000,
+      "label": "July 09"
+    },
+    {
+      "t_ms": 1850040000000,
+      "label": "August 16"
+    },
+    {
+      "t_ms": 1850126400000,
+      "label": "August 17"
+    },
+    {
+      "t_ms": 1850212800000,
+      "label": "August 18"
+    },
+    {
+      "t_ms": 1850385600000,
+      "label": "August 20"
+    },
+    {
+      "t_ms": 1850472000000,
+      "label": "August 21"
+    },
+    {
+      "t_ms": 1854619200000,
+      "label": "October 08"
+    },
+    {
+      "t_ms": 1854705600000,
+      "label": "October 09"
+    },
+    {
+      "t_ms": 1854878400000,
+      "label": "October 11"
+    },
+    {
+      "t_ms": 1854964800000,
+      "label": "October 12"
+    },
+    {
+      "t_ms": 1855051200000,
+      "label": "October 13"
+    },
+    {
+      "t_ms": 1858248000000,
+      "label": "November 19"
+    },
+    {
+      "t_ms": 1858420800000,
+      "label": "November 21"
+    },
+    {
+      "t_ms": 1858593600000,
+      "label": "November 23"
+    },
+    {
+      "t_ms": 1858680000000,
+      "label": "November 24"
+    },
+    {
+      "t_ms": 1858852800000,
+      "label": "November 26"
+    },
+    {
+      "t_ms": 1861790400000,
+      "label": "December 30"
+    }
+  ]
 }

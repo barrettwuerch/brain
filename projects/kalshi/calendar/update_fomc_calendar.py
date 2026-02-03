@@ -10,6 +10,7 @@ import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 import requests
 
@@ -32,7 +33,7 @@ MONTHS = {
 }
 
 
-def parse_date_token(tok: str, year_hint: int | None = None):
+def parse_date_token(tok: str, year_hint: Optional[int] = None):
     tok = tok.strip()
     # Examples seen: "January 28-29"; "June 11-12"; "September 16-17"
     m = re.match(r'^(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})(?:\s*[-–]\s*(\d{1,2}))?$', tok, re.I)

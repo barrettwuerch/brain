@@ -18,6 +18,19 @@
     "maxSpreadCents": 50,
     "selectionRefreshMs": 300000
   },
+  "eventProximity": {
+    "farModeHours": 48,
+    "activeModeHours": 4,
+    "farSpreadMultiplier": 1.8,
+    "farSizeMultiplier": 0.4,
+    "activeSpreadMultiplier": 1.0,
+    "activeSizeMultiplier": 1.0,
+    "eventSpreadMultiplier": 0.8,
+    "eventSizeMultiplier": 1.4,
+    "newsRefreshMsFar": 900000,
+    "newsRefreshMsActive": 120000,
+    "newsRefreshMsEvent": 60000
+  },
   "strategy": {
     "name": "mention_market_maker_v0.5",
     "quoteHalfSpreadCents": 3,

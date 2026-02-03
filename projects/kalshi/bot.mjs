@@ -303,6 +303,37 @@ function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
 }
 
+function parseIsoMs(v) {
+  if (!v) return null;
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  const s = String(v);
+  const t = Date.parse(s);
+  return Number.isFinite(t) ? t : null;
+}
+
+function extractEventTimeMs(mkt) {
+  // Prefer market close time; fall back to event time fields if present.
+  // We see different shapes across endpoints; be defensive.
+  return (
+    parseIsoMs(mkt?.close_time) ||
+    parseIsoMs(mkt?.closeTime) ||
+    parseIsoMs(mkt?.event_start_time) ||
+    parseIsoMs(mkt?.eventStartTime) ||
+    parseIsoMs(mkt?.open_time) ||
+    null
+  );
+}
+
+function eventModeFromHoursToEvent(hoursToEvent, cfg) {
+  const ep = cfg?.eventProximity || {};
+  const farH = Number(ep.farModeHours ?? 48);
+  const activeH = Number(ep.activeModeHours ?? 4);
+  if (!Number.isFinite(hoursToEvent)) return 'UNKNOWN';
+  if (hoursToEvent > farH) return 'FAR';
+  if (hoursToEvent > activeH) return 'ACTIVE';
+  return 'EVENT';
+}
+
 function parseMentionMarket(mkt) {
   const title = String(mkt?.title || '').trim();
   const subtitle = String(mkt?.subtitle || '').trim();
@@ -365,9 +396,9 @@ async function getGoogleNewsCount(keyword, lookback = '2d') {
   return (xml.match(/<item>/g) || []).length;
 }
 
-async function refreshNewsCacheIfNeeded({ fvCfg, newsCache, log }) {
+async function refreshNewsCacheIfNeeded({ fvCfg, newsCache, log, refreshMsOverride }) {
   if (!fvCfg?.newsEnabled) return;
-  const refreshMs = Number(fvCfg.newsRefreshMs ?? 900000);
+  const refreshMs = Number(refreshMsOverride ?? fvCfg.newsRefreshMs ?? 900000);
   const now = nowMs();
 
   // refresh every refreshMs
@@ -535,7 +566,24 @@ async function main() {
     const loopStart = nowMs();
 
     // periodic news refresh (bounded to keywords we've already seen)
-    await refreshNewsCacheIfNeeded({ fvCfg, newsCache, log });
+    // refresh cadence depends on proximity to the nearest known event among selected markets.
+    let minHoursToEvent = Infinity;
+    for (const t of selected) {
+      const m = marketMeta.get(t);
+      const etMs = extractEventTimeMs(m);
+      if (!etMs) continue;
+      const h = (etMs - loopStart) / 3600000;
+      if (h < minHoursToEvent) minHoursToEvent = h;
+    }
+    const modeForNews = eventModeFromHoursToEvent(minHoursToEvent, cfg);
+    const ep = cfg?.eventProximity || {};
+    const refreshOverride = (modeForNews === 'EVENT')
+      ? Number(ep.newsRefreshMsEvent ?? 60000)
+      : (modeForNews === 'ACTIVE')
+        ? Number(ep.newsRefreshMsActive ?? 120000)
+        : Number(ep.newsRefreshMsFar ?? 900000);
+
+    await refreshNewsCacheIfNeeded({ fvCfg, newsCache, log, refreshMsOverride: refreshOverride });
 
     if (killSwitchOn()) {
       log.write({ t: loopStart, type: 'killed', reason: 'kill_switch_file_present' });
@@ -581,18 +629,42 @@ async function main() {
         const mkt = marketMeta.get(ticker);
         const parsed = mkt ? parseMentionMarket(mkt) : { ok: false, reason: 'no_market_meta' };
 
+        // Event proximity mode
+        const eventTimeMs = extractEventTimeMs(mkt);
+        const hoursToEvent = (eventTimeMs != null) ? ((eventTimeMs - nowMs()) / 3600000) : NaN;
+        const mode = eventModeFromHoursToEvent(hoursToEvent, cfg);
+        const ep = cfg?.eventProximity || {};
+
         let fv = tob.mid; // fallback
         let fvMode = 'mid_only';
         let extraHalf = 0;
         let orderQtyYes = cfg.strategy.maxOrderQty;
         let orderQtyNo = cfg.strategy.maxOrderQty;
 
+        // Mode multipliers (spread/size). We apply these even in base-rate mode.
+        const spreadMult = (mode === 'EVENT')
+          ? Number(ep.eventSpreadMultiplier ?? 0.8)
+          : (mode === 'ACTIVE')
+            ? Number(ep.activeSpreadMultiplier ?? 1.0)
+            : Number(ep.farSpreadMultiplier ?? 1.8);
+
+        const sizeMult = (mode === 'EVENT')
+          ? Number(ep.eventSizeMultiplier ?? 1.4)
+          : (mode === 'ACTIVE')
+            ? Number(ep.activeSizeMultiplier ?? 1.0)
+            : Number(ep.farSizeMultiplier ?? 0.4);
+
         if (fvCfg.enabled && parsed.ok && baseRates?.event_types?.[parsed.eventType]?.[parsed.keyword] != null) {
           const base = Number(baseRates.event_types[parsed.eventType][parsed.keyword]);
           let newsAdj = 0;
           let intensity = 1;
 
-          if (fvCfg.newsEnabled) {
+          // Mode-aware FV logic:
+          // - FAR: base rates only (news disabled)
+          // - ACTIVE/EVENT: full FV (base + news)
+          const useNews = fvCfg.newsEnabled && (mode === 'ACTIVE' || mode === 'EVENT');
+
+          if (useNews) {
             const k = parsed.keyword;
             const prev = newsCache.get(k);
             let cnt;
@@ -618,31 +690,29 @@ async function main() {
           const wBase = Number(fvCfg.blendBaseWeight ?? 0.6);
           const wMid = Number(fvCfg.blendMidWeight ?? 0.4);
           fv = Math.round(clamp(adjusted * wBase + tob.mid * wMid, 1, 99));
-          fvMode = 'base_rate';
+          fvMode = (mode === 'FAR') ? 'base_rate_far' : 'base_rate';
 
-          // Conviction sizing (fractional Kelly) — in paper mode just adjusts order quantities.
+          // Conviction sizing (fractional Kelly-ish) — scaled by proximity mode.
           if (fvCfg.convictionSizingEnabled) {
             const samples = Number(baseRates?.samples?.[parsed.eventType]?.count ?? 0);
             const highN = Number(fvCfg.confidenceHighSamples ?? 30);
             const medN = Number(fvCfg.confidenceMedSamples ?? 10);
             const conf = (samples >= highN) ? 'HIGH' : (samples >= medN) ? 'MED' : 'LOW';
 
-            const pYes = fv / 100;
             const mid = tob.mid;
             const edgeCents = Math.abs(fv - mid);
             const prefersYes = fv > mid;
-            // rough confidence multipliers
             const cm = (conf === 'HIGH') ? 1.0 : (conf === 'MED') ? 0.6 : 0.3;
 
-            // fractional kelly proxy: scale with edge
             const fk = Number(fvCfg.fractionalKelly ?? 0.35);
             const edgeFactor = clamp(edgeCents / 30, 0, 1); // 30c edge saturates
-            const sizeMult = clamp(0.25 + fk * edgeFactor * cm, 0.1, 1.0);
+            const kellyMult = clamp(0.25 + fk * edgeFactor * cm, 0.1, 1.0);
 
-            // apply asymmetry: size up on favored side, down on other.
             const baseQty = Number(cfg.strategy.maxOrderQty);
-            const bigger = Math.max(1, Math.round(baseQty * sizeMult));
-            const smaller = Math.max(1, Math.round(baseQty * Math.max(0.3, sizeMult * 0.5)));
+            const scaledBaseQty = Math.max(1, Math.round(baseQty * sizeMult));
+
+            const bigger = Math.max(1, Math.round(scaledBaseQty * kellyMult));
+            const smaller = Math.max(1, Math.round(scaledBaseQty * Math.max(0.3, kellyMult * 0.5)));
             if (prefersYes) {
               orderQtyYes = bigger;
               orderQtyNo = smaller;
@@ -650,6 +720,9 @@ async function main() {
               orderQtyNo = bigger;
               orderQtyYes = smaller;
             }
+          } else {
+            orderQtyYes = Math.max(1, Math.round(orderQtyYes * sizeMult));
+            orderQtyNo = Math.max(1, Math.round(orderQtyNo * sizeMult));
           }
 
         } else if (fvCfg.enabled) {
@@ -663,7 +736,7 @@ async function main() {
           }
         }
 
-        const half = cfg.strategy.quoteHalfSpreadCents + extraHalf;
+        const half = Math.max(1, Math.round(cfg.strategy.quoteHalfSpreadCents * spreadMult)) + extraHalf;
         const fairNo = 100 - fv;
 
         // compute targets around FV (not mid)
