@@ -66,7 +66,8 @@ async function getGoogleNewsCount(keyword, lookback) {
 
 async function main() {
   const keywords = readKeywords();
-  const lookbacks = ['1d', '7d', '30d'];
+  // Short windows are the main signal (avoid saturation); long windows are kept for reference.
+  const lookbacks = ['1h', '4h', '12h', '1d', '7d', '30d'];
 
   const runId = `${new Date().toISOString()}_${Math.random().toString(16).slice(2)}`;
   const startedAtMs = nowMs();

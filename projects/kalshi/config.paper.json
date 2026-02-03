@@ -49,7 +49,7 @@
       "coOccurrenceBoostDamping": 0.5,
 
       "newsEnabled": true,
-      "newsLookback": "2d",
+      "newsLookback": "4h",
       "newsSensitivity": 10,
       "newsBaselineCount": 20,
       "newsRefreshMs": 900000,

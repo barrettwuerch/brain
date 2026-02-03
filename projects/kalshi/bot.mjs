@@ -440,12 +440,26 @@ function parseMentionMarket(mkt) {
 }
 
 function normalizeLookbackBucket(lookback) {
-  // Our baseline logger records 1d/7d/30d. Map arbitrary Xd into a bucket.
+  // Our baseline logger records short windows (1h/4h/12h) plus 1d/7d/30d.
+  // Map arbitrary lookbacks into one of those buckets.
   const s = String(lookback || '').trim();
-  const m = s.match(/^(\d+)d$/i);
+
+  // Hours
+  let m = s.match(/^(\d+)h$/i);
+  if (m) {
+    const h = Number(m[1]);
+    if (!Number.isFinite(h)) return '4h';
+    if (h <= 1) return '1h';
+    if (h <= 6) return '4h';
+    if (h <= 18) return '12h';
+    return '1d';
+  }
+
+  // Days
+  m = s.match(/^(\d+)d$/i);
   const days = m ? Number(m[1]) : null;
   if (!Number.isFinite(days)) return '7d';
-  if (days <= 2) return '1d';
+  if (days <= 1) return '1d';
   if (days <= 10) return '7d';
   return '30d';
 }
