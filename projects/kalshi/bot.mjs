@@ -373,12 +373,14 @@ function classifyEventTypeFromTickers({ marketTicker, seriesTicker }) {
   const st = String(seriesTicker || '').toUpperCase();
 
   // Fail-safe: explicit mappings only. Unknown => null.
-  if (mt.startsWith('KXFOMC') || st.startsWith('KXFOMC') || st.includes('FOMC')) return 'FOMC';
-  if (mt.startsWith('KXWH') || st.startsWith('KXWH') || st.includes('WHITE_HOUSE')) return 'WHITE_HOUSE';
+  // More specific patterns first (avoid accidental broad matches).
 
   // Mention subcategories
   if (mt.startsWith('KXSECPRESSMENTION') || st.includes('SECPRESS')) return 'SEC_PRESS';
   if (mt.startsWith('KXTRUMPMENTION') || st.includes('TRUMP')) return 'TRUMP_SPEECH';
+
+  if (mt.startsWith('KXFOMC') || st.startsWith('KXFOMC') || st.includes('FOMC')) return 'FOMC';
+  if (mt.startsWith('KXWH') || st.startsWith('KXWH') || st.includes('WHITE_HOUSE')) return 'WHITE_HOUSE';
 
   // Add more as discovered (explicitly).
   // if (mt.startsWith('KXMRBEAST')) return 'MRBEAST';
@@ -643,7 +645,22 @@ async function main() {
 
     if ((loopStart - lastSelectionRefresh) >= (cfg.marketSelection.selectionRefreshMs || 300000)) {
       lastSelectionRefresh = loopStart;
-      try { await refreshSelection(); } catch { /* ignore */ }
+      try { await refreshSelection(); }
+      catch (e) {
+        log.write({ t: nowMs(), type: 'warning', msg: 'selection_refresh_failed', message: String(e?.message || e) });
+      }
+    }
+
+    // A) max order age sweep (once per loop)
+    {
+      const now = nowMs();
+      for (const [id, o] of broker.orders.entries()) {
+        const age = now - o.createdAtMs;
+        if (age > cfg.strategy.maxOrderAgeMs) {
+          const r = broker.cancel(id);
+          if (r.ok) log.write({ t: now, type: 'stale_cancel', reason: 'max_age', orderId: id, market: o.market, side: o.side, ageMs: age });
+        }
+      }
     }
 
     try {
@@ -795,17 +812,8 @@ async function main() {
         const targetNo = clampInt(fairNo - half + skew, 1, 99);
         // ---- end FV ----
 
-        // A) max order age sweep
-        const now = nowMs();
-        for (const [id, o] of broker.orders.entries()) {
-          const age = now - o.createdAtMs;
-          if (age > cfg.strategy.maxOrderAgeMs) {
-            const r = broker.cancel(id);
-            if (r.ok) log.write({ t: now, type: 'stale_cancel', reason: 'max_age', orderId: id, market: o.market, side: o.side, ageMs: age });
-          }
-        }
-
         // B) reprice checks for existing orders in this market
+        const now = nowMs();
         for (const [id, o] of broker.orders.entries()) {
           if (o.market !== ticker) continue;
 

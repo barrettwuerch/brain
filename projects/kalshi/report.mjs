@@ -182,15 +182,15 @@ function main() {
     lastSelection,
     spread: {
       samples: spreads.length,
-      min: spreads.length ? Math.min(...spreads) : null,
-      max: spreads.length ? Math.max(...spreads) : null,
+      min: spreads.length ? spreads.reduce((a, b) => Math.min(a, b), Infinity) : null,
+      max: spreads.length ? spreads.reduce((a, b) => Math.max(a, b), -Infinity) : null,
       avg: avg(spreads),
       histogram: spreadBins,
     },
     mid: {
       samples: mids.length,
-      min: mids.length ? Math.min(...mids) : null,
-      max: mids.length ? Math.max(...mids) : null,
+      min: mids.length ? mids.reduce((a, b) => Math.min(a, b), Infinity) : null,
+      max: mids.length ? mids.reduce((a, b) => Math.max(a, b), -Infinity) : null,
       avg: avg(mids),
     },
     pnlEstimate: {
