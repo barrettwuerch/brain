@@ -192,6 +192,7 @@ async function main() {
   }
 
   const sortedValues = {};
+  const dailySeries = {};
   const summary = {
     generatedAt: new Date().toISOString(),
     window: { startYmd, endYmd, years },
@@ -211,6 +212,9 @@ async function main() {
 
     const dlyText = fs.readFileSync(dlyCache, 'utf8');
     const obs = parseDlyTmax(dlyText, { startYmd, endYmd });
+
+    // Keep daily time series (chronological)
+    dailySeries[code] = obs.map(o => ({ date: o.ymd, tmaxF: o.tmaxF }));
 
     // Group by month
     const byMonth = new Map(); // 1..12 -> [tmaxF]
@@ -251,12 +255,15 @@ async function main() {
 
   const out1 = path.join(outDir, 'weather_base_rates.json');
   const out2 = path.join(outDir, 'weather_base_rates_sorted_values.json');
+  const out3 = path.join(outDir, 'weather_daily_series.json');
   fs.writeFileSync(out1, JSON.stringify(summary, null, 2));
   fs.writeFileSync(out2, JSON.stringify(sortedValues, null, 2));
+  fs.writeFileSync(out3, JSON.stringify(dailySeries, null, 2));
 
   console.log(`\nWrote:`);
   console.log('-', out1);
   console.log('-', out2);
+  console.log('-', out3);
 
   // Print quick sigma table for current month
   const curMonth = String(new Date().getMonth() + 1).padStart(2, '0');

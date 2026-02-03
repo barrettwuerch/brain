@@ -198,10 +198,11 @@ async function main() {
 
   const stats = JSON.parse(fs.readFileSync(cfg.fv.baseRatesPath, 'utf8'));
   const sortedValues = JSON.parse(fs.readFileSync(cfg.fv.sortedValuesPath, 'utf8'));
+  const dailySeries = cfg?.fv?.dailySeriesPath ? JSON.parse(fs.readFileSync(cfg.fv.dailySeriesPath, 'utf8')) : null;
 
   const baseRates = { stats, sortedValues };
 
-  const horizonH = 24; // synthetic; stands in for "next-day".
+  const horizonH = 24; // proxy for next-day.
   const sigma = sigmaForHorizonHours(horizonH, cfg.fv.sigmaByHorizonHours);
 
   const cities = Object.keys(sortedValues).filter(c => !cityFilter || c === cityFilter);
@@ -216,6 +217,75 @@ async function main() {
   let sumGauss = 0;
 
   for (const cityCode of cities) {
+    const series = dailySeries?.[cityCode] || null;
+    if (!series || series.length < 10) {
+      console.log(`WARN: missing/short daily series for ${cityCode}; falling back to sorted-proxy backtest`);
+    }
+
+    // Preferred: temporal backtest using consecutive calendar days.
+    if (series && series.length >= 10) {
+      for (let i = 1; i < series.length; i++) {
+        const prev = series[i - 1];
+        const cur = series[i];
+        const actual = Number(cur.tmaxF);
+        const forecastProxy = Number(prev.tmaxF); // yesterday's observed high as proxy for forecast
+        const month = Number(cur.date.slice(5, 7));
+        const mm = String(month).padStart(2, '0');
+
+        const brackets = buildSyntheticBrackets({ cityCode, month, stats });
+        if (!brackets || brackets.length < 3) continue;
+
+        const climMean = stats?.months?.[cityCode]?.[mm]?.meanF;
+        const climStd = stats?.months?.[cityCode]?.[mm]?.stdDevF;
+
+        const emp = computeEmpiricalFVs({
+          brackets,
+          cityCode,
+          month,
+          forecastHighF: forecastProxy,
+          horizonHours: horizonH,
+          baseRates,
+          horizonWeights: cfg?.forecast?.horizonWeights,
+        });
+
+        const naive = computeEmpiricalFVs({
+          brackets,
+          cityCode,
+          month,
+          forecastHighF: null,
+          horizonHours: horizonH,
+          baseRates,
+          horizonWeights: cfg?.forecast?.horizonWeights,
+        });
+
+        const gaussProb = new Map();
+        for (const b of brackets) gaussProb.set(b.ticker, bracketProbabilityNormal(forecastProxy, sigma, b));
+        const gauss = allocateCoherentCents(gaussProb);
+
+        const bEmp = brierForSet({ probsByTicker: emp.fvByTicker, brackets, actual });
+        const bNaive = brierForSet({ probsByTicker: naive.fvByTicker, brackets, actual });
+        const bGauss = brierForSet({ probsByTicker: gauss, brackets, actual });
+        if (bEmp == null || bNaive == null || bGauss == null) continue;
+
+        nDays++;
+        sumEmp += bEmp;
+        sumNaive += bNaive;
+        sumGauss += bGauss;
+
+        updateCalibration(calEmp, brackets, emp.fvByTicker, actual);
+        updateCalibration(calNaive, brackets, naive.fvByTicker, actual);
+        updateCalibration(calGauss, brackets, gauss, actual);
+
+        if (detail && i % 200 === 0) {
+          const shiftF = (Number.isFinite(climMean) ? (forecastProxy - climMean) : null);
+          const shiftSigma = (shiftF != null && Number.isFinite(climStd) && climStd > 0) ? (shiftF / climStd) : null;
+          console.log(`${cityCode} date=${cur.date} actual=${actual.toFixed(1)} forecastProxy(yday)=${forecastProxy.toFixed(1)} shiftSigma=${shiftSigma?.toFixed(2)} brier(emp/naive/gauss)=${bEmp.toFixed(4)}/${bNaive.toFixed(4)}/${bGauss.toFixed(4)}`);
+        }
+      }
+      continue;
+    }
+
+    // Fallback: original sorted-proxy mode (kept for debugging)
     for (let month = 1; month <= 12; month++) {
       const mm = String(month).padStart(2, '0');
       const values = sortedValues?.[cityCode]?.[mm] || [];
@@ -227,8 +297,6 @@ async function main() {
       const climMean = stats?.months?.[cityCode]?.[mm]?.meanF;
       const climStd = stats?.months?.[cityCode]?.[mm]?.stdDevF;
 
-      // Iterate days: each value is treated as a day outcome.
-      // Forecast proxy: previous element in the SORTED list (not temporal).
       for (let i = 1; i < values.length; i++) {
         const actual = values[i];
         const forecastProxy = values[i - 1];
@@ -254,9 +322,7 @@ async function main() {
         });
 
         const gaussProb = new Map();
-        for (const b of brackets) {
-          gaussProb.set(b.ticker, bracketProbabilityNormal(forecastProxy, sigma, b));
-        }
+        for (const b of brackets) gaussProb.set(b.ticker, bracketProbabilityNormal(forecastProxy, sigma, b));
         const gauss = allocateCoherentCents(gaussProb);
 
         const bEmp = brierForSet({ probsByTicker: emp.fvByTicker, brackets, actual });
@@ -287,7 +353,7 @@ async function main() {
   const avgNaive = sumNaive / Math.max(1, nDays);
   const avgGauss = sumGauss / Math.max(1, nDays);
 
-  console.log('\n=== Weather backtest (handicapped forecast proxy) ===');
+  console.log('\n=== Weather backtest (yesterday-observed forecast proxy; temporal) ===');
   console.log('days:', nDays);
   console.log('avg Brier (lower is better):');
   console.log('- empirical_shifted_cdf:', avgEmp.toFixed(6));

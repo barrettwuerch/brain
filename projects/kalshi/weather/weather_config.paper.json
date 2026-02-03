@@ -34,6 +34,7 @@
     "model": "empirical_shifted_cdf",
     "baseRatesPath": "/Users/bear/.openclaw/workspace/projects/kalshi/weather/weather_base_rates.json",
     "sortedValuesPath": "/Users/bear/.openclaw/workspace/projects/kalshi/weather/weather_base_rates_sorted_values.json",
+    "dailySeriesPath": "/Users/bear/.openclaw/workspace/projects/kalshi/weather/weather_daily_series.json",
 
     "sigmaByHorizonHours": [
       { "maxH": 6, "sigmaF": 1.5 },
