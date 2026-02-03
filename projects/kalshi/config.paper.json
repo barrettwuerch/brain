@@ -6,10 +6,7 @@
   "marketSelection": {
     "maxMarkets": 8,
     "allowlistFile": "/Users/bear/.openclaw/workspace/projects/kalshi/mention_series_allowlist.json",
-    "seedMarkets": [
-      "KXLASTWORDMENTION-26FEB03",
-      "KXNBAMENTION-26FEB03PHXPOR"
-    ],
+    "seedMarkets": [],
     "allowedEventTypes": ["FOMC", "WHITE_HOUSE", "TRUMP_SPEECH"],
     "requireBaseRates": true,
     "maxMentionSeries": 30,

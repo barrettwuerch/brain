@@ -243,10 +243,15 @@ def compute_presence_matrix(pages: List[Tuple[str, str]], keywords: List[str]) -
     return out
 
 
-def compute_base_rates(presence: List[Tuple[str, set]], keywords: List[str]) -> Dict[str, int]:
-    """Return probability in cents (0-100) that keyword appears at least once."""
+def compute_base_rates(presence: List[Tuple[str, set]], keywords: List[str], *, clamp_extremes: bool = False) -> Dict[str, int]:
+    """Return probability in cents (0-100) that keyword appears at least once.
+
+    If clamp_extremes=True, replace hard 0/100 with soft bounds (5/95).
+    This avoids overconfident priors on limited samples.
+    """
     if not presence:
-        return {k: 0 for k in keywords}
+        rates = {k: 0 for k in keywords}
+        return rates
 
     present_counts = {k: 0 for k in keywords}
     for _url, present in presence:
@@ -255,6 +260,14 @@ def compute_base_rates(presence: List[Tuple[str, set]], keywords: List[str]) -> 
 
     total = len(presence)
     rates = {k: int(round(100 * present_counts[k] / total)) for k in keywords}
+
+    if clamp_extremes:
+        for k, v in list(rates.items()):
+            if v == 0:
+                rates[k] = 5
+            elif v == 100:
+                rates[k] = 95
+
     return rates
 
 
@@ -401,11 +414,12 @@ def main():
         trump_pages = []
 
     wh_presence = compute_presence_matrix(wh_pages, keywords)
-    wh_rates = compute_base_rates(wh_presence, keywords)
+    # WH sample size is often modest; avoid hard 0/100.
+    wh_rates = compute_base_rates(wh_presence, keywords, clamp_extremes=True)
     wh_co = compute_co_occurrence(wh_presence, keywords)
 
     trump_presence = compute_presence_matrix(trump_pages, keywords)
-    trump_rates = compute_base_rates(trump_presence, keywords)
+    trump_rates = compute_base_rates(trump_presence, keywords, clamp_extremes=True)
     trump_co = compute_co_occurrence(trump_presence, keywords)
 
     # FOMC press conference transcripts (PDF)

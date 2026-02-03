@@ -738,10 +738,26 @@ async function main() {
 
     try {
       for (const ticker of selected) {
-        const ob = await client.getOrderbook(ticker, cfg.orderbookDepth ?? 1);
+        let ob;
+        try {
+          ob = await client.getOrderbook(ticker, cfg.orderbookDepth ?? 1);
+        } catch (e) {
+          // If a market closes/resolves or becomes unavailable mid-run, drop it immediately.
+          log.write({ t: nowMs(), type: 'warning', msg: 'orderbook_fetch_failed', market: ticker, status: e?.status ?? null, message: String(e?.message || e) });
+          selected = selected.filter(x => x !== ticker);
+          continue;
+        }
+
         const tob = computeTopOfBook(ob);
         if (Number.isFinite(tob.mid)) latestMids.set(ticker, tob.mid);
         log.write({ t: nowMs(), type: 'snapshot', market: ticker, tob });
+
+        // Market resolution detection (fail-safe): empty/one-sided books usually mean closed or illiquid.
+        if (!tob.yb && !tob.nb) {
+          log.write({ t: nowMs(), type: 'warning', msg: 'empty_orderbook_drop', market: ticker });
+          selected = selected.filter(x => x !== ticker);
+          continue;
+        }
 
         // fill simulation
         const fills = broker.processSnapshot(ticker, tob, {

@@ -298,18 +298,18 @@
       "ukraine": 25
     },
     "WHITE_HOUSE": {
-      "ai": 100,
-      "bitcoin": 0,
-      "border": 100,
+      "ai": 95,
+      "bitcoin": 5,
+      "border": 95,
       "china": 9,
-      "climate": 0,
-      "economy": 100,
+      "climate": 5,
+      "economy": 95,
       "housing": 14,
-      "immigration": 0,
+      "immigration": 5,
       "inflation": 5,
-      "jobs": 0,
-      "nato": 0,
-      "recession": 0,
+      "jobs": 5,
+      "nato": 5,
+      "recession": 5,
       "tariffs": 14,
       "ukraine": 5
     }
