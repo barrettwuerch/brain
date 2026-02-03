@@ -591,7 +591,6 @@ async function main() {
     : null;
 
   const newsCache = new Map(); // keyword -> {count, tsMs}
-  let lastNewsScanMs = 0;
 
   // RSS baseline cache (keyword/lookback -> {median,n})
   const baselinePath = fvCfg.newsBaselinePath || path.join(os.homedir(), '.openclaw/workspace/projects/kalshi/news/rss_baseline.jsonl');
@@ -804,7 +803,6 @@ async function main() {
         const eventTimeMs = extractEventTimeMs(mkt);
         const hoursToEvent = (eventTimeMs != null) ? ((eventTimeMs - nowMs()) / 3600000) : NaN;
         const mode = eventModeFromHoursToEvent(hoursToEvent, cfg);
-        const ep = cfg?.eventProximity || {};
 
         let fv = tob.mid; // fallback
         let fvMode = 'mid_only';
