@@ -48,8 +48,8 @@ def load_keywords() -> List[str]:
     return kws
 
 
-def http_get(url: str) -> str:
-    r = requests.get(url, headers={"user-agent": USER_AGENT}, timeout=30)
+def http_get(url: str, timeout: int = 30) -> str:
+    r = requests.get(url, headers={"user-agent": USER_AGENT}, timeout=timeout)
     r.raise_for_status()
     return r.text
 
@@ -60,13 +60,13 @@ def http_get_bytes(url: str) -> bytes:
     return r.content
 
 
-def cache_get(url: str, cache_key: str) -> str:
+def cache_get(url: str, cache_key: str, timeout: int = 30) -> str:
     os.makedirs(CACHE_DIR, exist_ok=True)
     p = os.path.join(CACHE_DIR, cache_key)
     if os.path.exists(p):
         with open(p, "r", encoding="utf-8", errors="ignore") as f:
             return f.read()
-    text = http_get(url)
+    text = http_get(url, timeout=timeout)
     with open(p, "w", encoding="utf-8") as f:
         f.write(text)
     time.sleep(0.5)
@@ -118,7 +118,7 @@ def extract_whitehouse_transcript_links(index_html: str) -> List[str]:
         if not href.startswith("https://www.whitehouse.gov/"):
             continue
         # Keep transcript-like content pages; skip obvious nav/tag pages.
-        if any(x in href for x in ["/page/", "/category/", "/tag/", "?" ]):
+        if any(x in href for x in ["/page/", "/category/", "/tag/", "?"]):
             continue
         if not any(x in href for x in [
             "/briefings-statements/",
@@ -130,6 +130,105 @@ def extract_whitehouse_transcript_links(index_html: str) -> List[str]:
             continue
         urls.add(href.split("#")[0])
     return sorted(urls)
+
+
+def extract_app_list_items(list_html: str) -> List[Tuple[str, str]]:
+    """Extract (title, url) items from APP list/search pages (e.g., /people/...).
+
+    Important: the list page already includes the document title text, so we can
+    pre-filter to speech-like docs without fetching every document page.
+    """
+    soup = BeautifulSoup(list_html, "lxml")
+    items: List[Tuple[str, str]] = []
+
+    # Prefer view rows when available
+    for row in soup.select('div.view-content .views-row'):
+        a = row.select_one('a[href^="/documents/"]')
+        if not a:
+            continue
+        href = a.get('href')
+        title = a.get_text(' ', strip=True)
+        if not href or not title:
+            continue
+        if href.startswith('/documents/category-attributes') or href.startswith('/documents/presidential-documents-archive-guidebook'):
+            continue
+        full = 'https://www.presidency.ucsb.edu' + href.split('#')[0]
+        items.append((title, full))
+
+    # Fallback: any /documents/ anchors
+    if not items:
+        for a in soup.select('a[href^="/documents/"]'):
+            href = a.get('href')
+            if not href:
+                continue
+            if href.startswith('/documents/category-attributes') or href.startswith('/documents/presidential-documents-archive-guidebook'):
+                continue
+            title = a.get_text(' ', strip=True)
+            if not title:
+                continue
+            full = 'https://www.presidency.ucsb.edu' + href.split('#')[0]
+            items.append((title, full))
+
+    # preserve order, dedupe by url
+    seen = set()
+    out: List[Tuple[str, str]] = []
+    for title, url in items:
+        if url in seen:
+            continue
+        seen.add(url)
+        out.append((title, url))
+    return out
+
+
+def is_speech_like_app_title(title: str, url: str = '') -> bool:
+    t = (title or '').strip().lower()
+    u = (url or '').strip().lower()
+    if not t:
+        return False
+
+    # hard excludes (keep the corpus speech-like; don't let tweets/press releases dominate)
+    if 'tweets' in t or '/tweets-' in u:
+        return False
+    if 'press release' in t or '/press-release' in u:
+        return False
+    if t.startswith('statement ') or t.startswith('statement on') or t.startswith('statement by'):
+        return False
+
+    # include
+    include = [
+        'remarks',
+        'address',
+        'speech',
+        'press conference',
+        'news conference',
+        'campaign rally',
+        'rally',
+        'interview',
+    ]
+
+    # exclude obvious non-speech docs
+    exclude = [
+        'proclamation',
+        'executive order',
+        'memorandum',
+        'letter',
+        'message',
+        'fact sheet',
+        'nomination',
+        'announcement',
+    ]
+
+    if any(x in t for x in exclude):
+        return False
+    return any(x in t for x in include)
+
+
+def extract_app_title(html: str) -> str:
+    soup = BeautifulSoup(html, 'lxml')
+    h1 = soup.select_one('h1')
+    if h1:
+        return h1.get_text(' ', strip=True)
+    return ''
 
 
 def compute_presence_matrix(pages: List[Tuple[str, str]], keywords: List[str]) -> List[Tuple[str, set]]:
@@ -238,9 +337,76 @@ def main():
         except Exception:
             continue
 
+    # Trump speech/rally transcript-like docs (American Presidency Project)
+    trump_cfg = sources.get('trump_speech_transcripts') or {}
+    trump_pages = []
+    try:
+        people_index_url = trump_cfg.get('people_index_url') or 'https://www.presidency.ucsb.edu/people/president/donald-j-trump-1st-term'
+        max_pages = int(trump_cfg.get('max_pages', 3))
+        max_docs = int(trump_cfg.get('max_docs', 50))
+
+        candidates: List[Tuple[str, str]] = []
+
+        for page in range(max_pages):
+            url = people_index_url if page == 0 else f"{people_index_url}?page={page}"
+            try:
+                html = cache_get(url, f"app_trump_people_{page}.html", timeout=10)
+            except Exception:
+                continue
+
+            items = extract_app_list_items(html)
+            for title, doc_url in items:
+                if not is_speech_like_app_title(title, url=doc_url):
+                    continue
+                candidates.append((title, doc_url))
+                print(f"[TRUMP_SPEECH] candidate: {title} ({doc_url})")
+                if len(candidates) >= max_docs:
+                    break
+            if len(candidates) >= max_docs:
+                break
+
+        # de-dupe by url
+        seen = set()
+        candidates2: List[Tuple[str, str]] = []
+        for title, doc_url in candidates:
+            if doc_url in seen:
+                continue
+            seen.add(doc_url)
+            candidates2.append((title, doc_url))
+        candidates2 = candidates2[:max_docs]
+
+        for i, (title_hint, doc_url) in enumerate(candidates2):
+            # Cache key must be derived from URL to avoid collisions across runs.
+            safe_id = re.sub(r"[^a-zA-Z0-9]+", "_", doc_url)[-80:]
+            key = f"app_trump_doc_{i}_{safe_id}.html"
+            try:
+                html = cache_get(doc_url, key, timeout=10)
+                title = extract_app_title(html) or title_hint
+                if not is_speech_like_app_title(title, url=doc_url):
+                    continue
+                text = visible_text_from_html(html)
+                if len(text) < 2000:
+                    continue
+                trump_pages.append((doc_url, text))
+                print(f"[TRUMP_SPEECH] kept: {title} ({doc_url})")
+                print(f"[TRUMP_SPEECH] kept_count={len(trump_pages)}")
+            except Exception:
+                continue
+
+            if len(trump_pages) >= max_docs:
+                break
+
+        print(f"[TRUMP_SPEECH] total kept: {len(trump_pages)}")
+    except Exception:
+        trump_pages = []
+
     wh_presence = compute_presence_matrix(wh_pages, keywords)
     wh_rates = compute_base_rates(wh_presence, keywords)
     wh_co = compute_co_occurrence(wh_presence, keywords)
+
+    trump_presence = compute_presence_matrix(trump_pages, keywords)
+    trump_rates = compute_base_rates(trump_presence, keywords)
+    trump_co = compute_co_occurrence(trump_presence, keywords)
 
     # FOMC press conference transcripts (PDF)
     fomc_calendar_url = 'https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm'
@@ -280,14 +446,20 @@ def main():
                 "count": len(fomc_pages),
                 "urls": [u for u, _ in fomc_pages[:10]],
             },
+            "TRUMP_SPEECH": {
+                "count": len(trump_pages),
+                "urls": [u for u, _ in trump_pages[:10]],
+            },
         },
         "event_types": {
             "WHITE_HOUSE": wh_rates,
             "FOMC": fomc_rates,
+            "TRUMP_SPEECH": trump_rates,
         },
         "co_occurrence": {
             "WHITE_HOUSE": wh_co,
             "FOMC": fomc_co,
+            "TRUMP_SPEECH": trump_co,
         }
     }
 

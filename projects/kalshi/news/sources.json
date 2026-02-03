@@ -12,5 +12,11 @@
     "index_urls": [
       "https://www.federalreserve.gov/newsevents/pressreleases.htm"
     ]
+  },
+  "trump_speech_transcripts": {
+    "note": "American Presidency Project Trump (1st term) people page provides a paginated list of documents.",
+    "people_index_url": "https://www.presidency.ucsb.edu/people/president/donald-j-trump-1st-term",
+    "max_pages": 20,
+    "max_docs": 50
   }
 }

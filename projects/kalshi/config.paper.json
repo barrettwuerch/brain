@@ -10,7 +10,7 @@
       "KXLASTWORDMENTION-26FEB03",
       "KXNBAMENTION-26FEB03PHXPOR"
     ],
-    "allowedEventTypes": ["FOMC", "WHITE_HOUSE"],
+    "allowedEventTypes": ["FOMC", "WHITE_HOUSE", "TRUMP_SPEECH"],
     "requireBaseRates": true,
     "maxMentionSeries": 30,
     "maxEventsPerSeries": 10,
@@ -65,6 +65,9 @@
       "fractionalKelly": 0.35,
       "confidenceHighSamples": 30,
       "confidenceMedSamples": 10,
+      "confidenceCapByEventType": {
+        "TRUMP_SPEECH": "LOW"
+      },
 
       "noBaseRateExtraHalfSpread": 2,
       "noBaseRateOrderQty": 1

@@ -894,7 +894,13 @@ async function main() {
             const samples = Number(baseRates?.samples?.[parsed.eventType]?.count ?? 0);
             const highN = Number(fvCfg.confidenceHighSamples ?? 30);
             const medN = Number(fvCfg.confidenceMedSamples ?? 10);
-            const conf = (samples >= highN) ? 'HIGH' : (samples >= medN) ? 'MED' : 'LOW';
+            let conf = (samples >= highN) ? 'HIGH' : (samples >= medN) ? 'MED' : 'LOW';
+
+            // Optional: cap confidence by event type (useful for high-variance classes like TRUMP_SPEECH).
+            const capMap = fvCfg.confidenceCapByEventType || null;
+            const cap = capMap && parsed?.eventType ? String(capMap[parsed.eventType] || '').toUpperCase() : '';
+            if (cap === 'LOW') conf = 'LOW';
+            else if (cap === 'MED' && conf === 'HIGH') conf = 'MED';
 
             const mid = tob.mid;
             const edgeCents = Math.abs(fv - mid);
