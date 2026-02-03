@@ -368,19 +368,35 @@ function eventModeFromHoursToEvent(hoursToEvent, cfg) {
   return 'EVENT';
 }
 
+function classifyEventTypeFromTickers({ marketTicker, seriesTicker }) {
+  const mt = String(marketTicker || '').toUpperCase();
+  const st = String(seriesTicker || '').toUpperCase();
+
+  // Fail-safe: explicit mappings only. Unknown => null.
+  if (mt.startsWith('KXFOMC') || st.startsWith('KXFOMC') || st.includes('FOMC')) return 'FOMC';
+  if (mt.startsWith('KXWH') || st.startsWith('KXWH') || st.includes('WHITE_HOUSE')) return 'WHITE_HOUSE';
+
+  // Mention subcategories
+  if (mt.startsWith('KXSECPRESSMENTION') || st.includes('SECPRESS')) return 'SEC_PRESS';
+  if (mt.startsWith('KXTRUMPMENTION') || st.includes('TRUMP')) return 'TRUMP_SPEECH';
+
+  // Add more as discovered (explicitly).
+  // if (mt.startsWith('KXMRBEAST')) return 'MRBEAST';
+
+  return null;
+}
+
 function parseMentionMarket(mkt) {
   const title = String(mkt?.title || '').trim();
   const subtitle = String(mkt?.subtitle || '').trim();
   const rules1 = String(mkt?.rules_primary || '');
   const rules2 = String(mkt?.rules_secondary || '');
   const series = String(mkt?.series_ticker || '').toUpperCase();
+  const ticker = String(mkt?.ticker || mkt?.market_ticker || '').toUpperCase();
   const combined = `${title} ${subtitle}`;
 
-  // Event type heuristic (v0.5)
-  let eventType = 'OTHER';
-  const lc = combined.toLowerCase();
-  if (series.includes('FOMC') || lc.includes('fomc') || lc.includes('federal reserve') || lc.includes('powell')) eventType = 'FOMC';
-  if (lc.includes('white house') || lc.includes('press briefing') || lc.includes('oval office') || lc.includes('president')) eventType = 'WHITE_HOUSE';
+  // Event type classification (fail-safe).
+  const eventType = classifyEventTypeFromTickers({ marketTicker: ticker, seriesTicker: series });
 
   // Keyword extraction priority:
   // 1) custom_strike.Word
