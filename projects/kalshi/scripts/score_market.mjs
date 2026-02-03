@@ -115,6 +115,7 @@ async function main() {
   const logFile = arg('--log');
   const market = arg('--market');
   const withSettlement = String(arg('--with-settlement', 'true')).toLowerCase() !== 'false';
+  const appendPath = arg('--append');
 
   const configPath = arg('--config', path.join(os.homedir(), '.openclaw/workspace/projects/kalshi/config.paper.json'));
   const envPath = arg('--env', process.env.KALSHI_ENV_FILE || path.join(os.homedir(), '.openclaw/secrets/kalshi.env'));
@@ -273,7 +274,18 @@ async function main() {
     eventType: scorecard.predictedFrom?.eventType ?? null,
     keyword: scorecard.predictedFrom?.keyword ?? null,
   };
-  console.log(JSON.stringify(line));
+  const scoreLine = JSON.stringify(line);
+
+  if (appendPath) {
+    try {
+      fs.appendFileSync(appendPath, scoreLine + '\n');
+    } catch (e) {
+      // still print to stdout, but surface the append error
+      console.error('APPEND_FAILED:', String(e?.message || e), 'path=', appendPath);
+    }
+  }
+
+  console.log(scoreLine);
   console.log(JSON.stringify(out, null, 2));
 }
 
