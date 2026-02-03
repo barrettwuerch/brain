@@ -58,6 +58,7 @@ async function main() {
 
   const cityFilter = arg('--city', null);
   const outPath = arg('--out', path.join(os.homedir(), '.openclaw/workspace/projects/kalshi/weather/weather_calibration_isotonic.json'));
+  const trainEnd = arg('--train-end', null); // YYYY-MM-DD inclusive
 
   const horizonH = Number(arg('--horizonHours', '24'));
 
@@ -73,6 +74,8 @@ async function main() {
     for (let i = 1; i < series.length; i++) {
       const prev = series[i - 1];
       const cur = series[i];
+      if (trainEnd && String(cur.date) > trainEnd) continue;
+
       const actual = Number(cur.tmaxF);
       const forecastProxy = Number(prev.tmaxF);
       if (!(Number.isFinite(actual) && Number.isFinite(forecastProxy))) continue;
@@ -106,6 +109,7 @@ async function main() {
   const payload = {
     kind: 'isotonic',
     generatedAt: new Date().toISOString(),
+    trainEnd: trainEnd || null,
     note: 'Fit using temporal backtest with yesterday-observed forecast proxy. Replace with real forecast archive once available.',
     n: xs.length,
     blocks,

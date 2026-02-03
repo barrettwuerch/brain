@@ -19,6 +19,7 @@ import path from 'node:path';
 import os from 'node:os';
 
 import { computeEmpiricalFVs } from './empirical_fv.mjs';
+import { loadCalibrationObject } from './calibration.mjs';
 
 function arg(name, def = null) {
   const i = process.argv.indexOf(name);
@@ -195,12 +196,18 @@ async function main() {
 
   const cityFilter = arg('--city', null);
   const detail = hasFlag('--detail');
+  const startYmd = arg('--start', null); // YYYY-MM-DD inclusive
+  const endYmd = arg('--end', null);     // YYYY-MM-DD inclusive
+  const calPath = arg('--calibration', null);
 
   const stats = JSON.parse(fs.readFileSync(cfg.fv.baseRatesPath, 'utf8'));
   const sortedValues = JSON.parse(fs.readFileSync(cfg.fv.sortedValuesPath, 'utf8'));
   const dailySeries = cfg?.fv?.dailySeriesPath ? JSON.parse(fs.readFileSync(cfg.fv.dailySeriesPath, 'utf8')) : null;
 
   const baseRates = { stats, sortedValues };
+
+  const calibrationObj = calPath ? JSON.parse(fs.readFileSync(calPath, 'utf8')) : null;
+  const calibrator = calibrationObj ? loadCalibrationObject(calibrationObj) : null;
 
   const horizonH = 24; // proxy for next-day.
   const sigma = sigmaForHorizonHours(horizonH, cfg.fv.sigmaByHorizonHours);
@@ -227,6 +234,9 @@ async function main() {
       for (let i = 1; i < series.length; i++) {
         const prev = series[i - 1];
         const cur = series[i];
+        if (startYmd && String(cur.date) < startYmd) continue;
+        if (endYmd && String(cur.date) > endYmd) continue;
+
         const actual = Number(cur.tmaxF);
         const forecastProxy = Number(prev.tmaxF); // yesterday's observed high as proxy for forecast
         const month = Number(cur.date.slice(5, 7));
@@ -247,6 +257,7 @@ async function main() {
           baseRates,
           horizonWeights: cfg?.forecast?.horizonWeights,
           thinTail: cfg?.fv?.thinTail,
+          calibrateProb: calibrator?.predict,
         });
 
         const naive = computeEmpiricalFVs({
@@ -312,6 +323,7 @@ async function main() {
           baseRates,
           horizonWeights: cfg?.forecast?.horizonWeights,
           thinTail: cfg?.fv?.thinTail,
+          calibrateProb: calibrator?.predict,
         });
 
         const naive = computeEmpiricalFVs({
