@@ -27,6 +27,8 @@ projects/kalshi/daemon-logs/
 projects/kalshi/news/.venv/
 projects/kalshi/news/.cache/
 projects/kalshi/*.jsonl
+projects/kalshi/news/rss_baseline.jsonl
+projects/kalshi/news/*launchd*.log
 
 # temp
 /tmp/
