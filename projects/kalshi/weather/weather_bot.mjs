@@ -14,6 +14,8 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 
+import { computeEmpiricalFVs } from './empirical_fv.mjs';
+
 function nowMs() { return Date.now(); }
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
@@ -354,12 +356,37 @@ function computeCoherentFVs(brackets, forecastHigh, sigma) {
   return out;
 }
 
+function parseEventMonthFromTicker(eventTicker) {
+  // Example: KXHIGHNY-26FEB04
+  // Return numeric month 1-12, or null.
+  const m = String(eventTicker || '').match(/-(\d{2})([A-Z]{3})(\d{2})$/);
+  if (!m) return null;
+  const mon = m[2];
+  const map = { JAN:1, FEB:2, MAR:3, APR:4, MAY:5, JUN:6, JUL:7, AUG:8, SEP:9, OCT:10, NOV:11, DEC:12 };
+  return map[mon] || null;
+}
+
+function loadJsonIfExists(p) {
+  try {
+    if (!p) return null;
+    if (!fs.existsSync(p)) return null;
+    return JSON.parse(fs.readFileSync(p, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const configPath = args.includes('--config') ? args[args.indexOf('--config') + 1] : path.join(os.homedir(), '.openclaw/workspace/projects/kalshi/weather/weather_config.paper.json');
   const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
   const cities = JSON.parse(fs.readFileSync(cfg.citiesPath, 'utf8'));
+
+  const baseRates = {
+    stats: loadJsonIfExists(cfg?.fv?.baseRatesPath),
+    sortedValues: loadJsonIfExists(cfg?.fv?.sortedValuesPath),
+  };
 
   const envPath = process.env.KALSHI_ENV_FILE || path.join(os.homedir(), '.openclaw/secrets/kalshi.env');
   const env = { ...loadEnvFile(envPath), ...process.env };
@@ -422,6 +449,7 @@ async function main() {
           const closeMsEvent = Date.parse(ev?.close_time || ev?.closeTime || ev?.end_time || '');
           const horizonH = Number.isFinite(closeMsEvent) ? Math.max(0, (closeMsEvent - nowMs()) / 3600000) : 24;
           const sigma = sigmaForHorizonHours(horizonH, cfg.fv.sigmaByHorizonHours);
+          const eventMonth = parseEventMonthFromTicker(et) || (new Date().getMonth() + 1);
 
           const brackets = [];
           for (const mkt of markets) {
@@ -434,8 +462,44 @@ async function main() {
             else if (floor == null && Number.isFinite(cap)) brackets.push({ ticker, kind: 'lt', hi: cap });
           }
 
-          const fvByMarket = computeCoherentFVs(brackets, fh.maxF, sigma);
-          log.write({ t: nowMs(), type: 'fv_group', city: code, event: et, forecastHighF: fh.maxF, sigmaF: sigma, brackets: brackets.length });
+          let fvByMarket = null;
+          let fvModel = 'gaussian_placeholder';
+          let fvMeta = {};
+
+          if (cfg?.fv?.model === 'empirical_shifted_cdf' && baseRates?.sortedValues) {
+            const emp = computeEmpiricalFVs({
+              brackets,
+              cityCode: code,
+              month: eventMonth,
+              forecastHighF: fh.maxF,
+              horizonHours: horizonH,
+              baseRates,
+            });
+            fvByMarket = emp.fvByTicker;
+            fvModel = emp.model;
+            fvMeta = emp.meta;
+          }
+
+          // Fallback to Gaussian if empirical missing/unavailable.
+          if (!fvByMarket) {
+            fvByMarket = computeCoherentFVs(brackets, fh.maxF, sigma);
+            fvModel = 'gaussian_placeholder';
+            fvMeta = { sigmaF: sigma };
+          }
+
+          log.write({
+            t: nowMs(),
+            type: 'fv_group',
+            model: fvModel,
+            city: code,
+            event: et,
+            eventMonth,
+            forecastHighF: Number.isFinite(fh.maxF) ? fh.maxF : null,
+            horizonHours: horizonH,
+            sigmaF: sigma,
+            brackets: brackets.length,
+            ...fvMeta,
+          });
 
           // Persist the actual per-bracket probabilities for scoring/calibration.
           const fvDetail = [];
@@ -444,7 +508,19 @@ async function main() {
             if (!v) continue;
             fvDetail.push({ ...b, prob: v.prob, fvCents: v.fvCents });
           }
-          log.write({ t: nowMs(), type: 'fv_detail', city: code, event: et, forecastHighF: fh.maxF, sigmaF: sigma, brackets: fvDetail });
+          log.write({
+            t: nowMs(),
+            type: 'fv_detail',
+            model: fvModel,
+            city: code,
+            event: et,
+            eventMonth,
+            forecastHighF: Number.isFinite(fh.maxF) ? fh.maxF : null,
+            horizonHours: horizonH,
+            sigmaF: sigma,
+            ...fvMeta,
+            brackets: fvDetail,
+          });
 
           for (const mkt of markets) {
             const ticker = mkt?.ticker;
