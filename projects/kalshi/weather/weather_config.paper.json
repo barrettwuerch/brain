@@ -57,7 +57,7 @@
 
   "strategy": {
     "quoteHalfSpreadCents": 3,
-    "minQuotedSpreadCents": 3,
+    "minQuotedSpreadCents": 1,
     "repriceThresholdCents": 2,
     "staleThresholdCents": 4,
     "maxOrderAgeMs": 120000,
