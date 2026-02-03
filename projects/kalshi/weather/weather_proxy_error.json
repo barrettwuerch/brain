@@ -1,0 +1,556 @@
+{
+  "generatedAt": "2026-02-03T22:17:31.997Z",
+  "note": "Errors for proxy forecast=previous-day observed high. error = actual_today - yesterday_actual.",
+  "cities": {
+    "NYC": {
+      "10": {
+        "n": 155,
+        "meanErrF": -0.181,
+        "stdErrF": 5.766,
+        "medianErrF": 0,
+        "madErrF": 3.96,
+        "p10ErrF": -7.02,
+        "p90ErrF": 6.12
+      },
+      "11": {
+        "n": 150,
+        "meanErrF": -0.546,
+        "stdErrF": 7.18,
+        "medianErrF": 0,
+        "madErrF": 3.96,
+        "p10ErrF": -9.918,
+        "p90ErrF": 8.19
+      },
+      "12": {
+        "n": 155,
+        "meanErrF": 0.021,
+        "stdErrF": 8.473,
+        "medianErrF": 0.9,
+        "madErrF": 5.04,
+        "p10ErrF": -10.08,
+        "p90ErrF": 10.08
+      },
+      "02": {
+        "n": 138,
+        "meanErrF": 0.05,
+        "stdErrF": 9.096,
+        "medianErrF": 1.08,
+        "madErrF": 4.86,
+        "p10ErrF": -10.98,
+        "p90ErrF": 10.08
+      },
+      "03": {
+        "n": 155,
+        "meanErrF": 0.723,
+        "stdErrF": 10.079,
+        "medianErrF": 0.9,
+        "madErrF": 6.12,
+        "p10ErrF": -10.98,
+        "p90ErrF": 12.96
+      },
+      "04": {
+        "n": 150,
+        "meanErrF": 0.088,
+        "stdErrF": 10.131,
+        "medianErrF": 0,
+        "madErrF": 7.02,
+        "p10ErrF": -13.878,
+        "p90ErrF": 12.078
+      },
+      "05": {
+        "n": 155,
+        "meanErrF": 0.282,
+        "stdErrF": 7.992,
+        "medianErrF": 1.08,
+        "madErrF": 5.94,
+        "p10ErrF": -10.008,
+        "p90ErrF": 9.54
+      },
+      "06": {
+        "n": 150,
+        "meanErrF": 0.407,
+        "stdErrF": 6.408,
+        "medianErrF": 1.08,
+        "madErrF": 3.15,
+        "p10ErrF": -8.19,
+        "p90ErrF": 7.02
+      },
+      "07": {
+        "n": 155,
+        "meanErrF": -0.109,
+        "stdErrF": 4.891,
+        "medianErrF": 0,
+        "madErrF": 3.06,
+        "p10ErrF": -5.94,
+        "p90ErrF": 5.04
+      },
+      "08": {
+        "n": 155,
+        "meanErrF": -0.163,
+        "stdErrF": 5.374,
+        "medianErrF": 0.9,
+        "madErrF": 3.06,
+        "p10ErrF": -7.56,
+        "p90ErrF": 5.94
+      },
+      "09": {
+        "n": 150,
+        "meanErrF": -0.366,
+        "stdErrF": 4.958,
+        "medianErrF": 0,
+        "madErrF": 3.06,
+        "p10ErrF": -6.858,
+        "p90ErrF": 5.94
+      },
+      "01": {
+        "n": 155,
+        "meanErrF": -0.297,
+        "stdErrF": 7.876,
+        "medianErrF": 0,
+        "madErrF": 5.04,
+        "p10ErrF": -9.648,
+        "p90ErrF": 8.1
+      }
+    },
+    "CHI": {
+      "10": {
+        "n": 155,
+        "meanErrF": -0.722,
+        "stdErrF": 6.818,
+        "medianErrF": 0,
+        "madErrF": 3.96,
+        "p10ErrF": -9.648,
+        "p90ErrF": 7.02
+      },
+      "11": {
+        "n": 150,
+        "meanErrF": -0.51,
+        "stdErrF": 8.038,
+        "medianErrF": 0,
+        "madErrF": 4.05,
+        "p10ErrF": -10.08,
+        "p90ErrF": 9
+      },
+      "12": {
+        "n": 155,
+        "meanErrF": -0.015,
+        "stdErrF": 9.3,
+        "medianErrF": 0,
+        "madErrF": 5.04,
+        "p10ErrF": -10.512,
+        "p90ErrF": 10.98
+      },
+      "02": {
+        "n": 138,
+        "meanErrF": 0.689,
+        "stdErrF": 9.54,
+        "medianErrF": 1.08,
+        "madErrF": 6.12,
+        "p10ErrF": -11.574,
+        "p90ErrF": 11.88
+      },
+      "03": {
+        "n": 155,
+        "meanErrF": 0.019,
+        "stdErrF": 11.856,
+        "medianErrF": 0.9,
+        "madErrF": 7.92,
+        "p10ErrF": -14.04,
+        "p90ErrF": 14.4
+      },
+      "04": {
+        "n": 150,
+        "meanErrF": 0.34,
+        "stdErrF": 10.588,
+        "medianErrF": 0,
+        "madErrF": 7.02,
+        "p10ErrF": -14.04,
+        "p90ErrF": 13.068
+      },
+      "05": {
+        "n": 155,
+        "meanErrF": 0.53,
+        "stdErrF": 8.681,
+        "medianErrF": 1.08,
+        "madErrF": 5.04,
+        "p10ErrF": -12.96,
+        "p90ErrF": 10.98
+      },
+      "06": {
+        "n": 150,
+        "meanErrF": 0.22,
+        "stdErrF": 7.155,
+        "medianErrF": 0,
+        "madErrF": 4.86,
+        "p10ErrF": -9.108,
+        "p90ErrF": 9
+      },
+      "07": {
+        "n": 155,
+        "meanErrF": -0.071,
+        "stdErrF": 5.809,
+        "medianErrF": 0.9,
+        "madErrF": 3.06,
+        "p10ErrF": -7.02,
+        "p90ErrF": 5.94
+      },
+      "08": {
+        "n": 153,
+        "meanErrF": -0.125,
+        "stdErrF": 5.319,
+        "medianErrF": 0.9,
+        "madErrF": 3.06,
+        "p10ErrF": -7.02,
+        "p90ErrF": 5.04
+      },
+      "09": {
+        "n": 150,
+        "meanErrF": -0.054,
+        "stdErrF": 6.388,
+        "medianErrF": 0.45,
+        "madErrF": 4.41,
+        "p10ErrF": -8.19,
+        "p90ErrF": 7.02
+      },
+      "01": {
+        "n": 155,
+        "meanErrF": -0.283,
+        "stdErrF": 8.847,
+        "medianErrF": 0,
+        "madErrF": 3.96,
+        "p10ErrF": -10.98,
+        "p90ErrF": 10.008
+      }
+    },
+    "MIA": {
+      "10": {
+        "n": 155,
+        "meanErrF": -0.163,
+        "stdErrF": 2.86,
+        "medianErrF": 0,
+        "madErrF": 1.08,
+        "p10ErrF": -3.6,
+        "p90ErrF": 2.592
+      },
+      "11": {
+        "n": 150,
+        "meanErrF": -0.125,
+        "stdErrF": 3.46,
+        "medianErrF": 0,
+        "madErrF": 1.98,
+        "p10ErrF": -3.96,
+        "p90ErrF": 3.06
+      },
+      "12": {
+        "n": 155,
+        "meanErrF": -0.136,
+        "stdErrF": 4.506,
+        "medianErrF": 0,
+        "madErrF": 1.98,
+        "p10ErrF": -4.5,
+        "p90ErrF": 3.96
+      },
+      "02": {
+        "n": 139,
+        "meanErrF": 0.215,
+        "stdErrF": 3.862,
+        "medianErrF": 0.9,
+        "madErrF": 1.8,
+        "p10ErrF": -3.24,
+        "p90ErrF": 3.96
+      },
+      "03": {
+        "n": 155,
+        "meanErrF": 0,
+        "stdErrF": 3.846,
+        "medianErrF": 0.9,
+        "madErrF": 1.26,
+        "p10ErrF": -5.58,
+        "p90ErrF": 3.96
+      },
+      "04": {
+        "n": 150,
+        "meanErrF": 0.041,
+        "stdErrF": 3.032,
+        "medianErrF": 0,
+        "madErrF": 1.08,
+        "p10ErrF": -3.96,
+        "p90ErrF": 3.06
+      },
+      "05": {
+        "n": 155,
+        "meanErrF": 0.123,
+        "stdErrF": 2.197,
+        "medianErrF": 0,
+        "madErrF": 1.08,
+        "p10ErrF": -2.88,
+        "p90ErrF": 2.988
+      },
+      "06": {
+        "n": 150,
+        "meanErrF": 0,
+        "stdErrF": 2.974,
+        "medianErrF": 0,
+        "madErrF": 1.08,
+        "p10ErrF": -2.898,
+        "p90ErrF": 3.06
+      },
+      "07": {
+        "n": 155,
+        "meanErrF": 0.121,
+        "stdErrF": 2.036,
+        "medianErrF": 0,
+        "madErrF": 1.08,
+        "p10ErrF": -1.98,
+        "p90ErrF": 1.98
+      },
+      "08": {
+        "n": 155,
+        "meanErrF": -0.006,
+        "stdErrF": 2.07,
+        "medianErrF": 0,
+        "madErrF": 1.08,
+        "p10ErrF": -1.98,
+        "p90ErrF": 1.98
+      },
+      "09": {
+        "n": 150,
+        "meanErrF": -0.085,
+        "stdErrF": 2.378,
+        "medianErrF": 0,
+        "madErrF": 1.08,
+        "p10ErrF": -3.06,
+        "p90ErrF": 2.88
+      },
+      "01": {
+        "n": 155,
+        "meanErrF": -0.065,
+        "stdErrF": 5.683,
+        "medianErrF": 0.9,
+        "madErrF": 3.06,
+        "p10ErrF": -7.02,
+        "p90ErrF": 5.94
+      }
+    },
+    "AUS": {
+      "10": {
+        "n": 155,
+        "meanErrF": -0.548,
+        "stdErrF": 6.315,
+        "medianErrF": 0,
+        "madErrF": 1.98,
+        "p10ErrF": -8.568,
+        "p90ErrF": 5.04
+      },
+      "11": {
+        "n": 150,
+        "meanErrF": -0.334,
+        "stdErrF": 8.383,
+        "medianErrF": 0.9,
+        "madErrF": 4.14,
+        "p10ErrF": -12.15,
+        "p90ErrF": 8.19
+      },
+      "12": {
+        "n": 155,
+        "meanErrF": 0.252,
+        "stdErrF": 8.735,
+        "medianErrF": 0,
+        "madErrF": 4.86,
+        "p10ErrF": -10.62,
+        "p90ErrF": 10.62
+      },
+      "02": {
+        "n": 139,
+        "meanErrF": 0.359,
+        "stdErrF": 10.691,
+        "medianErrF": 1.98,
+        "madErrF": 5.04,
+        "p10ErrF": -16.2,
+        "p90ErrF": 12.24
+      },
+      "03": {
+        "n": 155,
+        "meanErrF": 0.226,
+        "stdErrF": 7.617,
+        "medianErrF": 1.08,
+        "madErrF": 4.86,
+        "p10ErrF": -9.54,
+        "p90ErrF": 8.64
+      },
+      "04": {
+        "n": 150,
+        "meanErrF": 0.227,
+        "stdErrF": 6.765,
+        "medianErrF": 0.9,
+        "madErrF": 3.6,
+        "p10ErrF": -9,
+        "p90ErrF": 8.1
+      },
+      "05": {
+        "n": 155,
+        "meanErrF": 0.156,
+        "stdErrF": 5.332,
+        "medianErrF": 0,
+        "madErrF": 3.06,
+        "p10ErrF": -7.02,
+        "p90ErrF": 6.048
+      },
+      "06": {
+        "n": 150,
+        "meanErrF": 0.199,
+        "stdErrF": 3.824,
+        "medianErrF": 0,
+        "madErrF": 1.08,
+        "p10ErrF": -2.898,
+        "p90ErrF": 3.978
+      },
+      "07": {
+        "n": 155,
+        "meanErrF": 0.128,
+        "stdErrF": 3.188,
+        "medianErrF": 0,
+        "madErrF": 1.08,
+        "p10ErrF": -3.06,
+        "p90ErrF": 3.06
+      },
+      "08": {
+        "n": 150,
+        "meanErrF": -0.086,
+        "stdErrF": 3.483,
+        "medianErrF": 0,
+        "madErrF": 1.98,
+        "p10ErrF": -5.04,
+        "p90ErrF": 3.96
+      },
+      "09": {
+        "n": 150,
+        "meanErrF": -0.1,
+        "stdErrF": 3.418,
+        "medianErrF": 0,
+        "madErrF": 1.98,
+        "p10ErrF": -3.96,
+        "p90ErrF": 3.06
+      },
+      "01": {
+        "n": 155,
+        "meanErrF": -0.574,
+        "stdErrF": 10.65,
+        "medianErrF": 0.9,
+        "madErrF": 5.94,
+        "p10ErrF": -13.14,
+        "p90ErrF": 10.62
+      }
+    },
+    "LAX": {
+      "10": {
+        "n": 155,
+        "meanErrF": -0.117,
+        "stdErrF": 5.314,
+        "medianErrF": 0,
+        "madErrF": 3.06,
+        "p10ErrF": -7.02,
+        "p90ErrF": 6.048
+      },
+      "11": {
+        "n": 150,
+        "meanErrF": -0.234,
+        "stdErrF": 4.719,
+        "medianErrF": 0,
+        "madErrF": 2.88,
+        "p10ErrF": -5.958,
+        "p90ErrF": 5.04
+      },
+      "12": {
+        "n": 155,
+        "meanErrF": -0.231,
+        "stdErrF": 4.669,
+        "medianErrF": 0,
+        "madErrF": 3.06,
+        "p10ErrF": -5.94,
+        "p90ErrF": 5.58
+      },
+      "02": {
+        "n": 138,
+        "meanErrF": 0.159,
+        "stdErrF": 4.698,
+        "medianErrF": 0.45,
+        "madErrF": 3.42,
+        "p10ErrF": -5.94,
+        "p90ErrF": 5.31
+      },
+      "03": {
+        "n": 155,
+        "meanErrF": -0.038,
+        "stdErrF": 5.798,
+        "medianErrF": 0,
+        "madErrF": 2.88,
+        "p10ErrF": -7.56,
+        "p90ErrF": 7.02
+      },
+      "04": {
+        "n": 150,
+        "meanErrF": 0.226,
+        "stdErrF": 5.442,
+        "medianErrF": 0,
+        "madErrF": 3.06,
+        "p10ErrF": -6.21,
+        "p90ErrF": 6.858
+      },
+      "05": {
+        "n": 155,
+        "meanErrF": 0.008,
+        "stdErrF": 4.732,
+        "medianErrF": 0,
+        "madErrF": 1.98,
+        "p10ErrF": -5.58,
+        "p90ErrF": 5.58
+      },
+      "06": {
+        "n": 150,
+        "meanErrF": 0.199,
+        "stdErrF": 3.496,
+        "medianErrF": 0,
+        "madErrF": 2.07,
+        "p10ErrF": -5.04,
+        "p90ErrF": 5.04
+      },
+      "07": {
+        "n": 155,
+        "meanErrF": 0.105,
+        "stdErrF": 3.089,
+        "medianErrF": 0,
+        "madErrF": 1.98,
+        "p10ErrF": -3.96,
+        "p90ErrF": 3.96
+      },
+      "08": {
+        "n": 154,
+        "meanErrF": 0.013,
+        "stdErrF": 3.473,
+        "medianErrF": 0,
+        "madErrF": 1.98,
+        "p10ErrF": -3.96,
+        "p90ErrF": 4.986
+      },
+      "09": {
+        "n": 150,
+        "meanErrF": -0.206,
+        "stdErrF": 4.779,
+        "medianErrF": 0,
+        "madErrF": 3.06,
+        "p10ErrF": -5.94,
+        "p90ErrF": 5.04
+      },
+      "01": {
+        "n": 155,
+        "meanErrF": 0.258,
+        "stdErrF": 5.079,
+        "medianErrF": 0.9,
+        "madErrF": 2.88,
+        "p10ErrF": -5.94,
+        "p90ErrF": 6.12
+      }
+    }
+  }
+}
