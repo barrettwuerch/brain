@@ -1,0 +1,17 @@
+# Seed keyword list for mention markets (expand over time)
+# One keyword/phrase per line. Keep lowercase.
+
+inflation
+recession
+tariffs
+border
+economy
+jobs
+housing
+bitcoin
+immigration
+china
+ukraine
+nato
+climate
+ai

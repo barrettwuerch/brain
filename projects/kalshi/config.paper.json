@@ -1,0 +1,74 @@
+{
+  "mode": "paper",
+  "baseUrl": "https://api.elections.kalshi.com",
+  "pollIntervalMs": 2000,
+  "orderbookDepth": 1,
+  "marketSelection": {
+    "maxMarkets": 8,
+    "allowlistFile": "/Users/bear/.openclaw/workspace/projects/kalshi/mention_series_allowlist.json",
+    "seedMarkets": [
+      "KXLASTWORDMENTION-26FEB03",
+      "KXNBAMENTION-26FEB03PHXPOR"
+    ],
+    "allowedEventTypes": ["FOMC", "WHITE_HOUSE"],
+    "requireBaseRates": true,
+    "maxMentionSeries": 30,
+    "maxEventsPerSeries": 10,
+    "minSpreadCents": 3,
+    "maxSpreadCents": 50,
+    "selectionRefreshMs": 300000
+  },
+  "strategy": {
+    "name": "mention_market_maker_v0.5",
+    "quoteHalfSpreadCents": 3,
+    "maxOrderQty": 2,
+    "minQuotedSpreadCents": 3,
+    "repriceThresholdCents": 2,
+    "staleThresholdCents": 4,
+    "maxOrderAgeMs": 90000,
+    "maxPositionQtyPerMarket": 10,
+    "pauseAfterFillMs": 500,
+    "probFillAtBestBid": 0.02,
+    "maxSpreadForProbFill": 6,
+
+    "fv": {
+      "enabled": true,
+      "baseRatesPath": "/Users/bear/.openclaw/workspace/projects/kalshi/base_rates.json",
+      "coOccurrencePath": "/Users/bear/.openclaw/workspace/projects/kalshi/co_occurrence.json",
+      "coOccurrenceEnabled": true,
+      "coOccurrenceBoostDamping": 0.5,
+
+      "newsEnabled": true,
+      "newsLookback": "2d",
+      "newsSensitivity": 10,
+      "newsBaselineCount": 20,
+      "newsRefreshMs": 900000,
+      "newsSpikeRatio": 1.5,
+
+      "blendBaseWeight": 0.6,
+      "blendMidWeight": 0.4,
+
+      "convictionSizingEnabled": true,
+      "fractionalKelly": 0.35,
+      "confidenceHighSamples": 30,
+      "confidenceMedSamples": 10,
+
+      "noBaseRateExtraHalfSpread": 2,
+      "noBaseRateOrderQty": 1
+    }
+  },
+  "risk": {
+    "killSwitchFile": "/Users/bear/.openclaw/secrets/KALSHI_KILL",
+    "maxOpenOrders": 20,
+    "maxErrorStreak": 5,
+    "paperAccountBalance": 1000,
+    "maxRiskPerMarketPct": 0.10,
+    "maxEventExposurePct": 0.25,
+    "dailyLossLimitPct": 0.05,
+    "maxDrawdownPct": 0.15
+  },
+  "logging": {
+    "dir": "/Users/bear/.openclaw/workspace/projects/kalshi/logs",
+    "consoleSummaryEveryMs": 15000
+  }
+}

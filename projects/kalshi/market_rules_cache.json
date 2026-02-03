@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "note": "Generated cache of parsed mention-market rules. Keyed by market ticker.",
+  "markets": {}
+}

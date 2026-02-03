@@ -1,0 +1,16 @@
+{
+  "white_house_transcripts": {
+    "note": "White House briefing-room transcripts (HTML).",
+    "index_urls": [
+      "https://www.whitehouse.gov/briefings-statements/",
+      "https://www.whitehouse.gov/remarks/",
+      "https://www.whitehouse.gov/news/"
+    ]
+  },
+  "fed": {
+    "note": "Federal Reserve sources vary; v0 starts with building the pipeline scaffold and will be expanded with concrete transcript endpoints.",
+    "index_urls": [
+      "https://www.federalreserve.gov/newsevents/pressreleases.htm"
+    ]
+  }
+}

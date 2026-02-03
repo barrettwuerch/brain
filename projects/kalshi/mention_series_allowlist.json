@@ -1,0 +1,4 @@
+{
+  "note": "Optional operator-maintained allowlist. If non-empty, only markets whose series_ticker is in this list are considered mention markets.",
+  "series": []
+}

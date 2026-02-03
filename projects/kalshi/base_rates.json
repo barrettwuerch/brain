@@ -1,0 +1,335 @@
+{
+  "co_occurrence": {
+    "FOMC": {
+      "ai": {
+        "bitcoin": 0.167,
+        "border": 0.167,
+        "china": 0.167,
+        "climate": 0.167,
+        "economy": 1.0,
+        "housing": 1.0,
+        "immigration": 1.0,
+        "inflation": 1.0,
+        "jobs": 1.0,
+        "recession": 0.167,
+        "tariffs": 0.833,
+        "ukraine": 0.167
+      },
+      "bitcoin": {
+        "ai": 0.333,
+        "border": 0.333,
+        "china": 0.667,
+        "climate": 0.333,
+        "economy": 1.0,
+        "housing": 1.0,
+        "immigration": 0.333,
+        "inflation": 1.0,
+        "jobs": 1.0,
+        "recession": 0.667,
+        "tariffs": 0.667,
+        "ukraine": 0.333
+      },
+      "border": {
+        "ai": 1.0,
+        "bitcoin": 1.0,
+        "china": 1.0,
+        "climate": 1.0,
+        "economy": 1.0,
+        "housing": 1.0,
+        "immigration": 1.0,
+        "inflation": 1.0,
+        "jobs": 1.0,
+        "tariffs": 1.0
+      },
+      "china": {
+        "ai": 0.1,
+        "bitcoin": 0.2,
+        "border": 0.1,
+        "climate": 0.2,
+        "economy": 1.0,
+        "housing": 0.9,
+        "immigration": 0.3,
+        "inflation": 1.0,
+        "jobs": 1.0,
+        "recession": 0.7,
+        "tariffs": 0.3,
+        "ukraine": 0.5
+      },
+      "climate": {
+        "ai": 0.25,
+        "bitcoin": 0.25,
+        "border": 0.25,
+        "china": 0.5,
+        "economy": 1.0,
+        "housing": 0.75,
+        "immigration": 0.75,
+        "inflation": 1.0,
+        "jobs": 1.0,
+        "recession": 0.5,
+        "tariffs": 0.5
+      },
+      "economy": {
+        "ai": 0.15,
+        "bitcoin": 0.075,
+        "border": 0.025,
+        "china": 0.25,
+        "climate": 0.1,
+        "housing": 0.95,
+        "immigration": 0.4,
+        "inflation": 1.0,
+        "jobs": 1.0,
+        "recession": 0.6,
+        "tariffs": 0.25,
+        "ukraine": 0.3
+      },
+      "housing": {
+        "ai": 0.158,
+        "bitcoin": 0.079,
+        "border": 0.026,
+        "china": 0.237,
+        "climate": 0.079,
+        "economy": 1.0,
+        "immigration": 0.421,
+        "inflation": 1.0,
+        "jobs": 1.0,
+        "recession": 0.579,
+        "tariffs": 0.263,
+        "ukraine": 0.316
+      },
+      "immigration": {
+        "ai": 0.375,
+        "bitcoin": 0.062,
+        "border": 0.062,
+        "china": 0.188,
+        "climate": 0.188,
+        "economy": 1.0,
+        "housing": 1.0,
+        "inflation": 1.0,
+        "jobs": 1.0,
+        "recession": 0.5,
+        "tariffs": 0.5,
+        "ukraine": 0.188
+      },
+      "inflation": {
+        "ai": 0.15,
+        "bitcoin": 0.075,
+        "border": 0.025,
+        "china": 0.25,
+        "climate": 0.1,
+        "economy": 1.0,
+        "housing": 0.95,
+        "immigration": 0.4,
+        "jobs": 1.0,
+        "recession": 0.6,
+        "tariffs": 0.25,
+        "ukraine": 0.3
+      },
+      "jobs": {
+        "ai": 0.15,
+        "bitcoin": 0.075,
+        "border": 0.025,
+        "china": 0.25,
+        "climate": 0.1,
+        "economy": 1.0,
+        "housing": 0.95,
+        "immigration": 0.4,
+        "inflation": 1.0,
+        "recession": 0.6,
+        "tariffs": 0.25,
+        "ukraine": 0.3
+      },
+      "nato": {},
+      "recession": {
+        "ai": 0.042,
+        "bitcoin": 0.083,
+        "china": 0.292,
+        "climate": 0.083,
+        "economy": 1.0,
+        "housing": 0.917,
+        "immigration": 0.333,
+        "inflation": 1.0,
+        "jobs": 1.0,
+        "tariffs": 0.167,
+        "ukraine": 0.458
+      },
+      "tariffs": {
+        "ai": 0.5,
+        "bitcoin": 0.2,
+        "border": 0.1,
+        "china": 0.3,
+        "climate": 0.2,
+        "economy": 1.0,
+        "housing": 1.0,
+        "immigration": 0.8,
+        "inflation": 1.0,
+        "jobs": 1.0,
+        "recession": 0.4,
+        "ukraine": 0.2
+      },
+      "ukraine": {
+        "ai": 0.083,
+        "bitcoin": 0.083,
+        "china": 0.417,
+        "economy": 1.0,
+        "housing": 1.0,
+        "immigration": 0.25,
+        "inflation": 1.0,
+        "jobs": 1.0,
+        "recession": 0.917,
+        "tariffs": 0.167
+      }
+    },
+    "WHITE_HOUSE": {
+      "ai": {
+        "border": 1.0,
+        "china": 0.091,
+        "economy": 1.0,
+        "housing": 0.136,
+        "inflation": 0.045,
+        "tariffs": 0.136,
+        "ukraine": 0.045
+      },
+      "bitcoin": {},
+      "border": {
+        "ai": 1.0,
+        "china": 0.091,
+        "economy": 1.0,
+        "housing": 0.136,
+        "inflation": 0.045,
+        "tariffs": 0.136,
+        "ukraine": 0.045
+      },
+      "china": {
+        "ai": 1.0,
+        "border": 1.0,
+        "economy": 1.0,
+        "inflation": 0.5,
+        "tariffs": 1.0
+      },
+      "climate": {},
+      "economy": {
+        "ai": 1.0,
+        "border": 1.0,
+        "china": 0.091,
+        "housing": 0.136,
+        "inflation": 0.045,
+        "tariffs": 0.136,
+        "ukraine": 0.045
+      },
+      "housing": {
+        "ai": 1.0,
+        "border": 1.0,
+        "economy": 1.0,
+        "ukraine": 0.333
+      },
+      "immigration": {},
+      "inflation": {
+        "ai": 1.0,
+        "border": 1.0,
+        "china": 1.0,
+        "economy": 1.0,
+        "tariffs": 1.0
+      },
+      "jobs": {},
+      "nato": {},
+      "recession": {},
+      "tariffs": {
+        "ai": 1.0,
+        "border": 1.0,
+        "china": 0.667,
+        "economy": 1.0,
+        "inflation": 0.333
+      },
+      "ukraine": {
+        "ai": 1.0,
+        "border": 1.0,
+        "economy": 1.0,
+        "housing": 1.0
+      }
+    }
+  },
+  "event_types": {
+    "FOMC": {
+      "ai": 15,
+      "bitcoin": 8,
+      "border": 2,
+      "china": 25,
+      "climate": 10,
+      "economy": 100,
+      "housing": 95,
+      "immigration": 40,
+      "inflation": 100,
+      "jobs": 100,
+      "nato": 0,
+      "recession": 60,
+      "tariffs": 25,
+      "ukraine": 30
+    },
+    "WHITE_HOUSE": {
+      "ai": 100,
+      "bitcoin": 0,
+      "border": 100,
+      "china": 9,
+      "climate": 0,
+      "economy": 100,
+      "housing": 14,
+      "immigration": 0,
+      "inflation": 5,
+      "jobs": 0,
+      "nato": 0,
+      "recession": 0,
+      "tariffs": 14,
+      "ukraine": 5
+    }
+  },
+  "generated_at": 1770107228,
+  "keywords": [
+    "inflation",
+    "recession",
+    "tariffs",
+    "border",
+    "economy",
+    "jobs",
+    "housing",
+    "bitcoin",
+    "immigration",
+    "china",
+    "ukraine",
+    "nato",
+    "climate",
+    "ai"
+  ],
+  "samples": {
+    "FOMC": {
+      "count": 40,
+      "urls": [
+        "https://www.federalreserve.gov/mediacenter/files/FOMCpresconf20251210.pdf",
+        "https://www.federalreserve.gov/mediacenter/files/FOMCpresconf20251029.pdf",
+        "https://www.federalreserve.gov/mediacenter/files/FOMCpresconf20250917.pdf",
+        "https://www.federalreserve.gov/mediacenter/files/FOMCpresconf20250730.pdf",
+        "https://www.federalreserve.gov/mediacenter/files/FOMCpresconf20250618.pdf",
+        "https://www.federalreserve.gov/mediacenter/files/FOMCpresconf20250507.pdf",
+        "https://www.federalreserve.gov/mediacenter/files/FOMCpresconf20250319.pdf",
+        "https://www.federalreserve.gov/mediacenter/files/FOMCpresconf20250129.pdf",
+        "https://www.federalreserve.gov/mediacenter/files/FOMCpresconf20241218.pdf",
+        "https://www.federalreserve.gov/mediacenter/files/FOMCpresconf20241107.pdf"
+      ]
+    },
+    "WHITE_HOUSE": {
+      "count": 22,
+      "urls": [
+        "https://www.whitehouse.gov/briefings-statements/",
+        "https://www.whitehouse.gov/briefings-statements/2026/01/america-250-presidential-message-on-the-anniversary-of-the-space-shuttle-challenger-disaster/",
+        "https://www.whitehouse.gov/briefings-statements/2026/01/america-250-presidential-message-on-the-birthday-of-benjamin-franklin/",
+        "https://www.whitehouse.gov/briefings-statements/2026/01/america-250-presidential-message-on-the-birthday-of-president-william-mckinley/",
+        "https://www.whitehouse.gov/briefings-statements/2026/01/congressional-bill-h-r-224-h-r-1823-h-r-4446-signed-into-law/",
+        "https://www.whitehouse.gov/briefings-statements/2026/01/congressional-bill-h-r-4323-and-h-r-6938-signed-into-law/",
+        "https://www.whitehouse.gov/briefings-statements/2026/01/first-lady-melania-trump-to-ring-opening-bell-of-the-new-york-stock-exchange/",
+        "https://www.whitehouse.gov/briefings-statements/2026/01/presidential-message-on-international-holocaust-remembrance-day/",
+        "https://www.whitehouse.gov/briefings-statements/2026/01/presidential-message-on-national-sanctity-of-human-life-day-2026/",
+        "https://www.whitehouse.gov/briefings-statements/2026/01/presidential-message-on-the-college-football-playoff-national-championship/"
+      ]
+    }
+  },
+  "version": 4
+}

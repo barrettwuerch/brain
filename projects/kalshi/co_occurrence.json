@@ -1,0 +1,5 @@
+{
+  "version": 1,
+  "note": "Generated co-occurrence matrix: event_type -> keyword -> other_keyword -> P(other|keyword). Filled by news/build_base_rates.py in a later step.",
+  "event_types": {}
+}
