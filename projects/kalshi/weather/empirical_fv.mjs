@@ -179,6 +179,7 @@ export function computeEmpiricalFVs({
   horizonWeights,
   gaussianSigmaF, // deprecated (kept for compatibility; not used for smoothing)
   thinTail,
+  calibrateProb,
 }) {
   const mm = String(month).padStart(2, '0');
   const values = baseRates?.sortedValues?.[cityCode]?.[mm] || [];
@@ -248,6 +249,13 @@ export function computeEmpiricalFVs({
       pGauss,
       pFinal,
     });
+  }
+
+  // Optional post-hoc calibration: p -> p'
+  if (typeof calibrateProb === 'function') {
+    for (const [t, p] of probByTicker.entries()) {
+      probByTicker.set(t, clamp(calibrateProb(p), 0, 1));
+    }
   }
 
   const fvByTicker = allocateCoherentCents(probByTicker);

@@ -40,6 +40,11 @@
       "minSamples": 5
     },
 
+    "calibration": {
+      "kind": "isotonic",
+      "path": "/Users/bear/.openclaw/workspace/projects/kalshi/weather/weather_calibration_isotonic.json"
+    },
+
     "sigmaByHorizonHours": [
       { "maxH": 6, "sigmaF": 1.5 },
       { "maxH": 12, "sigmaF": 2.0 },

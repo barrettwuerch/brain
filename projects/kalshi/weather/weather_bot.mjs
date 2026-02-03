@@ -15,6 +15,7 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 
 import { computeEmpiricalFVs } from './empirical_fv.mjs';
+import { loadCalibrationObject } from './calibration.mjs';
 
 function nowMs() { return Date.now(); }
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -388,6 +389,9 @@ async function main() {
     sortedValues: loadJsonIfExists(cfg?.fv?.sortedValuesPath),
   };
 
+  const calibrationObj = loadJsonIfExists(cfg?.fv?.calibration?.path);
+  const calibrator = calibrationObj ? loadCalibrationObject(calibrationObj) : null;
+
   const envPath = process.env.KALSHI_ENV_FILE || path.join(os.homedir(), '.openclaw/secrets/kalshi.env');
   const env = { ...loadEnvFile(envPath), ...process.env };
   const keyId = env.KALSHI_API_KEY;
@@ -478,6 +482,7 @@ async function main() {
               horizonWeights: cfg?.forecast?.horizonWeights,
               gaussianSigmaF: sigma,
               thinTail: cfg?.fv?.thinTail,
+              calibrateProb: calibrator?.predict,
             });
             fvByMarket = emp.fvByTicker;
             fvModel = emp.model;
@@ -505,6 +510,7 @@ async function main() {
             t: nowMs(),
             type: 'fv_group',
             model: fvModel,
+            calibrationKind: cfg?.fv?.calibration?.kind || null,
             city: code,
             event: et,
             eventMonth,
