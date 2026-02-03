@@ -439,6 +439,65 @@ function parseMentionMarket(mkt) {
   return { ok: false, eventType, reason: 'no_keyword_match' };
 }
 
+function normalizeLookbackBucket(lookback) {
+  // Our baseline logger records 1d/7d/30d. Map arbitrary Xd into a bucket.
+  const s = String(lookback || '').trim();
+  const m = s.match(/^(\d+)d$/i);
+  const days = m ? Number(m[1]) : null;
+  if (!Number.isFinite(days)) return '7d';
+  if (days <= 2) return '1d';
+  if (days <= 10) return '7d';
+  return '30d';
+}
+
+function loadRssBaselineMap({ file, maxAgeDays = 30 } = {}) {
+  try {
+    if (!file || !fs.existsSync(file)) return new Map();
+    const cutoff = nowMs() - (Number(maxAgeDays) * 86400000);
+    const lines = fs.readFileSync(file, 'utf8').split(/\n/).filter(Boolean);
+
+    const buckets = new Map(); // key -> [counts]
+    for (const line of lines) {
+      let e; try { e = JSON.parse(line); } catch { continue; }
+      if (!e || typeof e !== 'object') continue;
+      if (e.type === 'rss_baseline_run') continue;
+      const t = Number(e.t || 0);
+      if (!Number.isFinite(t) || t < cutoff) continue;
+      const keyword = String(e.keyword || '').toLowerCase();
+      const lookback = String(e.lookback || '');
+      const ok = !!e.ok;
+      const count = Number(e.count);
+      if (!ok || !keyword || !Number.isFinite(count)) continue;
+      const key = `${keyword}|${lookback}`;
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key).push(count);
+    }
+
+    // median per (keyword, lookback)
+    const out = new Map();
+    for (const [key, arr] of buckets.entries()) {
+      arr.sort((a, b) => a - b);
+      const n = arr.length;
+      if (!n) continue;
+      const median = (n % 2 === 1) ? arr[(n - 1) / 2] : ((arr[n / 2 - 1] + arr[n / 2]) / 2);
+      out.set(key, { median, n });
+    }
+    return out;
+  } catch {
+    return new Map();
+  }
+}
+
+function getBaselineCount({ baselineMap, keyword, lookback, fallback }) {
+  const k = String(keyword || '').toLowerCase();
+  const lb = String(lookback || '');
+  const rec = baselineMap?.get?.(`${k}|${lb}`);
+  const v = Number(rec?.median);
+  if (Number.isFinite(v) && v > 0) return v;
+  const fb = Number(fallback);
+  return Number.isFinite(fb) && fb > 0 ? fb : 20;
+}
+
 async function getGoogleNewsCount(keyword, lookback = '2d') {
   // Minimal RSS scanner: count <item> tags.
   const q = encodeURIComponent(`${keyword} when:${lookback}`);
@@ -519,6 +578,19 @@ async function main() {
 
   const newsCache = new Map(); // keyword -> {count, tsMs}
   let lastNewsScanMs = 0;
+
+  // RSS baseline cache (keyword/lookback -> {median,n})
+  const baselinePath = fvCfg.newsBaselinePath || path.join(os.homedir(), '.openclaw/workspace/projects/kalshi/news/rss_baseline.jsonl');
+  let baselineMap = new Map();
+  let baselineLoadedAtMs = 0;
+  function refreshBaselineIfNeeded() {
+    const refreshMs = Number(fvCfg.newsBaselineRefreshMs ?? 3600000); // 1h
+    if (!baselinePath) return;
+    if ((nowMs() - baselineLoadedAtMs) < refreshMs) return;
+    baselineMap = loadRssBaselineMap({ file: baselinePath, maxAgeDays: Number(fvCfg.newsBaselineMaxAgeDays ?? 30) });
+    baselineLoadedAtMs = nowMs();
+    log?.write?.({ t: baselineLoadedAtMs, type: 'rss_baseline_loaded', entries: baselineMap.size, file: baselinePath });
+  }
 
   const latestMids = new Map();
   const marketMeta = new Map(); // ticker -> market object (title/rules/custom_strike)
@@ -636,6 +708,7 @@ async function main() {
         ? Number(ep.newsRefreshMsActive ?? 120000)
         : Number(ep.newsRefreshMsFar ?? 900000);
 
+    refreshBaselineIfNeeded();
     await refreshNewsCacheIfNeeded({ fvCfg, newsCache, log, refreshMsOverride: refreshOverride });
 
     if (killSwitchOn()) {
@@ -736,8 +809,10 @@ async function main() {
             const k = parsed.keyword;
             const prev = newsCache.get(k);
             let cnt;
+            let tsMs = null;
             if (prev && typeof prev === 'object') {
               cnt = Number(prev.count ?? 0);
+              tsMs = Number(prev.tsMs ?? null);
             } else if (typeof prev === 'number') {
               cnt = Number(prev);
             } else {
@@ -746,15 +821,69 @@ async function main() {
               } catch {
                 cnt = 0;
               }
-              newsCache.set(k, { count: cnt, tsMs: nowMs() });
+              tsMs = nowMs();
+              newsCache.set(k, { count: cnt, tsMs });
             }
-            const baseline = Number(fvCfg.newsBaselineCount ?? 20);
+
+            // Use real RSS baseline when available (bucketed to 1d/7d/30d).
+            const lbBucket = normalizeLookbackBucket(fvCfg.newsLookback || '2d');
+            const fallbackBaseline = Number(fvCfg.newsBaselineCount ?? 20);
+            const baseline = getBaselineCount({ baselineMap, keyword: k, lookback: lbBucket, fallback: fallbackBaseline });
             intensity = baseline > 0 ? (cnt / baseline) : 1;
+
+            // Co-occurrence boost: if other keywords are hot in news, and historically co-occur with k,
+            // slightly amplify intensity. (Bounded, one-way boost; fail-safe.)
+            let coBoost = 1;
+            if (fvCfg.coOccurrenceEnabled && coOccurrence && parsed.eventType && coOccurrence?.[parsed.eventType]?.[k]) {
+              // Gather context intensities for recently refreshed keywords.
+              const maxContext = Number(fvCfg.coOccurrenceMaxContextKeywords ?? 5);
+              const minHot = Number(fvCfg.coOccurrenceMinHotIntensity ?? 1.2);
+              const maxAgeMs = Number(fvCfg.coOccurrenceMaxAgeMs ?? 6 * 3600000);
+              const lookbackForCtx = lbBucket;
+
+              const ctx = [];
+              for (const [kw, v] of newsCache.entries()) {
+                const kwLc = String(kw || '').toLowerCase();
+                if (!kwLc || kwLc === k) continue;
+                const c = (v && typeof v === 'object') ? Number(v.count ?? 0) : Number(v);
+                const t = (v && typeof v === 'object') ? Number(v.tsMs ?? 0) : 0;
+                if (Number.isFinite(t) && t > 0 && (nowMs() - t) > maxAgeMs) continue;
+
+                const b = getBaselineCount({ baselineMap, keyword: kwLc, lookback: lookbackForCtx, fallback: fallbackBaseline });
+                const inten = b > 0 ? (c / b) : 1;
+                if (inten < minHot) continue;
+                ctx.push({ kw: kwLc, inten });
+              }
+              ctx.sort((a, b) => b.inten - a.inten);
+              const top = ctx.slice(0, maxContext);
+              if (top.length) {
+                const mat = coOccurrence?.[parsed.eventType]?.[k] || {};
+                let wSum = 0;
+                let scoreSum = 0;
+                let maxHotness = 0;
+                for (const it of top) {
+                  const w = clamp(it.inten - 1, 0, 2);
+                  const co = Number(mat?.[it.kw] ?? 0);
+                  if (Number.isFinite(co) && co > 0) {
+                    scoreSum += co * w;
+                    wSum += w;
+                    if (w > maxHotness) maxHotness = w;
+                  }
+                }
+                const score = (wSum > 0) ? (scoreSum / wSum) : 0; // 0..1-ish
+                const damp = Number(fvCfg.coOccurrenceBoostDamping ?? 0.5);
+                coBoost = clamp(1 + (damp * score * maxHotness), 1, 1.8);
+              }
+            }
+
             const sens = Number(fvCfg.newsSensitivity ?? 10);
-            newsAdj = clamp((intensity - 1.0) * sens, -15, 15);
+            const effectiveIntensity = intensity * coBoost;
+            newsAdj = clamp((effectiveIntensity - 1.0) * sens, -15, 15);
           }
 
           const adjusted = clamp(base + newsAdj, 1, 99);
+          // If co-occurrence is enabled, treat it as part of the FV computation surface.
+          // (We apply it by amplifying newsAdj above; this line remains unchanged.)
           const wBase = Number(fvCfg.blendBaseWeight ?? 0.6);
           const wMid = Number(fvCfg.blendMidWeight ?? 0.4);
           fv = Math.round(clamp(adjusted * wBase + tob.mid * wMid, 1, 99));
@@ -850,11 +979,11 @@ async function main() {
 
         if (!atYesLimit && !hasYes) {
           const r = broker.place({ market: ticker, side: 'YES', price: targetYes, qty: orderQtyYes });
-          log.write({ t: nowMs(), type: 'order', mode: 'paper', action: 'place', market: ticker, side: 'YES', price: targetYes, qty: orderQtyYes, ok: r.ok, reason: r.reason || null, fvMode, fv });
+          log.write({ t: nowMs(), type: 'order', mode: 'paper', action: 'place', market: ticker, side: 'YES', price: targetYes, qty: orderQtyYes, ok: r.ok, reason: r.reason || null, fvMode, fv, keyword: parsed?.keyword ?? null, eventType: parsed?.eventType ?? null });
         }
         if (!atNoLimit && !hasNo) {
           const r = broker.place({ market: ticker, side: 'NO', price: targetNo, qty: orderQtyNo });
-          log.write({ t: nowMs(), type: 'order', mode: 'paper', action: 'place', market: ticker, side: 'NO', price: targetNo, qty: orderQtyNo, ok: r.ok, reason: r.reason || null, fvMode, fv });
+          log.write({ t: nowMs(), type: 'order', mode: 'paper', action: 'place', market: ticker, side: 'NO', price: targetNo, qty: orderQtyNo, ok: r.ok, reason: r.reason || null, fvMode, fv, keyword: parsed?.keyword ?? null, eventType: parsed?.eventType ?? null });
         }
       }
 
