@@ -179,6 +179,22 @@
         "tariffs": 0.167
       }
     },
+    "TRUMP_SPEECH": {
+      "ai": {},
+      "bitcoin": {},
+      "border": {},
+      "china": {},
+      "climate": {},
+      "economy": {},
+      "housing": {},
+      "immigration": {},
+      "inflation": {},
+      "jobs": {},
+      "nato": {},
+      "recession": {},
+      "tariffs": {},
+      "ukraine": {}
+    },
     "WHITE_HOUSE": {
       "ai": {
         "border": 1.0,
@@ -265,6 +281,22 @@
       "tariffs": 25,
       "ukraine": 30
     },
+    "TRUMP_SPEECH": {
+      "ai": 60,
+      "bitcoin": 25,
+      "border": 50,
+      "china": 70,
+      "climate": 30,
+      "economy": 95,
+      "housing": 20,
+      "immigration": 55,
+      "inflation": 45,
+      "jobs": 70,
+      "nato": 15,
+      "recession": 5,
+      "tariffs": 55,
+      "ukraine": 25
+    },
     "WHITE_HOUSE": {
       "ai": 100,
       "bitcoin": 0,
@@ -282,7 +314,7 @@
       "ukraine": 5
     }
   },
-  "generated_at": 1770107228,
+  "generated_at": 1770148200,
   "keywords": [
     "inflation",
     "recession",
@@ -313,6 +345,27 @@
         "https://www.federalreserve.gov/mediacenter/files/FOMCpresconf20250129.pdf",
         "https://www.federalreserve.gov/mediacenter/files/FOMCpresconf20241218.pdf",
         "https://www.federalreserve.gov/mediacenter/files/FOMCpresconf20241107.pdf"
+      ]
+    },
+    "TRUMP_SPEECH": {
+      "count": 16,
+      "urls": [
+        "https://www.whitehouse.gov/briefings-statements/2025/01/inaugural-address-by-president-donald-j-trump-2/",
+        "https://www.weforum.org/stories/2025/01/davos-2025-special-address-donald-trump-president-united-states/",
+        "https://www.rev.com/transcripts/trump-speaks-at-cpac",
+        "https://time.com/7264688/trump-speech-congress-2025-transcript/",
+        "https://singjupost.com/transcript-of-president-trump-remarks-at-the-white-house-digital-assets-summit/",
+        "https://www.rev.com/transcripts/trump-speaks-to-cryptocurrency-conference",
+        "https://www.rev.com/transcripts/trump-executive-order-on-auto-tariffs",
+        "https://www.rev.com/transcripts/white-house-cabinet-meeting-4-10-25",
+        "https://rollcall.com/factbase/trump/transcript/donald-trump-speech-stablecoin-crypto-bill-signing-july-18-2025/",
+        "https://www.rev.com/transcripts/trump-cabinet-meeting-8-26-25",
+        "https://www.rev.com/transcripts/white-house-cabinet-meeting-10-09-25",
+        "https://www.coindesk.com/policy/2025/11/06/trump-says-he-wants-u-s-to-be-the-bitcoin-superpower-cites-competition-from-china",
+        "https://www.rev.com/transcripts/presidential-address-on-12-17-25",
+        "https://www.rev.com/transcripts/trump-at-wef",
+        "https://www.rev.com/transcripts/trump-accounts-summit",
+        "https://www.cbsnews.com/news/trump-rare-earth-minerals-stockpile-12-billion/"
       ]
     },
     "WHITE_HOUSE": {
