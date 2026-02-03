@@ -17,6 +17,9 @@ venv/
 
 # OpenClaw / local
 memory/heartbeat-state.json
+*credentials.json
+clawtasks-credentials.json
+moltbook-credentials.json
 
 # Kalshi project generated artifacts
 projects/kalshi/logs/

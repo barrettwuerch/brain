@@ -39,7 +39,7 @@
     "repriceThresholdCents": 2,
     "staleThresholdCents": 4,
     "maxOrderAgeMs": 90000,
-    "maxPositionQtyPerMarket": 10,
+    "maxPositionQtyPerMarket": 5,
     "pauseAfterFillMs": 500,
     "probFillAtBestBid": 0.02,
     "maxSpreadForProbFill": 6,

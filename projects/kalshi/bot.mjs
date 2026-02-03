@@ -142,12 +142,45 @@ function computeTopOfBook(orderbookResp) {
 }
 
 class PaperBroker {
-  constructor({ maxOpenOrders }) {
+  constructor({ maxOpenOrders, stateFile = null, log = null }) {
     this.maxOpenOrders = maxOpenOrders;
     this.orders = new Map(); // id -> order
     this.nextId = 1;
     this.positions = new Map(); // market -> { yes, no }
     this.lastFillAtMs = new Map(); // market -> timestamp
+    this.stateFile = stateFile;
+    this.log = log;
+
+    // Load persisted positions (paper only) so restarts don't reset risk caps.
+    this._loadState();
+  }
+
+  _loadState() {
+    try {
+      if (!this.stateFile) return;
+      if (!fs.existsSync(this.stateFile)) return;
+      const parsed = JSON.parse(fs.readFileSync(this.stateFile, 'utf8'));
+      const pos = parsed?.positions || {};
+      for (const [m, p] of Object.entries(pos)) {
+        const yes = Number(p?.yes || 0);
+        const no = Number(p?.no || 0);
+        if (!m) continue;
+        this.positions.set(m, { yes, no });
+      }
+      this.log?.write?.({ t: nowMs(), type: 'paper_state_loaded', stateFile: this.stateFile, markets: this.positions.size });
+    } catch (e) {
+      this.log?.write?.({ t: nowMs(), type: 'warning', msg: 'paper_state_load_failed', stateFile: this.stateFile });
+    }
+  }
+
+  _saveState() {
+    try {
+      if (!this.stateFile) return;
+      const obj = { updatedAtMs: nowMs(), positions: Object.fromEntries(this.positions) };
+      fs.writeFileSync(this.stateFile, JSON.stringify(obj, null, 2));
+    } catch (e) {
+      this.log?.write?.({ t: nowMs(), type: 'warning', msg: 'paper_state_save_failed', stateFile: this.stateFile });
+    }
   }
 
   getPosition(market) {
@@ -212,6 +245,7 @@ class PaperBroker {
     if (o.side === 'YES') pos.yes += o.qty;
     if (o.side === 'NO') pos.no += o.qty;
     this.positions.set(o.market, pos);
+    this._saveState();
 
     const t = nowMs();
     this.lastFillAtMs.set(o.market, t);
@@ -440,7 +474,8 @@ async function main() {
 
   const log = jsonlWriter(cfg.logging.dir);
   const client = new KalshiClient({ baseUrl: cfg.baseUrl, keyId, privateKeyPem });
-  const broker = new PaperBroker({ maxOpenOrders: cfg.risk.maxOpenOrders });
+  const paperStateFile = path.join(cfg.logging.dir, 'paper_state.json');
+  const broker = new PaperBroker({ maxOpenOrders: cfg.risk.maxOpenOrders, stateFile: paperStateFile, log });
 
   // graceful shutdown
   let shuttingDown = false;

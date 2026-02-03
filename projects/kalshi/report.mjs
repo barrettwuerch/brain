@@ -59,6 +59,7 @@ function main() {
   const spreads = [];
   const mids = [];
   const fills = [];
+  const lastMidByMarket = new Map();
 
   const perMarket = new Map();
   function ensure(ticker) {
@@ -80,7 +81,11 @@ function main() {
         const s = e.tob?.spread;
         const m = e.tob?.mid;
         if (Number.isFinite(s)) { spreads.push(s); pm.spreads.push(s); }
-        if (Number.isFinite(m)) { mids.push(m); pm.mids.push(m); }
+        if (Number.isFinite(m)) {
+          mids.push(m);
+          pm.mids.push(m);
+          lastMidByMarket.set(e.market, m);
+        }
       }
     }
 
@@ -139,6 +144,37 @@ function main() {
     avgMid: avg(d.mids),
   })).sort((a,b) => (b.fills - a.fills) || (b.snapshots - a.snapshots));
 
+  // Build per-market positions + mark-to-market
+  const posByMarket = new Map();
+  function ensurePos(market) {
+    if (!posByMarket.has(market)) posByMarket.set(market, { yesQty: 0, noQty: 0, yesCost: 0, noCost: 0 });
+    return posByMarket.get(market);
+  }
+  for (const f of fills) {
+    const p = ensurePos(f.market);
+    const qty = Number(f.qty || 0);
+    const price = Number(f.price || 0);
+    if (f.side === 'YES') { p.yesQty += qty; p.yesCost += qty * price; }
+    if (f.side === 'NO') { p.noQty += qty; p.noCost += qty * price; }
+  }
+
+  const positions = [...posByMarket.entries()].map(([market, p]) => {
+    const mid = lastMidByMarket.get(market) ?? null;
+    const yesAvg = p.yesQty ? (p.yesCost / p.yesQty) : null;
+    const noAvg = p.noQty ? (p.noCost / p.noQty) : null;
+    let unrealizedCents = null;
+    if (Number.isFinite(mid)) {
+      unrealizedCents = 0;
+      if (p.yesQty) unrealizedCents += (mid - yesAvg) * p.yesQty;
+      if (p.noQty) unrealizedCents += ((100 - mid) - noAvg) * p.noQty;
+      unrealizedCents = Math.round(unrealizedCents);
+    }
+    const netYesMinusNo = p.yesQty - p.noQty;
+    return { market, yesQty: p.yesQty, noQty: p.noQty, netYesMinusNo, yesAvg, noAvg, mid, unrealizedCents };
+  }).sort((a,b) => Math.abs(b.unrealizedCents ?? 0) - Math.abs(a.unrealizedCents ?? 0));
+
+  const totalUnrealizedCents = positions.reduce((s, r) => s + (r.unrealizedCents ?? 0), 0);
+
   const report = {
     file,
     totals: counts,
@@ -165,6 +201,11 @@ function main() {
       totalFills: fills.length,
       note: 'Estimated. Assumes maker fees ~2c/contract/side. Unpaired fills are open risk and not marked-to-market.',
     },
+    mtm: {
+      totalUnrealizedCents,
+      note: 'Estimated using last logged mid per market. NO valued at (100-mid). Fees not included.'
+    },
+    positions: positions.slice(0, 200),
     perMarket: marketSummaries.slice(0, 50),
   };
 
@@ -175,7 +216,9 @@ function main() {
   console.log('last selection:', lastSelection);
   console.log('spread samples:', spreads.length, 'avg:', report.spread.avg?.toFixed?.(2) ?? null);
   console.log('fills:', fills.length, 'pairedContracts:', pairedContracts, 'netPnL($):', ((report.pnlEstimate.netCents || 0) / 100).toFixed(2));
+  console.log('unrealizedMTM($):', ((report.mtm.totalUnrealizedCents || 0) / 100).toFixed(2));
   console.log('top markets (by fills):', report.perMarket.slice(0, 10).map(m => ({ t: m.ticker, fills: m.fills, avgSpread: m.avgSpread && m.avgSpread.toFixed(1) })));
+  console.log('top positions (by |unrealized|):', report.positions.slice(0, 10).map(p => ({ m: p.market, yes: p.yesQty, no: p.noQty, mid: p.mid, unrl$: ((p.unrealizedCents||0)/100).toFixed(2) })));
   console.log('--- JSON ---');
   console.log(JSON.stringify(report, null, 2));
 }
