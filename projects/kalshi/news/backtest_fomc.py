@@ -30,25 +30,29 @@ def fetch_text(url: str) -> str:
 
 
 def pdf_to_text(url: str) -> str:
-    # crude: rely on existing local pdfminer tool if available
-    import subprocess, tempfile, os
+    """Download a PDF and extract text.
+
+    This script is intended to be run either:
+    - inside projects/kalshi/news/.venv (recommended), or
+    - with system python if pdfminer.six is installed.
+    """
+    import tempfile, os
+
     r = requests.get(url, timeout=60)
     r.raise_for_status()
     with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as f:
         f.write(r.content)
         pdf_path = f.name
+
     try:
-        # use pdf2txt.py if present (from pdfminer.six)
-        cmd = ['python3', '-m', 'pdfminer.high_level', pdf_path]
-        # fallback: use bundled script in venv if installed
-        p = subprocess.run(cmd, capture_output=True, text=True)
-        if p.returncode == 0 and p.stdout.strip():
-            return p.stdout
-        # fallback to pdf2txt.py if on PATH
-        p2 = subprocess.run(['pdf2txt.py', pdf_path], capture_output=True, text=True)
-        if p2.returncode == 0:
-            return p2.stdout
-        return ''
+        try:
+            from pdfminer.high_level import extract_text  # type: ignore
+        except Exception as e:
+            raise RuntimeError(
+                "pdfminer.six is required. Run: source projects/kalshi/news/.venv/bin/activate && python news/backtest_fomc.py"
+            ) from e
+
+        return extract_text(pdf_path) or ''
     finally:
         try:
             os.unlink(pdf_path)
@@ -104,10 +108,15 @@ def main():
     except Exception:
         html = fetch_text('https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm')
 
-    pdf_urls = list(dict.fromkeys(re.findall(r'https://www\\.federalreserve\\.gov/mediacenter/files/FOMCpresconf\d+\\.pdf', html)))
+    # The calendars page reliably contains minutes PDFs like:
+    #   /monetarypolicy/files/fomcminutesYYYYMMDD.pdf
+    # We derive pressconf transcript PDFs from those dates.
+    dates = re.findall(r'fomcminutes(\d{8})\.pdf', html, flags=re.I)
+    dates = list(dict.fromkeys(dates))
+    pdf_urls = [f"https://www.federalreserve.gov/mediacenter/files/FOMCpresconf{d}.pdf" for d in dates]
 
     if len(pdf_urls) < 15:
-        raise SystemExit(f"Not enough FOMC presconf PDFs found: {len(pdf_urls)}")
+        raise SystemExit(f"Not enough FOMC minutes-derived dates found: {len(pdf_urls)}")
 
     # take earliest->latest by the numeric date in url
     def key(u):
