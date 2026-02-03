@@ -86,6 +86,22 @@ function parseBracketFromMarket(mkt) {
   const rules = String(mkt?.rules_primary || '') + '\n' + String(mkt?.rules_secondary || '');
   const combined = (title + ' ' + rules).toLowerCase();
 
+  // Prefer structured bounds when present.
+  const floor = (mkt?.floor_strike != null) ? Number(mkt.floor_strike) : null;
+  const cap = (mkt?.cap_strike != null) ? Number(mkt.cap_strike) : null;
+  if (Number.isFinite(floor) && Number.isFinite(cap)) {
+    return { ok: true, kind: 'range', lo: floor, hi: cap };
+  }
+  if (Number.isFinite(floor) && cap == null) {
+    // "T" markets: >floor
+    return { ok: true, kind: 'gt', lo: floor };
+  }
+  if (floor == null && Number.isFinite(cap)) {
+    // "T" markets: <cap
+    return { ok: true, kind: 'lt', hi: cap };
+  }
+
+  // Fallback to title/rules regex if structured fields are missing.
   // Common patterns: "42–43°F" or "42-43" or "42 to 43".
   let m = combined.match(/(\d{1,3})\s*(?:–|-|to)\s*(\d{1,3})\s*°?f/);
   if (!m) m = combined.match(/(\d{1,3})\s*(?:–|-|to)\s*(\d{1,3})\b/);
@@ -96,12 +112,6 @@ function parseBracketFromMarket(mkt) {
       return { ok: true, kind: 'range', lo, hi };
     }
   }
-
-  // Tails
-  m = combined.match(/(\d{1,3})\s*°?f\s*or\s*below/);
-  if (m) return { ok: true, kind: 'le', hi: Number(m[1]) };
-  m = combined.match(/(\d{1,3})\s*°?f\s*or\s*above/);
-  if (m) return { ok: true, kind: 'ge', lo: Number(m[1]) };
 
   return { ok: false, reason: 'no_bracket_match', title };
 }
@@ -139,6 +149,7 @@ async function getForecastHighF(lat, lon, ua) {
 
 async function main() {
   const configPath = arg('--config', path.join(os.homedir(), '.openclaw/workspace/projects/kalshi/weather/weather_config.paper.json'));
+  const debug = String(arg('--debug', 'false')).toLowerCase() === 'true';
   const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
   const cities = JSON.parse(fs.readFileSync(cfg.citiesPath, 'utf8'));
@@ -191,6 +202,13 @@ async function main() {
       for (const mkt of markets.slice(0, 10)) {
         const parsed = parseBracketFromMarket(mkt);
         console.log('-', mkt.ticker, '|', (mkt.title || '').slice(0, 80), '| bracket:', parsed.ok ? parsed : parsed.reason);
+        if (debug) {
+          console.log('  raw:', {
+            custom_strike: mkt.custom_strike ?? null,
+            floor_strike: mkt.floor_strike ?? null,
+            cap_strike: mkt.cap_strike ?? null,
+          });
+        }
       }
     }
   }
