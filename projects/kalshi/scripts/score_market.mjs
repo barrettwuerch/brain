@@ -1,17 +1,19 @@
 #!/usr/bin/env node
 /**
- * bord_debug.mjs
+ * score_market.mjs
  *
- * Summarize what FV the bot was using for a specific market (BORD) from JSONL logs.
+ * Summarize what FV the bot was using for a specific market from JSONL logs,
+ * fetch Kalshi settlement/status, and output a scorecard.
  *
  * Usage:
- *   node projects/kalshi/scripts/bord_debug.mjs --log projects/kalshi/logs/2026-02-03.jsonl \
+ *   node projects/kalshi/scripts/score_market.mjs --log projects/kalshi/logs/2026-02-03.jsonl \
  *     --market KXTRUMPMENTION-26FEB04-BORD
  *
  * Output:
  * - counts by fvMode
  * - last seen fv + eventType + keyword
- * - side/price/qty history for the market
+ * - settlement/outcome (when resolved)
+ * - a one-line scorecard JSON (easy to append to calibration_log.jsonl)
  */
 
 import fs from 'node:fs';
@@ -111,13 +113,14 @@ function normalizeSettlementToYesNo(mkt) {
 
 async function main() {
   const logFile = arg('--log');
-  const market = arg('--market', 'KXTRUMPMENTION-26FEB04-BORD');
+  const market = arg('--market');
   const withSettlement = String(arg('--with-settlement', 'true')).toLowerCase() !== 'false';
 
   const configPath = arg('--config', path.join(os.homedir(), '.openclaw/workspace/projects/kalshi/config.paper.json'));
   const envPath = arg('--env', process.env.KALSHI_ENV_FILE || path.join(os.homedir(), '.openclaw/secrets/kalshi.env'));
 
   if (!logFile) throw new Error('Provide --log <file>');
+  if (!market) throw new Error('Provide --market <ticker>');
 
   const events = readJsonl(logFile);
 
