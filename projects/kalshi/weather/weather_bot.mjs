@@ -437,6 +437,15 @@ async function main() {
           const fvByMarket = computeCoherentFVs(brackets, fh.maxF, sigma);
           log.write({ t: nowMs(), type: 'fv_group', city: code, event: et, forecastHighF: fh.maxF, sigmaF: sigma, brackets: brackets.length });
 
+          // Persist the actual per-bracket probabilities for scoring/calibration.
+          const fvDetail = [];
+          for (const b of brackets) {
+            const v = fvByMarket.get(b.ticker);
+            if (!v) continue;
+            fvDetail.push({ ...b, prob: v.prob, fvCents: v.fvCents });
+          }
+          log.write({ t: nowMs(), type: 'fv_detail', city: code, event: et, forecastHighF: fh.maxF, sigmaF: sigma, brackets: fvDetail });
+
           for (const mkt of markets) {
             const ticker = mkt?.ticker;
             if (!ticker) continue;

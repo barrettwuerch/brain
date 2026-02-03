@@ -1,0 +1,8426 @@
+{
+  "generatedAt": "2026-02-03T21:37:03.649Z",
+  "window": {
+    "startYmd": "2021-02-03",
+    "endYmd": "2026-02-03",
+    "years": 5
+  },
+  "stations": {
+    "NYC": {
+      "city": "New York City",
+      "lat": 40.7829,
+      "lon": -73.9654,
+      "ghcndStationId": "USW00094728",
+      "ghcndStationName": "NY CITY CNTRL PARK",
+      "distanceKm": 0.55
+    },
+    "CHI": {
+      "city": "Chicago",
+      "lat": 41.7868,
+      "lon": -87.7522,
+      "ghcndStationId": "USW00014819",
+      "ghcndStationName": "CHICAGO MIDWAY AP",
+      "distanceKm": 0.39
+    },
+    "MIA": {
+      "city": "Miami",
+      "lat": 25.7959,
+      "lon": -80.287,
+      "ghcndStationId": "USW00012839",
+      "ghcndStationName": "MIAMI INTL AP",
+      "distanceKm": 3.12
+    },
+    "AUS": {
+      "city": "Austin",
+      "lat": 30.1945,
+      "lon": -97.6699,
+      "ghcndStationId": "USW00013904",
+      "ghcndStationName": "AUSTIN BERGSTROM INTL AP",
+      "distanceKm": 1.6
+    },
+    "LAX": {
+      "city": "Los Angeles",
+      "lat": 34.0236,
+      "lon": -118.2916,
+      "ghcndStationId": "USW00093134",
+      "ghcndStationName": "LOS ANGELES DOWNTOWN/USC",
+      "distanceKm": 0.05
+    }
+  },
+  "months": {
+    "NYC": {
+      "10": {
+        "n": 155,
+        "meanF": 66.34,
+        "stdDevF": 7.3,
+        "p10F": 57.92,
+        "p25F": 60.98,
+        "p50F": 66.02,
+        "p75F": 71.51,
+        "p90F": 75.92,
+        "histogram1F": [
+          {
+            "binF": 51,
+            "count": 1
+          },
+          {
+            "binF": 53,
+            "count": 1
+          },
+          {
+            "binF": 54,
+            "count": 2
+          },
+          {
+            "binF": 55,
+            "count": 2
+          },
+          {
+            "binF": 56,
+            "count": 5
+          },
+          {
+            "binF": 57,
+            "count": 4
+          },
+          {
+            "binF": 58,
+            "count": 8
+          },
+          {
+            "binF": 59,
+            "count": 8
+          },
+          {
+            "binF": 60,
+            "count": 6
+          },
+          {
+            "binF": 61,
+            "count": 10
+          },
+          {
+            "binF": 62,
+            "count": 5
+          },
+          {
+            "binF": 63,
+            "count": 14
+          },
+          {
+            "binF": 64,
+            "count": 5
+          },
+          {
+            "binF": 65,
+            "count": 5
+          },
+          {
+            "binF": 66,
+            "count": 8
+          },
+          {
+            "binF": 67,
+            "count": 4
+          },
+          {
+            "binF": 68,
+            "count": 7
+          },
+          {
+            "binF": 69,
+            "count": 12
+          },
+          {
+            "binF": 70,
+            "count": 4
+          },
+          {
+            "binF": 71,
+            "count": 5
+          },
+          {
+            "binF": 72,
+            "count": 4
+          },
+          {
+            "binF": 73,
+            "count": 6
+          },
+          {
+            "binF": 74,
+            "count": 4
+          },
+          {
+            "binF": 75,
+            "count": 4
+          },
+          {
+            "binF": 76,
+            "count": 6
+          },
+          {
+            "binF": 77,
+            "count": 4
+          },
+          {
+            "binF": 79,
+            "count": 2
+          },
+          {
+            "binF": 80,
+            "count": 4
+          },
+          {
+            "binF": 81,
+            "count": 2
+          },
+          {
+            "binF": 82,
+            "count": 1
+          },
+          {
+            "binF": 83,
+            "count": 1
+          },
+          {
+            "binF": 84,
+            "count": 1
+          }
+        ]
+      },
+      "11": {
+        "n": 150,
+        "meanF": 54.9,
+        "stdDevF": 9.14,
+        "p10F": 43.95,
+        "p25F": 48.25,
+        "p50F": 53.96,
+        "p75F": 60.08,
+        "p90F": 67.03,
+        "histogram1F": [
+          {
+            "binF": 38,
+            "count": 1
+          },
+          {
+            "binF": 39,
+            "count": 2
+          },
+          {
+            "binF": 40,
+            "count": 4
+          },
+          {
+            "binF": 41,
+            "count": 5
+          },
+          {
+            "binF": 42,
+            "count": 2
+          },
+          {
+            "binF": 43,
+            "count": 1
+          },
+          {
+            "binF": 44,
+            "count": 4
+          },
+          {
+            "binF": 45,
+            "count": 4
+          },
+          {
+            "binF": 46,
+            "count": 3
+          },
+          {
+            "binF": 47,
+            "count": 8
+          },
+          {
+            "binF": 48,
+            "count": 4
+          },
+          {
+            "binF": 49,
+            "count": 7
+          },
+          {
+            "binF": 50,
+            "count": 5
+          },
+          {
+            "binF": 51,
+            "count": 7
+          },
+          {
+            "binF": 52,
+            "count": 6
+          },
+          {
+            "binF": 53,
+            "count": 7
+          },
+          {
+            "binF": 54,
+            "count": 8
+          },
+          {
+            "binF": 55,
+            "count": 6
+          },
+          {
+            "binF": 56,
+            "count": 6
+          },
+          {
+            "binF": 57,
+            "count": 4
+          },
+          {
+            "binF": 58,
+            "count": 9
+          },
+          {
+            "binF": 59,
+            "count": 6
+          },
+          {
+            "binF": 60,
+            "count": 4
+          },
+          {
+            "binF": 61,
+            "count": 4
+          },
+          {
+            "binF": 62,
+            "count": 2
+          },
+          {
+            "binF": 63,
+            "count": 4
+          },
+          {
+            "binF": 64,
+            "count": 2
+          },
+          {
+            "binF": 65,
+            "count": 4
+          },
+          {
+            "binF": 66,
+            "count": 3
+          },
+          {
+            "binF": 67,
+            "count": 3
+          },
+          {
+            "binF": 68,
+            "count": 3
+          },
+          {
+            "binF": 69,
+            "count": 3
+          },
+          {
+            "binF": 70,
+            "count": 2
+          },
+          {
+            "binF": 73,
+            "count": 2
+          },
+          {
+            "binF": 75,
+            "count": 1
+          },
+          {
+            "binF": 76,
+            "count": 1
+          },
+          {
+            "binF": 77,
+            "count": 1
+          },
+          {
+            "binF": 79,
+            "count": 1
+          },
+          {
+            "binF": 80,
+            "count": 1
+          }
+        ]
+      },
+      "12": {
+        "n": 155,
+        "meanF": 45.34,
+        "stdDevF": 9.07,
+        "p10F": 33.98,
+        "p25F": 39.02,
+        "p50F": 44.06,
+        "p75F": 51.53,
+        "p90F": 57.92,
+        "histogram1F": [
+          {
+            "binF": 15,
+            "count": 1
+          },
+          {
+            "binF": 21,
+            "count": 1
+          },
+          {
+            "binF": 28,
+            "count": 1
+          },
+          {
+            "binF": 29,
+            "count": 3
+          },
+          {
+            "binF": 31,
+            "count": 2
+          },
+          {
+            "binF": 32,
+            "count": 2
+          },
+          {
+            "binF": 33,
+            "count": 5
+          },
+          {
+            "binF": 34,
+            "count": 2
+          },
+          {
+            "binF": 35,
+            "count": 4
+          },
+          {
+            "binF": 36,
+            "count": 2
+          },
+          {
+            "binF": 37,
+            "count": 3
+          },
+          {
+            "binF": 38,
+            "count": 4
+          },
+          {
+            "binF": 39,
+            "count": 11
+          },
+          {
+            "binF": 40,
+            "count": 8
+          },
+          {
+            "binF": 41,
+            "count": 8
+          },
+          {
+            "binF": 42,
+            "count": 6
+          },
+          {
+            "binF": 43,
+            "count": 8
+          },
+          {
+            "binF": 44,
+            "count": 7
+          },
+          {
+            "binF": 45,
+            "count": 4
+          },
+          {
+            "binF": 46,
+            "count": 4
+          },
+          {
+            "binF": 47,
+            "count": 8
+          },
+          {
+            "binF": 48,
+            "count": 4
+          },
+          {
+            "binF": 49,
+            "count": 7
+          },
+          {
+            "binF": 50,
+            "count": 5
+          },
+          {
+            "binF": 51,
+            "count": 6
+          },
+          {
+            "binF": 52,
+            "count": 2
+          },
+          {
+            "binF": 53,
+            "count": 5
+          },
+          {
+            "binF": 54,
+            "count": 3
+          },
+          {
+            "binF": 55,
+            "count": 6
+          },
+          {
+            "binF": 56,
+            "count": 1
+          },
+          {
+            "binF": 57,
+            "count": 1
+          },
+          {
+            "binF": 58,
+            "count": 7
+          },
+          {
+            "binF": 59,
+            "count": 4
+          },
+          {
+            "binF": 60,
+            "count": 4
+          },
+          {
+            "binF": 61,
+            "count": 2
+          },
+          {
+            "binF": 62,
+            "count": 3
+          },
+          {
+            "binF": 66,
+            "count": 1
+          }
+        ]
+      },
+      "01": {
+        "n": 155,
+        "meanF": 40.1,
+        "stdDevF": 10.05,
+        "p10F": 26.24,
+        "p25F": 33.08,
+        "p50F": 39.92,
+        "p75F": 46.94,
+        "p90F": 53.6,
+        "histogram1F": [
+          {
+            "binF": 17,
+            "count": 1
+          },
+          {
+            "binF": 18,
+            "count": 1
+          },
+          {
+            "binF": 19,
+            "count": 1
+          },
+          {
+            "binF": 20,
+            "count": 1
+          },
+          {
+            "binF": 21,
+            "count": 1
+          },
+          {
+            "binF": 22,
+            "count": 3
+          },
+          {
+            "binF": 23,
+            "count": 2
+          },
+          {
+            "binF": 24,
+            "count": 3
+          },
+          {
+            "binF": 26,
+            "count": 4
+          },
+          {
+            "binF": 27,
+            "count": 1
+          },
+          {
+            "binF": 28,
+            "count": 2
+          },
+          {
+            "binF": 29,
+            "count": 3
+          },
+          {
+            "binF": 30,
+            "count": 6
+          },
+          {
+            "binF": 31,
+            "count": 2
+          },
+          {
+            "binF": 32,
+            "count": 6
+          },
+          {
+            "binF": 33,
+            "count": 6
+          },
+          {
+            "binF": 34,
+            "count": 4
+          },
+          {
+            "binF": 35,
+            "count": 2
+          },
+          {
+            "binF": 36,
+            "count": 5
+          },
+          {
+            "binF": 37,
+            "count": 4
+          },
+          {
+            "binF": 38,
+            "count": 7
+          },
+          {
+            "binF": 39,
+            "count": 6
+          },
+          {
+            "binF": 40,
+            "count": 8
+          },
+          {
+            "binF": 41,
+            "count": 6
+          },
+          {
+            "binF": 42,
+            "count": 9
+          },
+          {
+            "binF": 43,
+            "count": 4
+          },
+          {
+            "binF": 44,
+            "count": 6
+          },
+          {
+            "binF": 45,
+            "count": 3
+          },
+          {
+            "binF": 46,
+            "count": 4
+          },
+          {
+            "binF": 47,
+            "count": 7
+          },
+          {
+            "binF": 48,
+            "count": 5
+          },
+          {
+            "binF": 49,
+            "count": 5
+          },
+          {
+            "binF": 50,
+            "count": 4
+          },
+          {
+            "binF": 51,
+            "count": 1
+          },
+          {
+            "binF": 52,
+            "count": 4
+          },
+          {
+            "binF": 53,
+            "count": 2
+          },
+          {
+            "binF": 54,
+            "count": 2
+          },
+          {
+            "binF": 55,
+            "count": 3
+          },
+          {
+            "binF": 56,
+            "count": 2
+          },
+          {
+            "binF": 57,
+            "count": 4
+          },
+          {
+            "binF": 58,
+            "count": 1
+          },
+          {
+            "binF": 59,
+            "count": 2
+          },
+          {
+            "binF": 60,
+            "count": 1
+          },
+          {
+            "binF": 66,
+            "count": 1
+          }
+        ]
+      },
+      "02": {
+        "n": 139,
+        "meanF": 44.26,
+        "stdDevF": 9.67,
+        "p10F": 33.08,
+        "p25F": 35.96,
+        "p50F": 44.06,
+        "p75F": 50,
+        "p90F": 57.02,
+        "histogram1F": [
+          {
+            "binF": 25,
+            "count": 1
+          },
+          {
+            "binF": 27,
+            "count": 3
+          },
+          {
+            "binF": 29,
+            "count": 2
+          },
+          {
+            "binF": 30,
+            "count": 6
+          },
+          {
+            "binF": 31,
+            "count": 1
+          },
+          {
+            "binF": 33,
+            "count": 4
+          },
+          {
+            "binF": 34,
+            "count": 1
+          },
+          {
+            "binF": 35,
+            "count": 8
+          },
+          {
+            "binF": 36,
+            "count": 10
+          },
+          {
+            "binF": 37,
+            "count": 5
+          },
+          {
+            "binF": 38,
+            "count": 5
+          },
+          {
+            "binF": 39,
+            "count": 2
+          },
+          {
+            "binF": 40,
+            "count": 6
+          },
+          {
+            "binF": 41,
+            "count": 4
+          },
+          {
+            "binF": 42,
+            "count": 2
+          },
+          {
+            "binF": 43,
+            "count": 8
+          },
+          {
+            "binF": 44,
+            "count": 4
+          },
+          {
+            "binF": 45,
+            "count": 7
+          },
+          {
+            "binF": 46,
+            "count": 8
+          },
+          {
+            "binF": 47,
+            "count": 5
+          },
+          {
+            "binF": 48,
+            "count": 5
+          },
+          {
+            "binF": 49,
+            "count": 4
+          },
+          {
+            "binF": 50,
+            "count": 5
+          },
+          {
+            "binF": 51,
+            "count": 2
+          },
+          {
+            "binF": 52,
+            "count": 2
+          },
+          {
+            "binF": 53,
+            "count": 2
+          },
+          {
+            "binF": 54,
+            "count": 4
+          },
+          {
+            "binF": 55,
+            "count": 5
+          },
+          {
+            "binF": 56,
+            "count": 2
+          },
+          {
+            "binF": 57,
+            "count": 4
+          },
+          {
+            "binF": 59,
+            "count": 1
+          },
+          {
+            "binF": 60,
+            "count": 1
+          },
+          {
+            "binF": 61,
+            "count": 4
+          },
+          {
+            "binF": 62,
+            "count": 1
+          },
+          {
+            "binF": 63,
+            "count": 1
+          },
+          {
+            "binF": 67,
+            "count": 1
+          },
+          {
+            "binF": 68,
+            "count": 2
+          },
+          {
+            "binF": 70,
+            "count": 1
+          }
+        ]
+      },
+      "03": {
+        "n": 155,
+        "meanF": 54.11,
+        "stdDevF": 9.79,
+        "p10F": 42.98,
+        "p25F": 48.02,
+        "p50F": 53.06,
+        "p75F": 60.98,
+        "p90F": 66.92,
+        "histogram1F": [
+          {
+            "binF": 33,
+            "count": 3
+          },
+          {
+            "binF": 34,
+            "count": 1
+          },
+          {
+            "binF": 35,
+            "count": 1
+          },
+          {
+            "binF": 37,
+            "count": 3
+          },
+          {
+            "binF": 38,
+            "count": 2
+          },
+          {
+            "binF": 39,
+            "count": 2
+          },
+          {
+            "binF": 40,
+            "count": 1
+          },
+          {
+            "binF": 41,
+            "count": 2
+          },
+          {
+            "binF": 43,
+            "count": 3
+          },
+          {
+            "binF": 44,
+            "count": 1
+          },
+          {
+            "binF": 45,
+            "count": 6
+          },
+          {
+            "binF": 46,
+            "count": 5
+          },
+          {
+            "binF": 47,
+            "count": 7
+          },
+          {
+            "binF": 48,
+            "count": 10
+          },
+          {
+            "binF": 49,
+            "count": 5
+          },
+          {
+            "binF": 50,
+            "count": 5
+          },
+          {
+            "binF": 51,
+            "count": 7
+          },
+          {
+            "binF": 52,
+            "count": 9
+          },
+          {
+            "binF": 53,
+            "count": 9
+          },
+          {
+            "binF": 54,
+            "count": 5
+          },
+          {
+            "binF": 55,
+            "count": 7
+          },
+          {
+            "binF": 56,
+            "count": 4
+          },
+          {
+            "binF": 57,
+            "count": 4
+          },
+          {
+            "binF": 58,
+            "count": 2
+          },
+          {
+            "binF": 59,
+            "count": 4
+          },
+          {
+            "binF": 60,
+            "count": 4
+          },
+          {
+            "binF": 61,
+            "count": 5
+          },
+          {
+            "binF": 62,
+            "count": 7
+          },
+          {
+            "binF": 63,
+            "count": 6
+          },
+          {
+            "binF": 64,
+            "count": 3
+          },
+          {
+            "binF": 65,
+            "count": 1
+          },
+          {
+            "binF": 66,
+            "count": 4
+          },
+          {
+            "binF": 67,
+            "count": 2
+          },
+          {
+            "binF": 68,
+            "count": 5
+          },
+          {
+            "binF": 69,
+            "count": 1
+          },
+          {
+            "binF": 70,
+            "count": 1
+          },
+          {
+            "binF": 71,
+            "count": 1
+          },
+          {
+            "binF": 73,
+            "count": 2
+          },
+          {
+            "binF": 74,
+            "count": 3
+          },
+          {
+            "binF": 81,
+            "count": 1
+          },
+          {
+            "binF": 82,
+            "count": 1
+          }
+        ]
+      },
+      "04": {
+        "n": 150,
+        "meanF": 63.59,
+        "stdDevF": 10.33,
+        "p10F": 50.97,
+        "p25F": 56.21,
+        "p50F": 62.96,
+        "p75F": 71.06,
+        "p90F": 76.03,
+        "histogram1F": [
+          {
+            "binF": 39,
+            "count": 1
+          },
+          {
+            "binF": 40,
+            "count": 1
+          },
+          {
+            "binF": 45,
+            "count": 2
+          },
+          {
+            "binF": 46,
+            "count": 1
+          },
+          {
+            "binF": 48,
+            "count": 2
+          },
+          {
+            "binF": 49,
+            "count": 2
+          },
+          {
+            "binF": 50,
+            "count": 6
+          },
+          {
+            "binF": 51,
+            "count": 5
+          },
+          {
+            "binF": 53,
+            "count": 5
+          },
+          {
+            "binF": 54,
+            "count": 8
+          },
+          {
+            "binF": 55,
+            "count": 1
+          },
+          {
+            "binF": 56,
+            "count": 4
+          },
+          {
+            "binF": 57,
+            "count": 7
+          },
+          {
+            "binF": 58,
+            "count": 7
+          },
+          {
+            "binF": 59,
+            "count": 5
+          },
+          {
+            "binF": 60,
+            "count": 10
+          },
+          {
+            "binF": 61,
+            "count": 3
+          },
+          {
+            "binF": 62,
+            "count": 2
+          },
+          {
+            "binF": 63,
+            "count": 4
+          },
+          {
+            "binF": 64,
+            "count": 7
+          },
+          {
+            "binF": 65,
+            "count": 7
+          },
+          {
+            "binF": 66,
+            "count": 3
+          },
+          {
+            "binF": 67,
+            "count": 2
+          },
+          {
+            "binF": 68,
+            "count": 6
+          },
+          {
+            "binF": 69,
+            "count": 3
+          },
+          {
+            "binF": 70,
+            "count": 5
+          },
+          {
+            "binF": 71,
+            "count": 5
+          },
+          {
+            "binF": 72,
+            "count": 5
+          },
+          {
+            "binF": 73,
+            "count": 7
+          },
+          {
+            "binF": 74,
+            "count": 2
+          },
+          {
+            "binF": 75,
+            "count": 4
+          },
+          {
+            "binF": 76,
+            "count": 3
+          },
+          {
+            "binF": 77,
+            "count": 2
+          },
+          {
+            "binF": 79,
+            "count": 3
+          },
+          {
+            "binF": 80,
+            "count": 2
+          },
+          {
+            "binF": 82,
+            "count": 2
+          },
+          {
+            "binF": 84,
+            "count": 1
+          },
+          {
+            "binF": 85,
+            "count": 2
+          },
+          {
+            "binF": 87,
+            "count": 1
+          },
+          {
+            "binF": 90,
+            "count": 1
+          },
+          {
+            "binF": 91,
+            "count": 1
+          }
+        ]
+      },
+      "05": {
+        "n": 155,
+        "meanF": 71.52,
+        "stdDevF": 8.7,
+        "p10F": 60.44,
+        "p25F": 66.02,
+        "p50F": 71.96,
+        "p75F": 77,
+        "p90F": 82.04,
+        "histogram1F": [
+          {
+            "binF": 50,
+            "count": 1
+          },
+          {
+            "binF": 51,
+            "count": 3
+          },
+          {
+            "binF": 54,
+            "count": 1
+          },
+          {
+            "binF": 55,
+            "count": 2
+          },
+          {
+            "binF": 56,
+            "count": 3
+          },
+          {
+            "binF": 57,
+            "count": 2
+          },
+          {
+            "binF": 58,
+            "count": 1
+          },
+          {
+            "binF": 59,
+            "count": 1
+          },
+          {
+            "binF": 60,
+            "count": 2
+          },
+          {
+            "binF": 61,
+            "count": 4
+          },
+          {
+            "binF": 62,
+            "count": 3
+          },
+          {
+            "binF": 63,
+            "count": 2
+          },
+          {
+            "binF": 64,
+            "count": 5
+          },
+          {
+            "binF": 65,
+            "count": 7
+          },
+          {
+            "binF": 66,
+            "count": 6
+          },
+          {
+            "binF": 67,
+            "count": 5
+          },
+          {
+            "binF": 68,
+            "count": 3
+          },
+          {
+            "binF": 69,
+            "count": 9
+          },
+          {
+            "binF": 70,
+            "count": 8
+          },
+          {
+            "binF": 71,
+            "count": 3
+          },
+          {
+            "binF": 72,
+            "count": 11
+          },
+          {
+            "binF": 73,
+            "count": 9
+          },
+          {
+            "binF": 74,
+            "count": 8
+          },
+          {
+            "binF": 75,
+            "count": 8
+          },
+          {
+            "binF": 76,
+            "count": 4
+          },
+          {
+            "binF": 77,
+            "count": 6
+          },
+          {
+            "binF": 78,
+            "count": 4
+          },
+          {
+            "binF": 79,
+            "count": 8
+          },
+          {
+            "binF": 80,
+            "count": 4
+          },
+          {
+            "binF": 81,
+            "count": 2
+          },
+          {
+            "binF": 82,
+            "count": 5
+          },
+          {
+            "binF": 83,
+            "count": 1
+          },
+          {
+            "binF": 84,
+            "count": 5
+          },
+          {
+            "binF": 85,
+            "count": 1
+          },
+          {
+            "binF": 86,
+            "count": 2
+          },
+          {
+            "binF": 87,
+            "count": 1
+          },
+          {
+            "binF": 88,
+            "count": 1
+          },
+          {
+            "binF": 89,
+            "count": 2
+          },
+          {
+            "binF": 90,
+            "count": 1
+          },
+          {
+            "binF": 93,
+            "count": 1
+          }
+        ]
+      },
+      "06": {
+        "n": 150,
+        "meanF": 80.52,
+        "stdDevF": 7.27,
+        "p10F": 71.87,
+        "p25F": 75.92,
+        "p50F": 80.06,
+        "p75F": 84.92,
+        "p90F": 89.96,
+        "histogram1F": [
+          {
+            "binF": 64,
+            "count": 2
+          },
+          {
+            "binF": 66,
+            "count": 1
+          },
+          {
+            "binF": 67,
+            "count": 2
+          },
+          {
+            "binF": 68,
+            "count": 1
+          },
+          {
+            "binF": 69,
+            "count": 6
+          },
+          {
+            "binF": 71,
+            "count": 3
+          },
+          {
+            "binF": 72,
+            "count": 6
+          },
+          {
+            "binF": 73,
+            "count": 5
+          },
+          {
+            "binF": 74,
+            "count": 4
+          },
+          {
+            "binF": 75,
+            "count": 3
+          },
+          {
+            "binF": 76,
+            "count": 10
+          },
+          {
+            "binF": 77,
+            "count": 7
+          },
+          {
+            "binF": 78,
+            "count": 13
+          },
+          {
+            "binF": 79,
+            "count": 10
+          },
+          {
+            "binF": 80,
+            "count": 7
+          },
+          {
+            "binF": 81,
+            "count": 8
+          },
+          {
+            "binF": 82,
+            "count": 6
+          },
+          {
+            "binF": 83,
+            "count": 6
+          },
+          {
+            "binF": 84,
+            "count": 8
+          },
+          {
+            "binF": 85,
+            "count": 5
+          },
+          {
+            "binF": 86,
+            "count": 6
+          },
+          {
+            "binF": 87,
+            "count": 3
+          },
+          {
+            "binF": 88,
+            "count": 4
+          },
+          {
+            "binF": 89,
+            "count": 4
+          },
+          {
+            "binF": 90,
+            "count": 6
+          },
+          {
+            "binF": 91,
+            "count": 3
+          },
+          {
+            "binF": 92,
+            "count": 3
+          },
+          {
+            "binF": 93,
+            "count": 2
+          },
+          {
+            "binF": 94,
+            "count": 1
+          },
+          {
+            "binF": 95,
+            "count": 1
+          },
+          {
+            "binF": 96,
+            "count": 2
+          },
+          {
+            "binF": 98,
+            "count": 1
+          },
+          {
+            "binF": 99,
+            "count": 1
+          }
+        ]
+      },
+      "07": {
+        "n": 155,
+        "meanF": 86.14,
+        "stdDevF": 4.64,
+        "p10F": 80.96,
+        "p25F": 82.94,
+        "p50F": 86,
+        "p75F": 89.06,
+        "p90F": 91.94,
+        "histogram1F": [
+          {
+            "binF": 66,
+            "count": 1
+          },
+          {
+            "binF": 72,
+            "count": 1
+          },
+          {
+            "binF": 77,
+            "count": 2
+          },
+          {
+            "binF": 78,
+            "count": 2
+          },
+          {
+            "binF": 79,
+            "count": 2
+          },
+          {
+            "binF": 80,
+            "count": 4
+          },
+          {
+            "binF": 81,
+            "count": 11
+          },
+          {
+            "binF": 82,
+            "count": 4
+          },
+          {
+            "binF": 83,
+            "count": 14
+          },
+          {
+            "binF": 84,
+            "count": 18
+          },
+          {
+            "binF": 85,
+            "count": 14
+          },
+          {
+            "binF": 86,
+            "count": 9
+          },
+          {
+            "binF": 87,
+            "count": 13
+          },
+          {
+            "binF": 88,
+            "count": 13
+          },
+          {
+            "binF": 89,
+            "count": 12
+          },
+          {
+            "binF": 90,
+            "count": 9
+          },
+          {
+            "binF": 91,
+            "count": 8
+          },
+          {
+            "binF": 92,
+            "count": 5
+          },
+          {
+            "binF": 93,
+            "count": 3
+          },
+          {
+            "binF": 94,
+            "count": 3
+          },
+          {
+            "binF": 95,
+            "count": 6
+          },
+          {
+            "binF": 97,
+            "count": 1
+          }
+        ]
+      },
+      "08": {
+        "n": 155,
+        "meanF": 83.39,
+        "stdDevF": 5.62,
+        "p10F": 75.92,
+        "p25F": 80.06,
+        "p50F": 82.94,
+        "p75F": 87.98,
+        "p90F": 91.04,
+        "histogram1F": [
+          {
+            "binF": 70,
+            "count": 2
+          },
+          {
+            "binF": 72,
+            "count": 3
+          },
+          {
+            "binF": 73,
+            "count": 3
+          },
+          {
+            "binF": 74,
+            "count": 1
+          },
+          {
+            "binF": 75,
+            "count": 2
+          },
+          {
+            "binF": 76,
+            "count": 6
+          },
+          {
+            "binF": 77,
+            "count": 7
+          },
+          {
+            "binF": 78,
+            "count": 4
+          },
+          {
+            "binF": 79,
+            "count": 9
+          },
+          {
+            "binF": 80,
+            "count": 13
+          },
+          {
+            "binF": 81,
+            "count": 11
+          },
+          {
+            "binF": 82,
+            "count": 10
+          },
+          {
+            "binF": 83,
+            "count": 11
+          },
+          {
+            "binF": 84,
+            "count": 6
+          },
+          {
+            "binF": 85,
+            "count": 13
+          },
+          {
+            "binF": 86,
+            "count": 6
+          },
+          {
+            "binF": 87,
+            "count": 8
+          },
+          {
+            "binF": 88,
+            "count": 4
+          },
+          {
+            "binF": 89,
+            "count": 11
+          },
+          {
+            "binF": 90,
+            "count": 8
+          },
+          {
+            "binF": 91,
+            "count": 6
+          },
+          {
+            "binF": 92,
+            "count": 3
+          },
+          {
+            "binF": 93,
+            "count": 5
+          },
+          {
+            "binF": 94,
+            "count": 1
+          },
+          {
+            "binF": 95,
+            "count": 1
+          },
+          {
+            "binF": 97,
+            "count": 1
+          }
+        ]
+      },
+      "09": {
+        "n": 150,
+        "meanF": 76.54,
+        "stdDevF": 6.53,
+        "p10F": 68,
+        "p25F": 73.04,
+        "p50F": 77,
+        "p75F": 80.73,
+        "p90F": 84.02,
+        "histogram1F": [
+          {
+            "binF": 60,
+            "count": 1
+          },
+          {
+            "binF": 62,
+            "count": 1
+          },
+          {
+            "binF": 63,
+            "count": 4
+          },
+          {
+            "binF": 64,
+            "count": 1
+          },
+          {
+            "binF": 65,
+            "count": 2
+          },
+          {
+            "binF": 66,
+            "count": 4
+          },
+          {
+            "binF": 67,
+            "count": 1
+          },
+          {
+            "binF": 68,
+            "count": 5
+          },
+          {
+            "binF": 69,
+            "count": 5
+          },
+          {
+            "binF": 70,
+            "count": 2
+          },
+          {
+            "binF": 71,
+            "count": 5
+          },
+          {
+            "binF": 72,
+            "count": 5
+          },
+          {
+            "binF": 73,
+            "count": 5
+          },
+          {
+            "binF": 74,
+            "count": 12
+          },
+          {
+            "binF": 75,
+            "count": 8
+          },
+          {
+            "binF": 76,
+            "count": 9
+          },
+          {
+            "binF": 77,
+            "count": 10
+          },
+          {
+            "binF": 78,
+            "count": 8
+          },
+          {
+            "binF": 79,
+            "count": 17
+          },
+          {
+            "binF": 80,
+            "count": 7
+          },
+          {
+            "binF": 81,
+            "count": 7
+          },
+          {
+            "binF": 82,
+            "count": 8
+          },
+          {
+            "binF": 83,
+            "count": 6
+          },
+          {
+            "binF": 84,
+            "count": 4
+          },
+          {
+            "binF": 85,
+            "count": 2
+          },
+          {
+            "binF": 86,
+            "count": 3
+          },
+          {
+            "binF": 88,
+            "count": 2
+          },
+          {
+            "binF": 89,
+            "count": 1
+          },
+          {
+            "binF": 90,
+            "count": 2
+          },
+          {
+            "binF": 92,
+            "count": 1
+          },
+          {
+            "binF": 93,
+            "count": 2
+          }
+        ]
+      }
+    },
+    "CHI": {
+      "10": {
+        "n": 155,
+        "meanF": 66.89,
+        "stdDevF": 10.6,
+        "p10F": 54.39,
+        "p25F": 57.92,
+        "p50F": 66.92,
+        "p75F": 73.94,
+        "p90F": 82.04,
+        "histogram1F": [
+          {
+            "binF": 37,
+            "count": 1
+          },
+          {
+            "binF": 44,
+            "count": 1
+          },
+          {
+            "binF": 45,
+            "count": 1
+          },
+          {
+            "binF": 49,
+            "count": 2
+          },
+          {
+            "binF": 50,
+            "count": 4
+          },
+          {
+            "binF": 52,
+            "count": 1
+          },
+          {
+            "binF": 53,
+            "count": 1
+          },
+          {
+            "binF": 54,
+            "count": 5
+          },
+          {
+            "binF": 55,
+            "count": 1
+          },
+          {
+            "binF": 56,
+            "count": 11
+          },
+          {
+            "binF": 57,
+            "count": 5
+          },
+          {
+            "binF": 58,
+            "count": 7
+          },
+          {
+            "binF": 59,
+            "count": 8
+          },
+          {
+            "binF": 60,
+            "count": 4
+          },
+          {
+            "binF": 61,
+            "count": 3
+          },
+          {
+            "binF": 63,
+            "count": 7
+          },
+          {
+            "binF": 64,
+            "count": 1
+          },
+          {
+            "binF": 65,
+            "count": 7
+          },
+          {
+            "binF": 66,
+            "count": 3
+          },
+          {
+            "binF": 67,
+            "count": 7
+          },
+          {
+            "binF": 68,
+            "count": 6
+          },
+          {
+            "binF": 69,
+            "count": 9
+          },
+          {
+            "binF": 70,
+            "count": 3
+          },
+          {
+            "binF": 71,
+            "count": 7
+          },
+          {
+            "binF": 72,
+            "count": 7
+          },
+          {
+            "binF": 73,
+            "count": 3
+          },
+          {
+            "binF": 74,
+            "count": 4
+          },
+          {
+            "binF": 75,
+            "count": 3
+          },
+          {
+            "binF": 76,
+            "count": 3
+          },
+          {
+            "binF": 77,
+            "count": 2
+          },
+          {
+            "binF": 78,
+            "count": 2
+          },
+          {
+            "binF": 79,
+            "count": 3
+          },
+          {
+            "binF": 80,
+            "count": 2
+          },
+          {
+            "binF": 81,
+            "count": 2
+          },
+          {
+            "binF": 82,
+            "count": 5
+          },
+          {
+            "binF": 83,
+            "count": 1
+          },
+          {
+            "binF": 84,
+            "count": 3
+          },
+          {
+            "binF": 85,
+            "count": 3
+          },
+          {
+            "binF": 86,
+            "count": 4
+          },
+          {
+            "binF": 87,
+            "count": 1
+          },
+          {
+            "binF": 89,
+            "count": 1
+          },
+          {
+            "binF": 90,
+            "count": 1
+          }
+        ]
+      },
+      "11": {
+        "n": 150,
+        "meanF": 51.26,
+        "stdDevF": 11.6,
+        "p10F": 35.06,
+        "p25F": 42.08,
+        "p50F": 52.52,
+        "p75F": 59.81,
+        "p90F": 66.02,
+        "histogram1F": [
+          {
+            "binF": 26,
+            "count": 2
+          },
+          {
+            "binF": 27,
+            "count": 1
+          },
+          {
+            "binF": 29,
+            "count": 1
+          },
+          {
+            "binF": 30,
+            "count": 2
+          },
+          {
+            "binF": 31,
+            "count": 1
+          },
+          {
+            "binF": 32,
+            "count": 2
+          },
+          {
+            "binF": 33,
+            "count": 1
+          },
+          {
+            "binF": 34,
+            "count": 3
+          },
+          {
+            "binF": 35,
+            "count": 4
+          },
+          {
+            "binF": 36,
+            "count": 2
+          },
+          {
+            "binF": 37,
+            "count": 4
+          },
+          {
+            "binF": 38,
+            "count": 1
+          },
+          {
+            "binF": 39,
+            "count": 2
+          },
+          {
+            "binF": 40,
+            "count": 4
+          },
+          {
+            "binF": 41,
+            "count": 7
+          },
+          {
+            "binF": 42,
+            "count": 3
+          },
+          {
+            "binF": 43,
+            "count": 2
+          },
+          {
+            "binF": 44,
+            "count": 2
+          },
+          {
+            "binF": 45,
+            "count": 1
+          },
+          {
+            "binF": 46,
+            "count": 5
+          },
+          {
+            "binF": 47,
+            "count": 3
+          },
+          {
+            "binF": 48,
+            "count": 6
+          },
+          {
+            "binF": 49,
+            "count": 4
+          },
+          {
+            "binF": 50,
+            "count": 5
+          },
+          {
+            "binF": 51,
+            "count": 2
+          },
+          {
+            "binF": 52,
+            "count": 5
+          },
+          {
+            "binF": 53,
+            "count": 7
+          },
+          {
+            "binF": 54,
+            "count": 6
+          },
+          {
+            "binF": 55,
+            "count": 8
+          },
+          {
+            "binF": 56,
+            "count": 2
+          },
+          {
+            "binF": 57,
+            "count": 4
+          },
+          {
+            "binF": 58,
+            "count": 5
+          },
+          {
+            "binF": 59,
+            "count": 5
+          },
+          {
+            "binF": 60,
+            "count": 5
+          },
+          {
+            "binF": 61,
+            "count": 3
+          },
+          {
+            "binF": 62,
+            "count": 3
+          },
+          {
+            "binF": 63,
+            "count": 4
+          },
+          {
+            "binF": 64,
+            "count": 5
+          },
+          {
+            "binF": 65,
+            "count": 2
+          },
+          {
+            "binF": 66,
+            "count": 2
+          },
+          {
+            "binF": 67,
+            "count": 2
+          },
+          {
+            "binF": 68,
+            "count": 2
+          },
+          {
+            "binF": 69,
+            "count": 1
+          },
+          {
+            "binF": 70,
+            "count": 3
+          },
+          {
+            "binF": 71,
+            "count": 2
+          },
+          {
+            "binF": 74,
+            "count": 1
+          },
+          {
+            "binF": 75,
+            "count": 1
+          },
+          {
+            "binF": 76,
+            "count": 2
+          }
+        ]
+      },
+      "12": {
+        "n": 155,
+        "meanF": 40.76,
+        "stdDevF": 11.3,
+        "p10F": 26.24,
+        "p25F": 33.53,
+        "p50F": 42.08,
+        "p75F": 48.02,
+        "p90F": 55.04,
+        "histogram1F": [
+          {
+            "binF": -1,
+            "count": 1
+          },
+          {
+            "binF": 11,
+            "count": 1
+          },
+          {
+            "binF": 13,
+            "count": 1
+          },
+          {
+            "binF": 14,
+            "count": 1
+          },
+          {
+            "binF": 16,
+            "count": 1
+          },
+          {
+            "binF": 21,
+            "count": 1
+          },
+          {
+            "binF": 22,
+            "count": 3
+          },
+          {
+            "binF": 24,
+            "count": 2
+          },
+          {
+            "binF": 25,
+            "count": 3
+          },
+          {
+            "binF": 26,
+            "count": 3
+          },
+          {
+            "binF": 27,
+            "count": 2
+          },
+          {
+            "binF": 28,
+            "count": 4
+          },
+          {
+            "binF": 29,
+            "count": 2
+          },
+          {
+            "binF": 30,
+            "count": 3
+          },
+          {
+            "binF": 31,
+            "count": 1
+          },
+          {
+            "binF": 32,
+            "count": 4
+          },
+          {
+            "binF": 33,
+            "count": 6
+          },
+          {
+            "binF": 34,
+            "count": 4
+          },
+          {
+            "binF": 35,
+            "count": 1
+          },
+          {
+            "binF": 36,
+            "count": 3
+          },
+          {
+            "binF": 37,
+            "count": 5
+          },
+          {
+            "binF": 38,
+            "count": 5
+          },
+          {
+            "binF": 39,
+            "count": 9
+          },
+          {
+            "binF": 40,
+            "count": 7
+          },
+          {
+            "binF": 41,
+            "count": 3
+          },
+          {
+            "binF": 42,
+            "count": 10
+          },
+          {
+            "binF": 43,
+            "count": 5
+          },
+          {
+            "binF": 44,
+            "count": 9
+          },
+          {
+            "binF": 45,
+            "count": 6
+          },
+          {
+            "binF": 46,
+            "count": 5
+          },
+          {
+            "binF": 47,
+            "count": 4
+          },
+          {
+            "binF": 48,
+            "count": 2
+          },
+          {
+            "binF": 49,
+            "count": 4
+          },
+          {
+            "binF": 50,
+            "count": 3
+          },
+          {
+            "binF": 51,
+            "count": 4
+          },
+          {
+            "binF": 52,
+            "count": 3
+          },
+          {
+            "binF": 53,
+            "count": 3
+          },
+          {
+            "binF": 54,
+            "count": 4
+          },
+          {
+            "binF": 55,
+            "count": 2
+          },
+          {
+            "binF": 56,
+            "count": 2
+          },
+          {
+            "binF": 57,
+            "count": 4
+          },
+          {
+            "binF": 58,
+            "count": 1
+          },
+          {
+            "binF": 59,
+            "count": 4
+          },
+          {
+            "binF": 60,
+            "count": 1
+          },
+          {
+            "binF": 61,
+            "count": 1
+          },
+          {
+            "binF": 66,
+            "count": 1
+          },
+          {
+            "binF": 67,
+            "count": 1
+          }
+        ]
+      },
+      "01": {
+        "n": 155,
+        "meanF": 32.39,
+        "stdDevF": 11.29,
+        "p10F": 17.13,
+        "p25F": 25.61,
+        "p50F": 33.98,
+        "p75F": 41,
+        "p90F": 44.96,
+        "histogram1F": [
+          {
+            "binF": 2,
+            "count": 2
+          },
+          {
+            "binF": 4,
+            "count": 1
+          },
+          {
+            "binF": 5,
+            "count": 1
+          },
+          {
+            "binF": 8,
+            "count": 1
+          },
+          {
+            "binF": 9,
+            "count": 2
+          },
+          {
+            "binF": 13,
+            "count": 1
+          },
+          {
+            "binF": 14,
+            "count": 2
+          },
+          {
+            "binF": 15,
+            "count": 3
+          },
+          {
+            "binF": 16,
+            "count": 2
+          },
+          {
+            "binF": 17,
+            "count": 2
+          },
+          {
+            "binF": 18,
+            "count": 2
+          },
+          {
+            "binF": 19,
+            "count": 4
+          },
+          {
+            "binF": 20,
+            "count": 3
+          },
+          {
+            "binF": 21,
+            "count": 3
+          },
+          {
+            "binF": 22,
+            "count": 2
+          },
+          {
+            "binF": 23,
+            "count": 2
+          },
+          {
+            "binF": 24,
+            "count": 5
+          },
+          {
+            "binF": 25,
+            "count": 1
+          },
+          {
+            "binF": 26,
+            "count": 4
+          },
+          {
+            "binF": 27,
+            "count": 3
+          },
+          {
+            "binF": 28,
+            "count": 6
+          },
+          {
+            "binF": 29,
+            "count": 3
+          },
+          {
+            "binF": 30,
+            "count": 4
+          },
+          {
+            "binF": 31,
+            "count": 3
+          },
+          {
+            "binF": 32,
+            "count": 5
+          },
+          {
+            "binF": 33,
+            "count": 8
+          },
+          {
+            "binF": 34,
+            "count": 6
+          },
+          {
+            "binF": 35,
+            "count": 11
+          },
+          {
+            "binF": 36,
+            "count": 5
+          },
+          {
+            "binF": 37,
+            "count": 7
+          },
+          {
+            "binF": 38,
+            "count": 6
+          },
+          {
+            "binF": 39,
+            "count": 2
+          },
+          {
+            "binF": 40,
+            "count": 3
+          },
+          {
+            "binF": 41,
+            "count": 6
+          },
+          {
+            "binF": 42,
+            "count": 9
+          },
+          {
+            "binF": 43,
+            "count": 2
+          },
+          {
+            "binF": 44,
+            "count": 4
+          },
+          {
+            "binF": 45,
+            "count": 6
+          },
+          {
+            "binF": 46,
+            "count": 1
+          },
+          {
+            "binF": 47,
+            "count": 1
+          },
+          {
+            "binF": 48,
+            "count": 1
+          },
+          {
+            "binF": 49,
+            "count": 4
+          },
+          {
+            "binF": 50,
+            "count": 2
+          },
+          {
+            "binF": 52,
+            "count": 1
+          },
+          {
+            "binF": 53,
+            "count": 1
+          },
+          {
+            "binF": 60,
+            "count": 1
+          },
+          {
+            "binF": 61,
+            "count": 1
+          }
+        ]
+      },
+      "02": {
+        "n": 139,
+        "meanF": 39.08,
+        "stdDevF": 13.45,
+        "p10F": 20.8,
+        "p25F": 29.12,
+        "p50F": 39.92,
+        "p75F": 48.02,
+        "p90F": 54.18,
+        "histogram1F": [
+          {
+            "binF": 6,
+            "count": 2
+          },
+          {
+            "binF": 12,
+            "count": 2
+          },
+          {
+            "binF": 14,
+            "count": 2
+          },
+          {
+            "binF": 15,
+            "count": 1
+          },
+          {
+            "binF": 16,
+            "count": 1
+          },
+          {
+            "binF": 17,
+            "count": 1
+          },
+          {
+            "binF": 18,
+            "count": 1
+          },
+          {
+            "binF": 19,
+            "count": 4
+          },
+          {
+            "binF": 21,
+            "count": 3
+          },
+          {
+            "binF": 22,
+            "count": 1
+          },
+          {
+            "binF": 24,
+            "count": 2
+          },
+          {
+            "binF": 25,
+            "count": 1
+          },
+          {
+            "binF": 26,
+            "count": 3
+          },
+          {
+            "binF": 27,
+            "count": 3
+          },
+          {
+            "binF": 28,
+            "count": 4
+          },
+          {
+            "binF": 29,
+            "count": 5
+          },
+          {
+            "binF": 30,
+            "count": 3
+          },
+          {
+            "binF": 31,
+            "count": 2
+          },
+          {
+            "binF": 32,
+            "count": 3
+          },
+          {
+            "binF": 33,
+            "count": 6
+          },
+          {
+            "binF": 34,
+            "count": 2
+          },
+          {
+            "binF": 35,
+            "count": 4
+          },
+          {
+            "binF": 36,
+            "count": 5
+          },
+          {
+            "binF": 37,
+            "count": 1
+          },
+          {
+            "binF": 38,
+            "count": 2
+          },
+          {
+            "binF": 39,
+            "count": 2
+          },
+          {
+            "binF": 40,
+            "count": 4
+          },
+          {
+            "binF": 41,
+            "count": 2
+          },
+          {
+            "binF": 42,
+            "count": 3
+          },
+          {
+            "binF": 43,
+            "count": 9
+          },
+          {
+            "binF": 44,
+            "count": 1
+          },
+          {
+            "binF": 45,
+            "count": 3
+          },
+          {
+            "binF": 46,
+            "count": 8
+          },
+          {
+            "binF": 47,
+            "count": 6
+          },
+          {
+            "binF": 48,
+            "count": 3
+          },
+          {
+            "binF": 49,
+            "count": 3
+          },
+          {
+            "binF": 50,
+            "count": 3
+          },
+          {
+            "binF": 51,
+            "count": 3
+          },
+          {
+            "binF": 52,
+            "count": 3
+          },
+          {
+            "binF": 53,
+            "count": 4
+          },
+          {
+            "binF": 54,
+            "count": 4
+          },
+          {
+            "binF": 55,
+            "count": 1
+          },
+          {
+            "binF": 56,
+            "count": 1
+          },
+          {
+            "binF": 57,
+            "count": 2
+          },
+          {
+            "binF": 58,
+            "count": 2
+          },
+          {
+            "binF": 59,
+            "count": 1
+          },
+          {
+            "binF": 60,
+            "count": 2
+          },
+          {
+            "binF": 61,
+            "count": 1
+          },
+          {
+            "binF": 62,
+            "count": 1
+          },
+          {
+            "binF": 68,
+            "count": 1
+          },
+          {
+            "binF": 72,
+            "count": 1
+          },
+          {
+            "binF": 74,
+            "count": 1
+          }
+        ]
+      },
+      "03": {
+        "n": 155,
+        "meanF": 52.17,
+        "stdDevF": 11.62,
+        "p10F": 37.94,
+        "p25F": 44.06,
+        "p50F": 50,
+        "p75F": 60.08,
+        "p90F": 69.08,
+        "histogram1F": [
+          {
+            "binF": 24,
+            "count": 1
+          },
+          {
+            "binF": 26,
+            "count": 1
+          },
+          {
+            "binF": 33,
+            "count": 3
+          },
+          {
+            "binF": 35,
+            "count": 2
+          },
+          {
+            "binF": 36,
+            "count": 2
+          },
+          {
+            "binF": 37,
+            "count": 4
+          },
+          {
+            "binF": 38,
+            "count": 6
+          },
+          {
+            "binF": 39,
+            "count": 3
+          },
+          {
+            "binF": 40,
+            "count": 4
+          },
+          {
+            "binF": 41,
+            "count": 4
+          },
+          {
+            "binF": 42,
+            "count": 2
+          },
+          {
+            "binF": 43,
+            "count": 5
+          },
+          {
+            "binF": 44,
+            "count": 6
+          },
+          {
+            "binF": 45,
+            "count": 7
+          },
+          {
+            "binF": 46,
+            "count": 3
+          },
+          {
+            "binF": 47,
+            "count": 5
+          },
+          {
+            "binF": 48,
+            "count": 3
+          },
+          {
+            "binF": 49,
+            "count": 5
+          },
+          {
+            "binF": 50,
+            "count": 13
+          },
+          {
+            "binF": 51,
+            "count": 3
+          },
+          {
+            "binF": 52,
+            "count": 10
+          },
+          {
+            "binF": 53,
+            "count": 4
+          },
+          {
+            "binF": 54,
+            "count": 3
+          },
+          {
+            "binF": 55,
+            "count": 3
+          },
+          {
+            "binF": 56,
+            "count": 2
+          },
+          {
+            "binF": 57,
+            "count": 1
+          },
+          {
+            "binF": 58,
+            "count": 3
+          },
+          {
+            "binF": 59,
+            "count": 2
+          },
+          {
+            "binF": 60,
+            "count": 9
+          },
+          {
+            "binF": 61,
+            "count": 2
+          },
+          {
+            "binF": 62,
+            "count": 2
+          },
+          {
+            "binF": 64,
+            "count": 3
+          },
+          {
+            "binF": 65,
+            "count": 3
+          },
+          {
+            "binF": 66,
+            "count": 4
+          },
+          {
+            "binF": 67,
+            "count": 2
+          },
+          {
+            "binF": 68,
+            "count": 3
+          },
+          {
+            "binF": 69,
+            "count": 4
+          },
+          {
+            "binF": 70,
+            "count": 2
+          },
+          {
+            "binF": 71,
+            "count": 1
+          },
+          {
+            "binF": 72,
+            "count": 3
+          },
+          {
+            "binF": 73,
+            "count": 1
+          },
+          {
+            "binF": 74,
+            "count": 2
+          },
+          {
+            "binF": 77,
+            "count": 1
+          },
+          {
+            "binF": 78,
+            "count": 1
+          },
+          {
+            "binF": 80,
+            "count": 2
+          }
+        ]
+      },
+      "04": {
+        "n": 150,
+        "meanF": 61.14,
+        "stdDevF": 11.96,
+        "p10F": 46.85,
+        "p25F": 51.3,
+        "p50F": 60.53,
+        "p75F": 70.79,
+        "p90F": 78.17,
+        "histogram1F": [
+          {
+            "binF": 39,
+            "count": 1
+          },
+          {
+            "binF": 40,
+            "count": 2
+          },
+          {
+            "binF": 42,
+            "count": 3
+          },
+          {
+            "binF": 43,
+            "count": 3
+          },
+          {
+            "binF": 44,
+            "count": 3
+          },
+          {
+            "binF": 45,
+            "count": 2
+          },
+          {
+            "binF": 46,
+            "count": 1
+          },
+          {
+            "binF": 47,
+            "count": 5
+          },
+          {
+            "binF": 48,
+            "count": 3
+          },
+          {
+            "binF": 49,
+            "count": 3
+          },
+          {
+            "binF": 50,
+            "count": 7
+          },
+          {
+            "binF": 51,
+            "count": 5
+          },
+          {
+            "binF": 52,
+            "count": 5
+          },
+          {
+            "binF": 53,
+            "count": 1
+          },
+          {
+            "binF": 54,
+            "count": 6
+          },
+          {
+            "binF": 55,
+            "count": 4
+          },
+          {
+            "binF": 56,
+            "count": 7
+          },
+          {
+            "binF": 57,
+            "count": 2
+          },
+          {
+            "binF": 58,
+            "count": 6
+          },
+          {
+            "binF": 59,
+            "count": 4
+          },
+          {
+            "binF": 60,
+            "count": 2
+          },
+          {
+            "binF": 61,
+            "count": 6
+          },
+          {
+            "binF": 62,
+            "count": 3
+          },
+          {
+            "binF": 63,
+            "count": 4
+          },
+          {
+            "binF": 64,
+            "count": 11
+          },
+          {
+            "binF": 65,
+            "count": 1
+          },
+          {
+            "binF": 66,
+            "count": 3
+          },
+          {
+            "binF": 67,
+            "count": 1
+          },
+          {
+            "binF": 68,
+            "count": 3
+          },
+          {
+            "binF": 69,
+            "count": 1
+          },
+          {
+            "binF": 70,
+            "count": 4
+          },
+          {
+            "binF": 71,
+            "count": 4
+          },
+          {
+            "binF": 72,
+            "count": 5
+          },
+          {
+            "binF": 73,
+            "count": 3
+          },
+          {
+            "binF": 74,
+            "count": 1
+          },
+          {
+            "binF": 75,
+            "count": 3
+          },
+          {
+            "binF": 76,
+            "count": 1
+          },
+          {
+            "binF": 77,
+            "count": 3
+          },
+          {
+            "binF": 78,
+            "count": 3
+          },
+          {
+            "binF": 79,
+            "count": 2
+          },
+          {
+            "binF": 80,
+            "count": 1
+          },
+          {
+            "binF": 81,
+            "count": 3
+          },
+          {
+            "binF": 82,
+            "count": 2
+          },
+          {
+            "binF": 83,
+            "count": 2
+          },
+          {
+            "binF": 84,
+            "count": 2
+          },
+          {
+            "binF": 85,
+            "count": 1
+          },
+          {
+            "binF": 86,
+            "count": 1
+          },
+          {
+            "binF": 87,
+            "count": 1
+          }
+        ]
+      },
+      "05": {
+        "n": 155,
+        "meanF": 72.41,
+        "stdDevF": 11.11,
+        "p10F": 57.02,
+        "p25F": 64.04,
+        "p50F": 71.96,
+        "p75F": 80.96,
+        "p90F": 87.08,
+        "histogram1F": [
+          {
+            "binF": 50,
+            "count": 1
+          },
+          {
+            "binF": 51,
+            "count": 2
+          },
+          {
+            "binF": 52,
+            "count": 2
+          },
+          {
+            "binF": 53,
+            "count": 1
+          },
+          {
+            "binF": 54,
+            "count": 3
+          },
+          {
+            "binF": 55,
+            "count": 2
+          },
+          {
+            "binF": 56,
+            "count": 3
+          },
+          {
+            "binF": 57,
+            "count": 4
+          },
+          {
+            "binF": 58,
+            "count": 3
+          },
+          {
+            "binF": 59,
+            "count": 3
+          },
+          {
+            "binF": 60,
+            "count": 3
+          },
+          {
+            "binF": 61,
+            "count": 2
+          },
+          {
+            "binF": 62,
+            "count": 2
+          },
+          {
+            "binF": 63,
+            "count": 4
+          },
+          {
+            "binF": 64,
+            "count": 6
+          },
+          {
+            "binF": 65,
+            "count": 8
+          },
+          {
+            "binF": 66,
+            "count": 1
+          },
+          {
+            "binF": 67,
+            "count": 1
+          },
+          {
+            "binF": 68,
+            "count": 7
+          },
+          {
+            "binF": 69,
+            "count": 3
+          },
+          {
+            "binF": 70,
+            "count": 7
+          },
+          {
+            "binF": 71,
+            "count": 8
+          },
+          {
+            "binF": 72,
+            "count": 3
+          },
+          {
+            "binF": 73,
+            "count": 3
+          },
+          {
+            "binF": 74,
+            "count": 5
+          },
+          {
+            "binF": 75,
+            "count": 5
+          },
+          {
+            "binF": 76,
+            "count": 3
+          },
+          {
+            "binF": 77,
+            "count": 4
+          },
+          {
+            "binF": 78,
+            "count": 3
+          },
+          {
+            "binF": 79,
+            "count": 6
+          },
+          {
+            "binF": 80,
+            "count": 5
+          },
+          {
+            "binF": 81,
+            "count": 5
+          },
+          {
+            "binF": 82,
+            "count": 6
+          },
+          {
+            "binF": 83,
+            "count": 4
+          },
+          {
+            "binF": 84,
+            "count": 2
+          },
+          {
+            "binF": 85,
+            "count": 6
+          },
+          {
+            "binF": 86,
+            "count": 1
+          },
+          {
+            "binF": 87,
+            "count": 4
+          },
+          {
+            "binF": 88,
+            "count": 1
+          },
+          {
+            "binF": 89,
+            "count": 3
+          },
+          {
+            "binF": 90,
+            "count": 2
+          },
+          {
+            "binF": 91,
+            "count": 3
+          },
+          {
+            "binF": 92,
+            "count": 2
+          },
+          {
+            "binF": 93,
+            "count": 1
+          },
+          {
+            "binF": 95,
+            "count": 2
+          }
+        ]
+      },
+      "06": {
+        "n": 150,
+        "meanF": 83.93,
+        "stdDevF": 7.8,
+        "p10F": 73.85,
+        "p25F": 78.31,
+        "p50F": 84.92,
+        "p75F": 89.06,
+        "p90F": 95,
+        "histogram1F": [
+          {
+            "binF": 66,
+            "count": 1
+          },
+          {
+            "binF": 67,
+            "count": 2
+          },
+          {
+            "binF": 68,
+            "count": 1
+          },
+          {
+            "binF": 69,
+            "count": 2
+          },
+          {
+            "binF": 70,
+            "count": 1
+          },
+          {
+            "binF": 71,
+            "count": 1
+          },
+          {
+            "binF": 72,
+            "count": 4
+          },
+          {
+            "binF": 73,
+            "count": 3
+          },
+          {
+            "binF": 74,
+            "count": 3
+          },
+          {
+            "binF": 75,
+            "count": 5
+          },
+          {
+            "binF": 76,
+            "count": 9
+          },
+          {
+            "binF": 77,
+            "count": 1
+          },
+          {
+            "binF": 78,
+            "count": 5
+          },
+          {
+            "binF": 79,
+            "count": 8
+          },
+          {
+            "binF": 80,
+            "count": 6
+          },
+          {
+            "binF": 81,
+            "count": 5
+          },
+          {
+            "binF": 82,
+            "count": 7
+          },
+          {
+            "binF": 83,
+            "count": 5
+          },
+          {
+            "binF": 84,
+            "count": 5
+          },
+          {
+            "binF": 85,
+            "count": 8
+          },
+          {
+            "binF": 86,
+            "count": 7
+          },
+          {
+            "binF": 87,
+            "count": 9
+          },
+          {
+            "binF": 88,
+            "count": 6
+          },
+          {
+            "binF": 89,
+            "count": 9
+          },
+          {
+            "binF": 90,
+            "count": 2
+          },
+          {
+            "binF": 91,
+            "count": 9
+          },
+          {
+            "binF": 92,
+            "count": 6
+          },
+          {
+            "binF": 93,
+            "count": 3
+          },
+          {
+            "binF": 94,
+            "count": 1
+          },
+          {
+            "binF": 95,
+            "count": 8
+          },
+          {
+            "binF": 96,
+            "count": 2
+          },
+          {
+            "binF": 97,
+            "count": 3
+          },
+          {
+            "binF": 100,
+            "count": 2
+          },
+          {
+            "binF": 101,
+            "count": 1
+          }
+        ]
+      },
+      "07": {
+        "n": 155,
+        "meanF": 84.89,
+        "stdDevF": 5.59,
+        "p10F": 77,
+        "p25F": 80.96,
+        "p50F": 84.92,
+        "p75F": 89.51,
+        "p90F": 91.94,
+        "histogram1F": [
+          {
+            "binF": 69,
+            "count": 1
+          },
+          {
+            "binF": 70,
+            "count": 1
+          },
+          {
+            "binF": 74,
+            "count": 2
+          },
+          {
+            "binF": 75,
+            "count": 6
+          },
+          {
+            "binF": 76,
+            "count": 5
+          },
+          {
+            "binF": 77,
+            "count": 2
+          },
+          {
+            "binF": 78,
+            "count": 6
+          },
+          {
+            "binF": 79,
+            "count": 4
+          },
+          {
+            "binF": 80,
+            "count": 6
+          },
+          {
+            "binF": 81,
+            "count": 11
+          },
+          {
+            "binF": 82,
+            "count": 6
+          },
+          {
+            "binF": 83,
+            "count": 7
+          },
+          {
+            "binF": 84,
+            "count": 12
+          },
+          {
+            "binF": 85,
+            "count": 14
+          },
+          {
+            "binF": 86,
+            "count": 11
+          },
+          {
+            "binF": 87,
+            "count": 6
+          },
+          {
+            "binF": 88,
+            "count": 11
+          },
+          {
+            "binF": 89,
+            "count": 5
+          },
+          {
+            "binF": 90,
+            "count": 7
+          },
+          {
+            "binF": 91,
+            "count": 11
+          },
+          {
+            "binF": 92,
+            "count": 11
+          },
+          {
+            "binF": 93,
+            "count": 5
+          },
+          {
+            "binF": 94,
+            "count": 3
+          },
+          {
+            "binF": 95,
+            "count": 1
+          },
+          {
+            "binF": 96,
+            "count": 1
+          }
+        ]
+      },
+      "08": {
+        "n": 153,
+        "meanF": 84.23,
+        "stdDevF": 6.07,
+        "p10F": 76.14,
+        "p25F": 80.06,
+        "p50F": 84.02,
+        "p75F": 87.98,
+        "p90F": 91.94,
+        "histogram1F": [
+          {
+            "binF": 70,
+            "count": 1
+          },
+          {
+            "binF": 71,
+            "count": 1
+          },
+          {
+            "binF": 72,
+            "count": 2
+          },
+          {
+            "binF": 73,
+            "count": 1
+          },
+          {
+            "binF": 74,
+            "count": 1
+          },
+          {
+            "binF": 75,
+            "count": 3
+          },
+          {
+            "binF": 76,
+            "count": 7
+          },
+          {
+            "binF": 77,
+            "count": 7
+          },
+          {
+            "binF": 78,
+            "count": 5
+          },
+          {
+            "binF": 79,
+            "count": 6
+          },
+          {
+            "binF": 80,
+            "count": 11
+          },
+          {
+            "binF": 81,
+            "count": 8
+          },
+          {
+            "binF": 82,
+            "count": 9
+          },
+          {
+            "binF": 83,
+            "count": 5
+          },
+          {
+            "binF": 84,
+            "count": 12
+          },
+          {
+            "binF": 85,
+            "count": 13
+          },
+          {
+            "binF": 86,
+            "count": 8
+          },
+          {
+            "binF": 87,
+            "count": 9
+          },
+          {
+            "binF": 88,
+            "count": 8
+          },
+          {
+            "binF": 89,
+            "count": 6
+          },
+          {
+            "binF": 90,
+            "count": 4
+          },
+          {
+            "binF": 91,
+            "count": 6
+          },
+          {
+            "binF": 92,
+            "count": 7
+          },
+          {
+            "binF": 93,
+            "count": 2
+          },
+          {
+            "binF": 94,
+            "count": 3
+          },
+          {
+            "binF": 95,
+            "count": 3
+          },
+          {
+            "binF": 96,
+            "count": 2
+          },
+          {
+            "binF": 98,
+            "count": 1
+          },
+          {
+            "binF": 99,
+            "count": 1
+          },
+          {
+            "binF": 100,
+            "count": 1
+          }
+        ]
+      },
+      "09": {
+        "n": 150,
+        "meanF": 79.31,
+        "stdDevF": 7.73,
+        "p10F": 69.08,
+        "p25F": 73.04,
+        "p50F": 78.98,
+        "p75F": 84.92,
+        "p90F": 89.96,
+        "histogram1F": [
+          {
+            "binF": 63,
+            "count": 3
+          },
+          {
+            "binF": 64,
+            "count": 1
+          },
+          {
+            "binF": 65,
+            "count": 2
+          },
+          {
+            "binF": 67,
+            "count": 5
+          },
+          {
+            "binF": 68,
+            "count": 3
+          },
+          {
+            "binF": 69,
+            "count": 6
+          },
+          {
+            "binF": 70,
+            "count": 3
+          },
+          {
+            "binF": 71,
+            "count": 7
+          },
+          {
+            "binF": 72,
+            "count": 1
+          },
+          {
+            "binF": 73,
+            "count": 8
+          },
+          {
+            "binF": 74,
+            "count": 3
+          },
+          {
+            "binF": 75,
+            "count": 6
+          },
+          {
+            "binF": 76,
+            "count": 6
+          },
+          {
+            "binF": 77,
+            "count": 8
+          },
+          {
+            "binF": 78,
+            "count": 6
+          },
+          {
+            "binF": 79,
+            "count": 8
+          },
+          {
+            "binF": 80,
+            "count": 5
+          },
+          {
+            "binF": 81,
+            "count": 7
+          },
+          {
+            "binF": 82,
+            "count": 3
+          },
+          {
+            "binF": 83,
+            "count": 10
+          },
+          {
+            "binF": 84,
+            "count": 9
+          },
+          {
+            "binF": 85,
+            "count": 4
+          },
+          {
+            "binF": 86,
+            "count": 1
+          },
+          {
+            "binF": 87,
+            "count": 6
+          },
+          {
+            "binF": 88,
+            "count": 8
+          },
+          {
+            "binF": 89,
+            "count": 5
+          },
+          {
+            "binF": 90,
+            "count": 9
+          },
+          {
+            "binF": 91,
+            "count": 1
+          },
+          {
+            "binF": 92,
+            "count": 2
+          },
+          {
+            "binF": 93,
+            "count": 3
+          },
+          {
+            "binF": 94,
+            "count": 1
+          }
+        ]
+      }
+    },
+    "MIA": {
+      "10": {
+        "n": 155,
+        "meanF": 86.95,
+        "stdDevF": 3.14,
+        "p10F": 82.94,
+        "p25F": 86,
+        "p50F": 87.08,
+        "p75F": 89.06,
+        "p90F": 89.96,
+        "histogram1F": [
+          {
+            "binF": 76,
+            "count": 1
+          },
+          {
+            "binF": 77,
+            "count": 1
+          },
+          {
+            "binF": 78,
+            "count": 1
+          },
+          {
+            "binF": 79,
+            "count": 3
+          },
+          {
+            "binF": 80,
+            "count": 1
+          },
+          {
+            "binF": 81,
+            "count": 2
+          },
+          {
+            "binF": 82,
+            "count": 1
+          },
+          {
+            "binF": 83,
+            "count": 11
+          },
+          {
+            "binF": 84,
+            "count": 4
+          },
+          {
+            "binF": 85,
+            "count": 12
+          },
+          {
+            "binF": 86,
+            "count": 23
+          },
+          {
+            "binF": 87,
+            "count": 23
+          },
+          {
+            "binF": 88,
+            "count": 26
+          },
+          {
+            "binF": 89,
+            "count": 20
+          },
+          {
+            "binF": 90,
+            "count": 11
+          },
+          {
+            "binF": 91,
+            "count": 8
+          },
+          {
+            "binF": 92,
+            "count": 3
+          },
+          {
+            "binF": 93,
+            "count": 3
+          },
+          {
+            "binF": 95,
+            "count": 1
+          }
+        ]
+      },
+      "11": {
+        "n": 150,
+        "meanF": 82.84,
+        "stdDevF": 4.02,
+        "p10F": 77,
+        "p25F": 80.96,
+        "p50F": 84.02,
+        "p75F": 86,
+        "p90F": 87.08,
+        "histogram1F": [
+          {
+            "binF": 68,
+            "count": 1
+          },
+          {
+            "binF": 72,
+            "count": 2
+          },
+          {
+            "binF": 73,
+            "count": 1
+          },
+          {
+            "binF": 74,
+            "count": 1
+          },
+          {
+            "binF": 75,
+            "count": 1
+          },
+          {
+            "binF": 76,
+            "count": 3
+          },
+          {
+            "binF": 77,
+            "count": 7
+          },
+          {
+            "binF": 78,
+            "count": 11
+          },
+          {
+            "binF": 79,
+            "count": 4
+          },
+          {
+            "binF": 80,
+            "count": 4
+          },
+          {
+            "binF": 81,
+            "count": 17
+          },
+          {
+            "binF": 82,
+            "count": 7
+          },
+          {
+            "binF": 83,
+            "count": 14
+          },
+          {
+            "binF": 84,
+            "count": 14
+          },
+          {
+            "binF": 85,
+            "count": 19
+          },
+          {
+            "binF": 86,
+            "count": 18
+          },
+          {
+            "binF": 87,
+            "count": 15
+          },
+          {
+            "binF": 88,
+            "count": 6
+          },
+          {
+            "binF": 89,
+            "count": 3
+          },
+          {
+            "binF": 90,
+            "count": 2
+          }
+        ]
+      },
+      "12": {
+        "n": 155,
+        "meanF": 79.4,
+        "stdDevF": 5.59,
+        "p10F": 73.04,
+        "p25F": 77.54,
+        "p50F": 80.96,
+        "p75F": 82.94,
+        "p90F": 84.02,
+        "histogram1F": [
+          {
+            "binF": 50,
+            "count": 1
+          },
+          {
+            "binF": 56,
+            "count": 1
+          },
+          {
+            "binF": 59,
+            "count": 1
+          },
+          {
+            "binF": 64,
+            "count": 1
+          },
+          {
+            "binF": 66,
+            "count": 1
+          },
+          {
+            "binF": 68,
+            "count": 1
+          },
+          {
+            "binF": 69,
+            "count": 2
+          },
+          {
+            "binF": 70,
+            "count": 1
+          },
+          {
+            "binF": 71,
+            "count": 4
+          },
+          {
+            "binF": 72,
+            "count": 1
+          },
+          {
+            "binF": 73,
+            "count": 3
+          },
+          {
+            "binF": 74,
+            "count": 6
+          },
+          {
+            "binF": 75,
+            "count": 7
+          },
+          {
+            "binF": 76,
+            "count": 5
+          },
+          {
+            "binF": 77,
+            "count": 4
+          },
+          {
+            "binF": 78,
+            "count": 3
+          },
+          {
+            "binF": 79,
+            "count": 17
+          },
+          {
+            "binF": 80,
+            "count": 14
+          },
+          {
+            "binF": 81,
+            "count": 13
+          },
+          {
+            "binF": 82,
+            "count": 23
+          },
+          {
+            "binF": 83,
+            "count": 22
+          },
+          {
+            "binF": 84,
+            "count": 9
+          },
+          {
+            "binF": 85,
+            "count": 8
+          },
+          {
+            "binF": 86,
+            "count": 5
+          },
+          {
+            "binF": 87,
+            "count": 1
+          },
+          {
+            "binF": 89,
+            "count": 1
+          }
+        ]
+      },
+      "01": {
+        "n": 155,
+        "meanF": 77.11,
+        "stdDevF": 5.96,
+        "p10F": 69.08,
+        "p25F": 73.04,
+        "p50F": 78.98,
+        "p75F": 82.04,
+        "p90F": 84.02,
+        "histogram1F": [
+          {
+            "binF": 58,
+            "count": 1
+          },
+          {
+            "binF": 59,
+            "count": 1
+          },
+          {
+            "binF": 62,
+            "count": 1
+          },
+          {
+            "binF": 63,
+            "count": 1
+          },
+          {
+            "binF": 64,
+            "count": 3
+          },
+          {
+            "binF": 65,
+            "count": 1
+          },
+          {
+            "binF": 66,
+            "count": 1
+          },
+          {
+            "binF": 67,
+            "count": 3
+          },
+          {
+            "binF": 68,
+            "count": 3
+          },
+          {
+            "binF": 69,
+            "count": 3
+          },
+          {
+            "binF": 71,
+            "count": 5
+          },
+          {
+            "binF": 72,
+            "count": 10
+          },
+          {
+            "binF": 73,
+            "count": 7
+          },
+          {
+            "binF": 74,
+            "count": 8
+          },
+          {
+            "binF": 75,
+            "count": 10
+          },
+          {
+            "binF": 76,
+            "count": 5
+          },
+          {
+            "binF": 77,
+            "count": 7
+          },
+          {
+            "binF": 78,
+            "count": 6
+          },
+          {
+            "binF": 79,
+            "count": 13
+          },
+          {
+            "binF": 80,
+            "count": 16
+          },
+          {
+            "binF": 81,
+            "count": 10
+          },
+          {
+            "binF": 82,
+            "count": 16
+          },
+          {
+            "binF": 83,
+            "count": 7
+          },
+          {
+            "binF": 84,
+            "count": 7
+          },
+          {
+            "binF": 85,
+            "count": 4
+          },
+          {
+            "binF": 86,
+            "count": 3
+          },
+          {
+            "binF": 87,
+            "count": 1
+          },
+          {
+            "binF": 88,
+            "count": 2
+          }
+        ]
+      },
+      "02": {
+        "n": 140,
+        "meanF": 80.31,
+        "stdDevF": 4.89,
+        "p10F": 75.02,
+        "p25F": 78.08,
+        "p50F": 81.5,
+        "p75F": 84.02,
+        "p90F": 84.92,
+        "histogram1F": [
+          {
+            "binF": 52,
+            "count": 1
+          },
+          {
+            "binF": 67,
+            "count": 2
+          },
+          {
+            "binF": 68,
+            "count": 1
+          },
+          {
+            "binF": 70,
+            "count": 2
+          },
+          {
+            "binF": 71,
+            "count": 1
+          },
+          {
+            "binF": 72,
+            "count": 2
+          },
+          {
+            "binF": 73,
+            "count": 1
+          },
+          {
+            "binF": 74,
+            "count": 2
+          },
+          {
+            "binF": 75,
+            "count": 7
+          },
+          {
+            "binF": 76,
+            "count": 6
+          },
+          {
+            "binF": 77,
+            "count": 7
+          },
+          {
+            "binF": 78,
+            "count": 9
+          },
+          {
+            "binF": 79,
+            "count": 6
+          },
+          {
+            "binF": 80,
+            "count": 7
+          },
+          {
+            "binF": 81,
+            "count": 16
+          },
+          {
+            "binF": 82,
+            "count": 20
+          },
+          {
+            "binF": 83,
+            "count": 14
+          },
+          {
+            "binF": 84,
+            "count": 14
+          },
+          {
+            "binF": 85,
+            "count": 12
+          },
+          {
+            "binF": 86,
+            "count": 7
+          },
+          {
+            "binF": 87,
+            "count": 1
+          },
+          {
+            "binF": 88,
+            "count": 2
+          }
+        ]
+      },
+      "03": {
+        "n": 155,
+        "meanF": 82.58,
+        "stdDevF": 3.77,
+        "p10F": 78.08,
+        "p25F": 80.06,
+        "p50F": 82.94,
+        "p75F": 84.92,
+        "p90F": 87.08,
+        "histogram1F": [
+          {
+            "binF": 73,
+            "count": 2
+          },
+          {
+            "binF": 74,
+            "count": 1
+          },
+          {
+            "binF": 75,
+            "count": 2
+          },
+          {
+            "binF": 76,
+            "count": 2
+          },
+          {
+            "binF": 77,
+            "count": 5
+          },
+          {
+            "binF": 78,
+            "count": 6
+          },
+          {
+            "binF": 79,
+            "count": 16
+          },
+          {
+            "binF": 80,
+            "count": 18
+          },
+          {
+            "binF": 81,
+            "count": 12
+          },
+          {
+            "binF": 82,
+            "count": 13
+          },
+          {
+            "binF": 83,
+            "count": 13
+          },
+          {
+            "binF": 84,
+            "count": 9
+          },
+          {
+            "binF": 85,
+            "count": 21
+          },
+          {
+            "binF": 86,
+            "count": 14
+          },
+          {
+            "binF": 87,
+            "count": 7
+          },
+          {
+            "binF": 88,
+            "count": 5
+          },
+          {
+            "binF": 89,
+            "count": 3
+          },
+          {
+            "binF": 90,
+            "count": 3
+          },
+          {
+            "binF": 91,
+            "count": 3
+          }
+        ]
+      },
+      "04": {
+        "n": 150,
+        "meanF": 84.52,
+        "stdDevF": 3.24,
+        "p10F": 80.96,
+        "p25F": 82.94,
+        "p50F": 84.47,
+        "p75F": 87.08,
+        "p90F": 89.06,
+        "histogram1F": [
+          {
+            "binF": 75,
+            "count": 1
+          },
+          {
+            "binF": 76,
+            "count": 1
+          },
+          {
+            "binF": 77,
+            "count": 2
+          },
+          {
+            "binF": 78,
+            "count": 2
+          },
+          {
+            "binF": 79,
+            "count": 1
+          },
+          {
+            "binF": 80,
+            "count": 6
+          },
+          {
+            "binF": 81,
+            "count": 13
+          },
+          {
+            "binF": 82,
+            "count": 9
+          },
+          {
+            "binF": 83,
+            "count": 21
+          },
+          {
+            "binF": 84,
+            "count": 19
+          },
+          {
+            "binF": 85,
+            "count": 21
+          },
+          {
+            "binF": 86,
+            "count": 15
+          },
+          {
+            "binF": 87,
+            "count": 10
+          },
+          {
+            "binF": 88,
+            "count": 13
+          },
+          {
+            "binF": 89,
+            "count": 8
+          },
+          {
+            "binF": 90,
+            "count": 3
+          },
+          {
+            "binF": 91,
+            "count": 2
+          },
+          {
+            "binF": 92,
+            "count": 2
+          },
+          {
+            "binF": 93,
+            "count": 1
+          }
+        ]
+      },
+      "05": {
+        "n": 155,
+        "meanF": 88.72,
+        "stdDevF": 2.96,
+        "p10F": 84.92,
+        "p25F": 87.08,
+        "p50F": 89.06,
+        "p75F": 91.04,
+        "p90F": 93.02,
+        "histogram1F": [
+          {
+            "binF": 83,
+            "count": 1
+          },
+          {
+            "binF": 84,
+            "count": 13
+          },
+          {
+            "binF": 85,
+            "count": 12
+          },
+          {
+            "binF": 86,
+            "count": 12
+          },
+          {
+            "binF": 87,
+            "count": 14
+          },
+          {
+            "binF": 88,
+            "count": 23
+          },
+          {
+            "binF": 89,
+            "count": 22
+          },
+          {
+            "binF": 90,
+            "count": 16
+          },
+          {
+            "binF": 91,
+            "count": 18
+          },
+          {
+            "binF": 92,
+            "count": 5
+          },
+          {
+            "binF": 93,
+            "count": 6
+          },
+          {
+            "binF": 94,
+            "count": 10
+          },
+          {
+            "binF": 96,
+            "count": 3
+          }
+        ]
+      },
+      "06": {
+        "n": 150,
+        "meanF": 89.45,
+        "stdDevF": 2.68,
+        "p10F": 86,
+        "p25F": 87.98,
+        "p50F": 89.96,
+        "p75F": 91.04,
+        "p90F": 91.94,
+        "histogram1F": [
+          {
+            "binF": 78,
+            "count": 2
+          },
+          {
+            "binF": 84,
+            "count": 2
+          },
+          {
+            "binF": 85,
+            "count": 5
+          },
+          {
+            "binF": 86,
+            "count": 12
+          },
+          {
+            "binF": 87,
+            "count": 9
+          },
+          {
+            "binF": 88,
+            "count": 14
+          },
+          {
+            "binF": 89,
+            "count": 22
+          },
+          {
+            "binF": 90,
+            "count": 33
+          },
+          {
+            "binF": 91,
+            "count": 22
+          },
+          {
+            "binF": 92,
+            "count": 17
+          },
+          {
+            "binF": 93,
+            "count": 4
+          },
+          {
+            "binF": 94,
+            "count": 4
+          },
+          {
+            "binF": 95,
+            "count": 4
+          }
+        ]
+      },
+      "07": {
+        "n": 155,
+        "meanF": 91.37,
+        "stdDevF": 2.41,
+        "p10F": 89.06,
+        "p25F": 89.96,
+        "p50F": 91.04,
+        "p75F": 93.02,
+        "p90F": 93.92,
+        "histogram1F": [
+          {
+            "binF": 82,
+            "count": 1
+          },
+          {
+            "binF": 85,
+            "count": 2
+          },
+          {
+            "binF": 86,
+            "count": 2
+          },
+          {
+            "binF": 87,
+            "count": 3
+          },
+          {
+            "binF": 88,
+            "count": 7
+          },
+          {
+            "binF": 89,
+            "count": 9
+          },
+          {
+            "binF": 90,
+            "count": 25
+          },
+          {
+            "binF": 91,
+            "count": 33
+          },
+          {
+            "binF": 92,
+            "count": 32
+          },
+          {
+            "binF": 93,
+            "count": 15
+          },
+          {
+            "binF": 94,
+            "count": 12
+          },
+          {
+            "binF": 95,
+            "count": 7
+          },
+          {
+            "binF": 96,
+            "count": 3
+          },
+          {
+            "binF": 97,
+            "count": 3
+          },
+          {
+            "binF": 98,
+            "count": 1
+          }
+        ]
+      },
+      "08": {
+        "n": 155,
+        "meanF": 91.94,
+        "stdDevF": 2.14,
+        "p10F": 89.96,
+        "p25F": 91.04,
+        "p50F": 91.94,
+        "p75F": 93.02,
+        "p90F": 93.92,
+        "histogram1F": [
+          {
+            "binF": 83,
+            "count": 1
+          },
+          {
+            "binF": 84,
+            "count": 1
+          },
+          {
+            "binF": 87,
+            "count": 1
+          },
+          {
+            "binF": 88,
+            "count": 4
+          },
+          {
+            "binF": 89,
+            "count": 7
+          },
+          {
+            "binF": 90,
+            "count": 20
+          },
+          {
+            "binF": 91,
+            "count": 28
+          },
+          {
+            "binF": 92,
+            "count": 31
+          },
+          {
+            "binF": 93,
+            "count": 28
+          },
+          {
+            "binF": 94,
+            "count": 20
+          },
+          {
+            "binF": 95,
+            "count": 8
+          },
+          {
+            "binF": 96,
+            "count": 4
+          },
+          {
+            "binF": 97,
+            "count": 1
+          },
+          {
+            "binF": 98,
+            "count": 1
+          }
+        ]
+      },
+      "09": {
+        "n": 150,
+        "meanF": 90.94,
+        "stdDevF": 2.35,
+        "p10F": 87.98,
+        "p25F": 89.96,
+        "p50F": 91.04,
+        "p75F": 93.02,
+        "p90F": 93.92,
+        "histogram1F": [
+          {
+            "binF": 84,
+            "count": 1
+          },
+          {
+            "binF": 85,
+            "count": 2
+          },
+          {
+            "binF": 86,
+            "count": 5
+          },
+          {
+            "binF": 87,
+            "count": 4
+          },
+          {
+            "binF": 88,
+            "count": 10
+          },
+          {
+            "binF": 89,
+            "count": 15
+          },
+          {
+            "binF": 90,
+            "count": 19
+          },
+          {
+            "binF": 91,
+            "count": 33
+          },
+          {
+            "binF": 92,
+            "count": 20
+          },
+          {
+            "binF": 93,
+            "count": 23
+          },
+          {
+            "binF": 94,
+            "count": 11
+          },
+          {
+            "binF": 95,
+            "count": 4
+          },
+          {
+            "binF": 96,
+            "count": 3
+          }
+        ]
+      }
+    },
+    "AUS": {
+      "10": {
+        "n": 155,
+        "meanF": 86.59,
+        "stdDevF": 8.08,
+        "p10F": 75.92,
+        "p25F": 82.04,
+        "p50F": 87.98,
+        "p75F": 91.94,
+        "p90F": 95,
+        "histogram1F": [
+          {
+            "binF": 49,
+            "count": 1
+          },
+          {
+            "binF": 61,
+            "count": 1
+          },
+          {
+            "binF": 66,
+            "count": 1
+          },
+          {
+            "binF": 69,
+            "count": 2
+          },
+          {
+            "binF": 71,
+            "count": 1
+          },
+          {
+            "binF": 72,
+            "count": 2
+          },
+          {
+            "binF": 73,
+            "count": 1
+          },
+          {
+            "binF": 74,
+            "count": 3
+          },
+          {
+            "binF": 75,
+            "count": 3
+          },
+          {
+            "binF": 76,
+            "count": 6
+          },
+          {
+            "binF": 77,
+            "count": 3
+          },
+          {
+            "binF": 78,
+            "count": 4
+          },
+          {
+            "binF": 79,
+            "count": 4
+          },
+          {
+            "binF": 80,
+            "count": 1
+          },
+          {
+            "binF": 81,
+            "count": 5
+          },
+          {
+            "binF": 82,
+            "count": 3
+          },
+          {
+            "binF": 83,
+            "count": 1
+          },
+          {
+            "binF": 84,
+            "count": 4
+          },
+          {
+            "binF": 85,
+            "count": 2
+          },
+          {
+            "binF": 86,
+            "count": 9
+          },
+          {
+            "binF": 87,
+            "count": 9
+          },
+          {
+            "binF": 88,
+            "count": 14
+          },
+          {
+            "binF": 89,
+            "count": 15
+          },
+          {
+            "binF": 90,
+            "count": 10
+          },
+          {
+            "binF": 91,
+            "count": 4
+          },
+          {
+            "binF": 92,
+            "count": 8
+          },
+          {
+            "binF": 93,
+            "count": 9
+          },
+          {
+            "binF": 94,
+            "count": 6
+          },
+          {
+            "binF": 95,
+            "count": 11
+          },
+          {
+            "binF": 96,
+            "count": 5
+          },
+          {
+            "binF": 97,
+            "count": 2
+          },
+          {
+            "binF": 98,
+            "count": 3
+          },
+          {
+            "binF": 99,
+            "count": 1
+          },
+          {
+            "binF": 100,
+            "count": 1
+          }
+        ]
+      },
+      "11": {
+        "n": 150,
+        "meanF": 73.28,
+        "stdDevF": 10.64,
+        "p10F": 58.89,
+        "p25F": 66.02,
+        "p50F": 75.02,
+        "p75F": 82.04,
+        "p90F": 86,
+        "histogram1F": [
+          {
+            "binF": 45,
+            "count": 1
+          },
+          {
+            "binF": 47,
+            "count": 1
+          },
+          {
+            "binF": 48,
+            "count": 1
+          },
+          {
+            "binF": 51,
+            "count": 2
+          },
+          {
+            "binF": 53,
+            "count": 1
+          },
+          {
+            "binF": 54,
+            "count": 1
+          },
+          {
+            "binF": 55,
+            "count": 1
+          },
+          {
+            "binF": 56,
+            "count": 3
+          },
+          {
+            "binF": 57,
+            "count": 1
+          },
+          {
+            "binF": 58,
+            "count": 3
+          },
+          {
+            "binF": 59,
+            "count": 3
+          },
+          {
+            "binF": 60,
+            "count": 5
+          },
+          {
+            "binF": 61,
+            "count": 4
+          },
+          {
+            "binF": 62,
+            "count": 3
+          },
+          {
+            "binF": 63,
+            "count": 2
+          },
+          {
+            "binF": 64,
+            "count": 1
+          },
+          {
+            "binF": 65,
+            "count": 2
+          },
+          {
+            "binF": 66,
+            "count": 8
+          },
+          {
+            "binF": 67,
+            "count": 6
+          },
+          {
+            "binF": 69,
+            "count": 5
+          },
+          {
+            "binF": 70,
+            "count": 4
+          },
+          {
+            "binF": 71,
+            "count": 2
+          },
+          {
+            "binF": 72,
+            "count": 5
+          },
+          {
+            "binF": 73,
+            "count": 2
+          },
+          {
+            "binF": 74,
+            "count": 7
+          },
+          {
+            "binF": 75,
+            "count": 2
+          },
+          {
+            "binF": 76,
+            "count": 2
+          },
+          {
+            "binF": 77,
+            "count": 6
+          },
+          {
+            "binF": 78,
+            "count": 4
+          },
+          {
+            "binF": 79,
+            "count": 9
+          },
+          {
+            "binF": 80,
+            "count": 4
+          },
+          {
+            "binF": 81,
+            "count": 10
+          },
+          {
+            "binF": 82,
+            "count": 4
+          },
+          {
+            "binF": 83,
+            "count": 6
+          },
+          {
+            "binF": 84,
+            "count": 5
+          },
+          {
+            "binF": 85,
+            "count": 8
+          },
+          {
+            "binF": 86,
+            "count": 6
+          },
+          {
+            "binF": 87,
+            "count": 3
+          },
+          {
+            "binF": 88,
+            "count": 3
+          },
+          {
+            "binF": 89,
+            "count": 3
+          },
+          {
+            "binF": 91,
+            "count": 1
+          }
+        ]
+      },
+      "12": {
+        "n": 155,
+        "meanF": 69.32,
+        "stdDevF": 10.2,
+        "p10F": 55.04,
+        "p25F": 62.51,
+        "p50F": 71.06,
+        "p75F": 78.08,
+        "p90F": 80.96,
+        "histogram1F": [
+          {
+            "binF": 31,
+            "count": 1
+          },
+          {
+            "binF": 39,
+            "count": 1
+          },
+          {
+            "binF": 45,
+            "count": 1
+          },
+          {
+            "binF": 48,
+            "count": 2
+          },
+          {
+            "binF": 50,
+            "count": 1
+          },
+          {
+            "binF": 51,
+            "count": 1
+          },
+          {
+            "binF": 52,
+            "count": 2
+          },
+          {
+            "binF": 53,
+            "count": 2
+          },
+          {
+            "binF": 54,
+            "count": 2
+          },
+          {
+            "binF": 55,
+            "count": 4
+          },
+          {
+            "binF": 56,
+            "count": 2
+          },
+          {
+            "binF": 57,
+            "count": 1
+          },
+          {
+            "binF": 58,
+            "count": 5
+          },
+          {
+            "binF": 59,
+            "count": 3
+          },
+          {
+            "binF": 60,
+            "count": 3
+          },
+          {
+            "binF": 61,
+            "count": 5
+          },
+          {
+            "binF": 62,
+            "count": 3
+          },
+          {
+            "binF": 63,
+            "count": 2
+          },
+          {
+            "binF": 64,
+            "count": 4
+          },
+          {
+            "binF": 65,
+            "count": 8
+          },
+          {
+            "binF": 66,
+            "count": 3
+          },
+          {
+            "binF": 67,
+            "count": 2
+          },
+          {
+            "binF": 68,
+            "count": 2
+          },
+          {
+            "binF": 69,
+            "count": 13
+          },
+          {
+            "binF": 70,
+            "count": 4
+          },
+          {
+            "binF": 71,
+            "count": 6
+          },
+          {
+            "binF": 72,
+            "count": 5
+          },
+          {
+            "binF": 73,
+            "count": 8
+          },
+          {
+            "binF": 74,
+            "count": 4
+          },
+          {
+            "binF": 75,
+            "count": 4
+          },
+          {
+            "binF": 76,
+            "count": 2
+          },
+          {
+            "binF": 77,
+            "count": 8
+          },
+          {
+            "binF": 78,
+            "count": 8
+          },
+          {
+            "binF": 79,
+            "count": 7
+          },
+          {
+            "binF": 80,
+            "count": 6
+          },
+          {
+            "binF": 81,
+            "count": 7
+          },
+          {
+            "binF": 82,
+            "count": 5
+          },
+          {
+            "binF": 83,
+            "count": 4
+          },
+          {
+            "binF": 84,
+            "count": 1
+          },
+          {
+            "binF": 85,
+            "count": 2
+          },
+          {
+            "binF": 86,
+            "count": 1
+          }
+        ]
+      },
+      "01": {
+        "n": 155,
+        "meanF": 61.73,
+        "stdDevF": 12.45,
+        "p10F": 43.77,
+        "p25F": 55.04,
+        "p50F": 62.06,
+        "p75F": 71.96,
+        "p90F": 77,
+        "histogram1F": [
+          {
+            "binF": 25,
+            "count": 1
+          },
+          {
+            "binF": 29,
+            "count": 1
+          },
+          {
+            "binF": 33,
+            "count": 1
+          },
+          {
+            "binF": 34,
+            "count": 2
+          },
+          {
+            "binF": 36,
+            "count": 1
+          },
+          {
+            "binF": 37,
+            "count": 1
+          },
+          {
+            "binF": 38,
+            "count": 1
+          },
+          {
+            "binF": 41,
+            "count": 4
+          },
+          {
+            "binF": 42,
+            "count": 3
+          },
+          {
+            "binF": 43,
+            "count": 1
+          },
+          {
+            "binF": 45,
+            "count": 3
+          },
+          {
+            "binF": 46,
+            "count": 1
+          },
+          {
+            "binF": 47,
+            "count": 2
+          },
+          {
+            "binF": 48,
+            "count": 1
+          },
+          {
+            "binF": 49,
+            "count": 2
+          },
+          {
+            "binF": 50,
+            "count": 1
+          },
+          {
+            "binF": 51,
+            "count": 3
+          },
+          {
+            "binF": 53,
+            "count": 5
+          },
+          {
+            "binF": 54,
+            "count": 2
+          },
+          {
+            "binF": 55,
+            "count": 4
+          },
+          {
+            "binF": 56,
+            "count": 6
+          },
+          {
+            "binF": 57,
+            "count": 4
+          },
+          {
+            "binF": 58,
+            "count": 8
+          },
+          {
+            "binF": 59,
+            "count": 6
+          },
+          {
+            "binF": 60,
+            "count": 7
+          },
+          {
+            "binF": 61,
+            "count": 4
+          },
+          {
+            "binF": 62,
+            "count": 3
+          },
+          {
+            "binF": 63,
+            "count": 6
+          },
+          {
+            "binF": 64,
+            "count": 4
+          },
+          {
+            "binF": 65,
+            "count": 5
+          },
+          {
+            "binF": 66,
+            "count": 2
+          },
+          {
+            "binF": 67,
+            "count": 8
+          },
+          {
+            "binF": 68,
+            "count": 5
+          },
+          {
+            "binF": 69,
+            "count": 2
+          },
+          {
+            "binF": 70,
+            "count": 3
+          },
+          {
+            "binF": 71,
+            "count": 2
+          },
+          {
+            "binF": 72,
+            "count": 3
+          },
+          {
+            "binF": 73,
+            "count": 5
+          },
+          {
+            "binF": 74,
+            "count": 5
+          },
+          {
+            "binF": 75,
+            "count": 5
+          },
+          {
+            "binF": 76,
+            "count": 4
+          },
+          {
+            "binF": 77,
+            "count": 3
+          },
+          {
+            "binF": 78,
+            "count": 6
+          },
+          {
+            "binF": 79,
+            "count": 2
+          },
+          {
+            "binF": 80,
+            "count": 3
+          },
+          {
+            "binF": 81,
+            "count": 1
+          },
+          {
+            "binF": 83,
+            "count": 1
+          },
+          {
+            "binF": 84,
+            "count": 1
+          },
+          {
+            "binF": 89,
+            "count": 1
+          }
+        ]
+      },
+      "02": {
+        "n": 140,
+        "meanF": 64.72,
+        "stdDevF": 15.59,
+        "p10F": 37.94,
+        "p25F": 55.94,
+        "p50F": 68,
+        "p75F": 77,
+        "p90F": 82.04,
+        "histogram1F": [
+          {
+            "binF": 23,
+            "count": 1
+          },
+          {
+            "binF": 27,
+            "count": 1
+          },
+          {
+            "binF": 30,
+            "count": 1
+          },
+          {
+            "binF": 31,
+            "count": 1
+          },
+          {
+            "binF": 32,
+            "count": 3
+          },
+          {
+            "binF": 33,
+            "count": 1
+          },
+          {
+            "binF": 34,
+            "count": 1
+          },
+          {
+            "binF": 36,
+            "count": 2
+          },
+          {
+            "binF": 38,
+            "count": 4
+          },
+          {
+            "binF": 41,
+            "count": 3
+          },
+          {
+            "binF": 42,
+            "count": 1
+          },
+          {
+            "binF": 45,
+            "count": 1
+          },
+          {
+            "binF": 47,
+            "count": 2
+          },
+          {
+            "binF": 48,
+            "count": 2
+          },
+          {
+            "binF": 49,
+            "count": 1
+          },
+          {
+            "binF": 50,
+            "count": 1
+          },
+          {
+            "binF": 51,
+            "count": 2
+          },
+          {
+            "binF": 52,
+            "count": 1
+          },
+          {
+            "binF": 53,
+            "count": 2
+          },
+          {
+            "binF": 54,
+            "count": 1
+          },
+          {
+            "binF": 55,
+            "count": 1
+          },
+          {
+            "binF": 56,
+            "count": 3
+          },
+          {
+            "binF": 57,
+            "count": 3
+          },
+          {
+            "binF": 58,
+            "count": 3
+          },
+          {
+            "binF": 59,
+            "count": 2
+          },
+          {
+            "binF": 60,
+            "count": 3
+          },
+          {
+            "binF": 61,
+            "count": 3
+          },
+          {
+            "binF": 62,
+            "count": 1
+          },
+          {
+            "binF": 63,
+            "count": 3
+          },
+          {
+            "binF": 64,
+            "count": 4
+          },
+          {
+            "binF": 65,
+            "count": 2
+          },
+          {
+            "binF": 66,
+            "count": 6
+          },
+          {
+            "binF": 67,
+            "count": 1
+          },
+          {
+            "binF": 68,
+            "count": 4
+          },
+          {
+            "binF": 69,
+            "count": 4
+          },
+          {
+            "binF": 70,
+            "count": 2
+          },
+          {
+            "binF": 71,
+            "count": 6
+          },
+          {
+            "binF": 72,
+            "count": 2
+          },
+          {
+            "binF": 73,
+            "count": 7
+          },
+          {
+            "binF": 74,
+            "count": 1
+          },
+          {
+            "binF": 75,
+            "count": 5
+          },
+          {
+            "binF": 76,
+            "count": 5
+          },
+          {
+            "binF": 77,
+            "count": 7
+          },
+          {
+            "binF": 78,
+            "count": 2
+          },
+          {
+            "binF": 79,
+            "count": 4
+          },
+          {
+            "binF": 80,
+            "count": 4
+          },
+          {
+            "binF": 81,
+            "count": 5
+          },
+          {
+            "binF": 82,
+            "count": 3
+          },
+          {
+            "binF": 83,
+            "count": 5
+          },
+          {
+            "binF": 84,
+            "count": 1
+          },
+          {
+            "binF": 85,
+            "count": 2
+          },
+          {
+            "binF": 86,
+            "count": 1
+          },
+          {
+            "binF": 87,
+            "count": 1
+          },
+          {
+            "binF": 88,
+            "count": 1
+          },
+          {
+            "binF": 90,
+            "count": 1
+          }
+        ]
+      },
+      "03": {
+        "n": 155,
+        "meanF": 76.18,
+        "stdDevF": 7.86,
+        "p10F": 66.02,
+        "p25F": 71.96,
+        "p50F": 78.08,
+        "p75F": 80.96,
+        "p90F": 84.92,
+        "histogram1F": [
+          {
+            "binF": 53,
+            "count": 1
+          },
+          {
+            "binF": 54,
+            "count": 1
+          },
+          {
+            "binF": 56,
+            "count": 2
+          },
+          {
+            "binF": 57,
+            "count": 1
+          },
+          {
+            "binF": 59,
+            "count": 1
+          },
+          {
+            "binF": 60,
+            "count": 1
+          },
+          {
+            "binF": 61,
+            "count": 1
+          },
+          {
+            "binF": 62,
+            "count": 2
+          },
+          {
+            "binF": 64,
+            "count": 2
+          },
+          {
+            "binF": 65,
+            "count": 2
+          },
+          {
+            "binF": 66,
+            "count": 4
+          },
+          {
+            "binF": 67,
+            "count": 5
+          },
+          {
+            "binF": 68,
+            "count": 3
+          },
+          {
+            "binF": 69,
+            "count": 3
+          },
+          {
+            "binF": 70,
+            "count": 1
+          },
+          {
+            "binF": 71,
+            "count": 6
+          },
+          {
+            "binF": 72,
+            "count": 7
+          },
+          {
+            "binF": 73,
+            "count": 10
+          },
+          {
+            "binF": 74,
+            "count": 4
+          },
+          {
+            "binF": 75,
+            "count": 8
+          },
+          {
+            "binF": 76,
+            "count": 5
+          },
+          {
+            "binF": 77,
+            "count": 6
+          },
+          {
+            "binF": 78,
+            "count": 11
+          },
+          {
+            "binF": 79,
+            "count": 11
+          },
+          {
+            "binF": 80,
+            "count": 7
+          },
+          {
+            "binF": 81,
+            "count": 15
+          },
+          {
+            "binF": 82,
+            "count": 4
+          },
+          {
+            "binF": 83,
+            "count": 6
+          },
+          {
+            "binF": 84,
+            "count": 8
+          },
+          {
+            "binF": 85,
+            "count": 5
+          },
+          {
+            "binF": 86,
+            "count": 3
+          },
+          {
+            "binF": 87,
+            "count": 1
+          },
+          {
+            "binF": 88,
+            "count": 3
+          },
+          {
+            "binF": 89,
+            "count": 2
+          },
+          {
+            "binF": 91,
+            "count": 1
+          },
+          {
+            "binF": 92,
+            "count": 1
+          },
+          {
+            "binF": 97,
+            "count": 1
+          }
+        ]
+      },
+      "04": {
+        "n": 150,
+        "meanF": 80.51,
+        "stdDevF": 7.76,
+        "p10F": 69.98,
+        "p25F": 75.92,
+        "p50F": 82.04,
+        "p75F": 86,
+        "p90F": 89.06,
+        "histogram1F": [
+          {
+            "binF": 54,
+            "count": 1
+          },
+          {
+            "binF": 57,
+            "count": 1
+          },
+          {
+            "binF": 60,
+            "count": 1
+          },
+          {
+            "binF": 62,
+            "count": 1
+          },
+          {
+            "binF": 64,
+            "count": 3
+          },
+          {
+            "binF": 65,
+            "count": 1
+          },
+          {
+            "binF": 66,
+            "count": 2
+          },
+          {
+            "binF": 67,
+            "count": 1
+          },
+          {
+            "binF": 68,
+            "count": 1
+          },
+          {
+            "binF": 69,
+            "count": 2
+          },
+          {
+            "binF": 70,
+            "count": 3
+          },
+          {
+            "binF": 71,
+            "count": 4
+          },
+          {
+            "binF": 72,
+            "count": 3
+          },
+          {
+            "binF": 73,
+            "count": 3
+          },
+          {
+            "binF": 74,
+            "count": 4
+          },
+          {
+            "binF": 75,
+            "count": 6
+          },
+          {
+            "binF": 76,
+            "count": 3
+          },
+          {
+            "binF": 77,
+            "count": 3
+          },
+          {
+            "binF": 78,
+            "count": 6
+          },
+          {
+            "binF": 79,
+            "count": 8
+          },
+          {
+            "binF": 80,
+            "count": 6
+          },
+          {
+            "binF": 81,
+            "count": 9
+          },
+          {
+            "binF": 82,
+            "count": 6
+          },
+          {
+            "binF": 83,
+            "count": 6
+          },
+          {
+            "binF": 84,
+            "count": 7
+          },
+          {
+            "binF": 85,
+            "count": 15
+          },
+          {
+            "binF": 86,
+            "count": 10
+          },
+          {
+            "binF": 87,
+            "count": 10
+          },
+          {
+            "binF": 88,
+            "count": 3
+          },
+          {
+            "binF": 89,
+            "count": 11
+          },
+          {
+            "binF": 90,
+            "count": 2
+          },
+          {
+            "binF": 91,
+            "count": 6
+          },
+          {
+            "binF": 93,
+            "count": 2
+          }
+        ]
+      },
+      "05": {
+        "n": 155,
+        "meanF": 87.67,
+        "stdDevF": 6.74,
+        "p10F": 78.98,
+        "p25F": 82.94,
+        "p50F": 87.98,
+        "p75F": 93.02,
+        "p90F": 96.08,
+        "histogram1F": [
+          {
+            "binF": 70,
+            "count": 1
+          },
+          {
+            "binF": 72,
+            "count": 1
+          },
+          {
+            "binF": 73,
+            "count": 3
+          },
+          {
+            "binF": 74,
+            "count": 1
+          },
+          {
+            "binF": 75,
+            "count": 1
+          },
+          {
+            "binF": 76,
+            "count": 3
+          },
+          {
+            "binF": 77,
+            "count": 1
+          },
+          {
+            "binF": 78,
+            "count": 3
+          },
+          {
+            "binF": 79,
+            "count": 3
+          },
+          {
+            "binF": 80,
+            "count": 6
+          },
+          {
+            "binF": 81,
+            "count": 6
+          },
+          {
+            "binF": 82,
+            "count": 3
+          },
+          {
+            "binF": 83,
+            "count": 8
+          },
+          {
+            "binF": 84,
+            "count": 13
+          },
+          {
+            "binF": 85,
+            "count": 7
+          },
+          {
+            "binF": 86,
+            "count": 6
+          },
+          {
+            "binF": 87,
+            "count": 9
+          },
+          {
+            "binF": 88,
+            "count": 10
+          },
+          {
+            "binF": 89,
+            "count": 9
+          },
+          {
+            "binF": 90,
+            "count": 7
+          },
+          {
+            "binF": 91,
+            "count": 3
+          },
+          {
+            "binF": 92,
+            "count": 10
+          },
+          {
+            "binF": 93,
+            "count": 4
+          },
+          {
+            "binF": 94,
+            "count": 5
+          },
+          {
+            "binF": 95,
+            "count": 9
+          },
+          {
+            "binF": 96,
+            "count": 8
+          },
+          {
+            "binF": 97,
+            "count": 6
+          },
+          {
+            "binF": 98,
+            "count": 4
+          },
+          {
+            "binF": 99,
+            "count": 3
+          },
+          {
+            "binF": 100,
+            "count": 2
+          }
+        ]
+      },
+      "06": {
+        "n": 150,
+        "meanF": 94.51,
+        "stdDevF": 4.81,
+        "p10F": 89.06,
+        "p25F": 91.94,
+        "p50F": 95,
+        "p75F": 96.98,
+        "p90F": 100.04,
+        "histogram1F": [
+          {
+            "binF": 72,
+            "count": 1
+          },
+          {
+            "binF": 80,
+            "count": 1
+          },
+          {
+            "binF": 81,
+            "count": 1
+          },
+          {
+            "binF": 82,
+            "count": 2
+          },
+          {
+            "binF": 83,
+            "count": 2
+          },
+          {
+            "binF": 86,
+            "count": 1
+          },
+          {
+            "binF": 87,
+            "count": 3
+          },
+          {
+            "binF": 88,
+            "count": 2
+          },
+          {
+            "binF": 89,
+            "count": 6
+          },
+          {
+            "binF": 90,
+            "count": 1
+          },
+          {
+            "binF": 91,
+            "count": 11
+          },
+          {
+            "binF": 92,
+            "count": 10
+          },
+          {
+            "binF": 93,
+            "count": 8
+          },
+          {
+            "binF": 94,
+            "count": 13
+          },
+          {
+            "binF": 95,
+            "count": 19
+          },
+          {
+            "binF": 96,
+            "count": 21
+          },
+          {
+            "binF": 97,
+            "count": 12
+          },
+          {
+            "binF": 98,
+            "count": 10
+          },
+          {
+            "binF": 99,
+            "count": 6
+          },
+          {
+            "binF": 100,
+            "count": 6
+          },
+          {
+            "binF": 101,
+            "count": 9
+          },
+          {
+            "binF": 102,
+            "count": 4
+          },
+          {
+            "binF": 103,
+            "count": 1
+          }
+        ]
+      },
+      "07": {
+        "n": 155,
+        "meanF": 95.78,
+        "stdDevF": 5.79,
+        "p10F": 87.98,
+        "p25F": 91.94,
+        "p50F": 95,
+        "p75F": 100.94,
+        "p90F": 102.92,
+        "histogram1F": [
+          {
+            "binF": 79,
+            "count": 2
+          },
+          {
+            "binF": 82,
+            "count": 1
+          },
+          {
+            "binF": 83,
+            "count": 1
+          },
+          {
+            "binF": 84,
+            "count": 2
+          },
+          {
+            "binF": 85,
+            "count": 1
+          },
+          {
+            "binF": 86,
+            "count": 2
+          },
+          {
+            "binF": 87,
+            "count": 4
+          },
+          {
+            "binF": 88,
+            "count": 4
+          },
+          {
+            "binF": 89,
+            "count": 7
+          },
+          {
+            "binF": 90,
+            "count": 3
+          },
+          {
+            "binF": 91,
+            "count": 8
+          },
+          {
+            "binF": 92,
+            "count": 5
+          },
+          {
+            "binF": 93,
+            "count": 13
+          },
+          {
+            "binF": 94,
+            "count": 12
+          },
+          {
+            "binF": 95,
+            "count": 14
+          },
+          {
+            "binF": 96,
+            "count": 5
+          },
+          {
+            "binF": 97,
+            "count": 6
+          },
+          {
+            "binF": 98,
+            "count": 3
+          },
+          {
+            "binF": 99,
+            "count": 12
+          },
+          {
+            "binF": 100,
+            "count": 6
+          },
+          {
+            "binF": 101,
+            "count": 17
+          },
+          {
+            "binF": 102,
+            "count": 7
+          },
+          {
+            "binF": 103,
+            "count": 10
+          },
+          {
+            "binF": 104,
+            "count": 6
+          },
+          {
+            "binF": 105,
+            "count": 1
+          },
+          {
+            "binF": 106,
+            "count": 3
+          }
+        ]
+      },
+      "08": {
+        "n": 150,
+        "meanF": 98.42,
+        "stdDevF": 5.36,
+        "p10F": 92.91,
+        "p25F": 94.19,
+        "p50F": 98.96,
+        "p75F": 102.02,
+        "p90F": 105.98,
+        "histogram1F": [
+          {
+            "binF": 81,
+            "count": 1
+          },
+          {
+            "binF": 82,
+            "count": 1
+          },
+          {
+            "binF": 83,
+            "count": 1
+          },
+          {
+            "binF": 88,
+            "count": 1
+          },
+          {
+            "binF": 89,
+            "count": 2
+          },
+          {
+            "binF": 90,
+            "count": 3
+          },
+          {
+            "binF": 91,
+            "count": 3
+          },
+          {
+            "binF": 92,
+            "count": 3
+          },
+          {
+            "binF": 93,
+            "count": 6
+          },
+          {
+            "binF": 94,
+            "count": 17
+          },
+          {
+            "binF": 95,
+            "count": 7
+          },
+          {
+            "binF": 96,
+            "count": 7
+          },
+          {
+            "binF": 97,
+            "count": 11
+          },
+          {
+            "binF": 98,
+            "count": 10
+          },
+          {
+            "binF": 99,
+            "count": 14
+          },
+          {
+            "binF": 100,
+            "count": 16
+          },
+          {
+            "binF": 101,
+            "count": 8
+          },
+          {
+            "binF": 102,
+            "count": 5
+          },
+          {
+            "binF": 103,
+            "count": 8
+          },
+          {
+            "binF": 104,
+            "count": 1
+          },
+          {
+            "binF": 105,
+            "count": 6
+          },
+          {
+            "binF": 106,
+            "count": 9
+          },
+          {
+            "binF": 107,
+            "count": 6
+          },
+          {
+            "binF": 108,
+            "count": 2
+          },
+          {
+            "binF": 109,
+            "count": 1
+          },
+          {
+            "binF": 110,
+            "count": 1
+          }
+        ]
+      },
+      "09": {
+        "n": 150,
+        "meanF": 94.98,
+        "stdDevF": 4.5,
+        "p10F": 89.87,
+        "p25F": 91.94,
+        "p50F": 95,
+        "p75F": 97.79,
+        "p90F": 100.04,
+        "histogram1F": [
+          {
+            "binF": 76,
+            "count": 1
+          },
+          {
+            "binF": 85,
+            "count": 1
+          },
+          {
+            "binF": 86,
+            "count": 4
+          },
+          {
+            "binF": 87,
+            "count": 3
+          },
+          {
+            "binF": 88,
+            "count": 2
+          },
+          {
+            "binF": 89,
+            "count": 4
+          },
+          {
+            "binF": 90,
+            "count": 6
+          },
+          {
+            "binF": 91,
+            "count": 7
+          },
+          {
+            "binF": 92,
+            "count": 14
+          },
+          {
+            "binF": 93,
+            "count": 10
+          },
+          {
+            "binF": 94,
+            "count": 10
+          },
+          {
+            "binF": 95,
+            "count": 16
+          },
+          {
+            "binF": 96,
+            "count": 12
+          },
+          {
+            "binF": 97,
+            "count": 22
+          },
+          {
+            "binF": 98,
+            "count": 11
+          },
+          {
+            "binF": 99,
+            "count": 10
+          },
+          {
+            "binF": 100,
+            "count": 5
+          },
+          {
+            "binF": 101,
+            "count": 2
+          },
+          {
+            "binF": 102,
+            "count": 2
+          },
+          {
+            "binF": 103,
+            "count": 4
+          },
+          {
+            "binF": 104,
+            "count": 1
+          },
+          {
+            "binF": 105,
+            "count": 1
+          },
+          {
+            "binF": 106,
+            "count": 1
+          },
+          {
+            "binF": 107,
+            "count": 1
+          }
+        ]
+      }
+    },
+    "LAX": {
+      "10": {
+        "n": 155,
+        "meanF": 78.82,
+        "stdDevF": 6.92,
+        "p10F": 70.41,
+        "p25F": 73.49,
+        "p50F": 78.08,
+        "p75F": 82.94,
+        "p90F": 87.98,
+        "histogram1F": [
+          {
+            "binF": 61,
+            "count": 1
+          },
+          {
+            "binF": 62,
+            "count": 1
+          },
+          {
+            "binF": 66,
+            "count": 1
+          },
+          {
+            "binF": 67,
+            "count": 1
+          },
+          {
+            "binF": 68,
+            "count": 2
+          },
+          {
+            "binF": 69,
+            "count": 4
+          },
+          {
+            "binF": 70,
+            "count": 6
+          },
+          {
+            "binF": 71,
+            "count": 8
+          },
+          {
+            "binF": 72,
+            "count": 6
+          },
+          {
+            "binF": 73,
+            "count": 9
+          },
+          {
+            "binF": 74,
+            "count": 3
+          },
+          {
+            "binF": 75,
+            "count": 9
+          },
+          {
+            "binF": 76,
+            "count": 14
+          },
+          {
+            "binF": 77,
+            "count": 7
+          },
+          {
+            "binF": 78,
+            "count": 7
+          },
+          {
+            "binF": 79,
+            "count": 7
+          },
+          {
+            "binF": 80,
+            "count": 7
+          },
+          {
+            "binF": 81,
+            "count": 8
+          },
+          {
+            "binF": 82,
+            "count": 10
+          },
+          {
+            "binF": 83,
+            "count": 6
+          },
+          {
+            "binF": 84,
+            "count": 4
+          },
+          {
+            "binF": 85,
+            "count": 6
+          },
+          {
+            "binF": 86,
+            "count": 5
+          },
+          {
+            "binF": 87,
+            "count": 3
+          },
+          {
+            "binF": 88,
+            "count": 9
+          },
+          {
+            "binF": 89,
+            "count": 2
+          },
+          {
+            "binF": 90,
+            "count": 2
+          },
+          {
+            "binF": 91,
+            "count": 1
+          },
+          {
+            "binF": 93,
+            "count": 3
+          },
+          {
+            "binF": 96,
+            "count": 1
+          },
+          {
+            "binF": 97,
+            "count": 2
+          }
+        ]
+      },
+      "11": {
+        "n": 150,
+        "meanF": 73.33,
+        "stdDevF": 6.36,
+        "p10F": 64.94,
+        "p25F": 69.08,
+        "p50F": 73.04,
+        "p75F": 75.92,
+        "p90F": 82.04,
+        "histogram1F": [
+          {
+            "binF": 62,
+            "count": 3
+          },
+          {
+            "binF": 63,
+            "count": 2
+          },
+          {
+            "binF": 64,
+            "count": 3
+          },
+          {
+            "binF": 65,
+            "count": 9
+          },
+          {
+            "binF": 66,
+            "count": 7
+          },
+          {
+            "binF": 67,
+            "count": 9
+          },
+          {
+            "binF": 68,
+            "count": 3
+          },
+          {
+            "binF": 69,
+            "count": 7
+          },
+          {
+            "binF": 70,
+            "count": 7
+          },
+          {
+            "binF": 71,
+            "count": 15
+          },
+          {
+            "binF": 72,
+            "count": 9
+          },
+          {
+            "binF": 73,
+            "count": 5
+          },
+          {
+            "binF": 74,
+            "count": 6
+          },
+          {
+            "binF": 75,
+            "count": 8
+          },
+          {
+            "binF": 76,
+            "count": 20
+          },
+          {
+            "binF": 77,
+            "count": 3
+          },
+          {
+            "binF": 78,
+            "count": 5
+          },
+          {
+            "binF": 79,
+            "count": 5
+          },
+          {
+            "binF": 80,
+            "count": 4
+          },
+          {
+            "binF": 81,
+            "count": 4
+          },
+          {
+            "binF": 82,
+            "count": 3
+          },
+          {
+            "binF": 83,
+            "count": 3
+          },
+          {
+            "binF": 84,
+            "count": 2
+          },
+          {
+            "binF": 85,
+            "count": 2
+          },
+          {
+            "binF": 86,
+            "count": 1
+          },
+          {
+            "binF": 88,
+            "count": 1
+          },
+          {
+            "binF": 89,
+            "count": 1
+          },
+          {
+            "binF": 90,
+            "count": 2
+          },
+          {
+            "binF": 92,
+            "count": 1
+          }
+        ]
+      },
+      "12": {
+        "n": 155,
+        "meanF": 67.85,
+        "stdDevF": 6.96,
+        "p10F": 59.43,
+        "p25F": 62.96,
+        "p50F": 66.92,
+        "p75F": 71.96,
+        "p90F": 78.62,
+        "histogram1F": [
+          {
+            "binF": 53,
+            "count": 1
+          },
+          {
+            "binF": 55,
+            "count": 3
+          },
+          {
+            "binF": 56,
+            "count": 2
+          },
+          {
+            "binF": 57,
+            "count": 2
+          },
+          {
+            "binF": 58,
+            "count": 3
+          },
+          {
+            "binF": 59,
+            "count": 5
+          },
+          {
+            "binF": 60,
+            "count": 4
+          },
+          {
+            "binF": 61,
+            "count": 7
+          },
+          {
+            "binF": 62,
+            "count": 5
+          },
+          {
+            "binF": 63,
+            "count": 11
+          },
+          {
+            "binF": 64,
+            "count": 10
+          },
+          {
+            "binF": 65,
+            "count": 8
+          },
+          {
+            "binF": 66,
+            "count": 12
+          },
+          {
+            "binF": 67,
+            "count": 9
+          },
+          {
+            "binF": 68,
+            "count": 9
+          },
+          {
+            "binF": 69,
+            "count": 10
+          },
+          {
+            "binF": 70,
+            "count": 5
+          },
+          {
+            "binF": 71,
+            "count": 8
+          },
+          {
+            "binF": 72,
+            "count": 6
+          },
+          {
+            "binF": 73,
+            "count": 6
+          },
+          {
+            "binF": 74,
+            "count": 3
+          },
+          {
+            "binF": 75,
+            "count": 4
+          },
+          {
+            "binF": 76,
+            "count": 4
+          },
+          {
+            "binF": 77,
+            "count": 1
+          },
+          {
+            "binF": 78,
+            "count": 1
+          },
+          {
+            "binF": 79,
+            "count": 4
+          },
+          {
+            "binF": 80,
+            "count": 2
+          },
+          {
+            "binF": 81,
+            "count": 2
+          },
+          {
+            "binF": 82,
+            "count": 1
+          },
+          {
+            "binF": 83,
+            "count": 3
+          },
+          {
+            "binF": 84,
+            "count": 3
+          },
+          {
+            "binF": 86,
+            "count": 1
+          }
+        ]
+      },
+      "01": {
+        "n": 155,
+        "meanF": 68.21,
+        "stdDevF": 6.76,
+        "p10F": 60.08,
+        "p25F": 62.96,
+        "p50F": 66.92,
+        "p75F": 71.96,
+        "p90F": 78.08,
+        "histogram1F": [
+          {
+            "binF": 54,
+            "count": 1
+          },
+          {
+            "binF": 56,
+            "count": 1
+          },
+          {
+            "binF": 57,
+            "count": 1
+          },
+          {
+            "binF": 58,
+            "count": 3
+          },
+          {
+            "binF": 59,
+            "count": 2
+          },
+          {
+            "binF": 60,
+            "count": 9
+          },
+          {
+            "binF": 61,
+            "count": 5
+          },
+          {
+            "binF": 62,
+            "count": 9
+          },
+          {
+            "binF": 63,
+            "count": 12
+          },
+          {
+            "binF": 64,
+            "count": 10
+          },
+          {
+            "binF": 65,
+            "count": 10
+          },
+          {
+            "binF": 66,
+            "count": 9
+          },
+          {
+            "binF": 67,
+            "count": 9
+          },
+          {
+            "binF": 68,
+            "count": 8
+          },
+          {
+            "binF": 69,
+            "count": 9
+          },
+          {
+            "binF": 70,
+            "count": 7
+          },
+          {
+            "binF": 71,
+            "count": 9
+          },
+          {
+            "binF": 72,
+            "count": 3
+          },
+          {
+            "binF": 73,
+            "count": 5
+          },
+          {
+            "binF": 74,
+            "count": 4
+          },
+          {
+            "binF": 75,
+            "count": 5
+          },
+          {
+            "binF": 76,
+            "count": 4
+          },
+          {
+            "binF": 77,
+            "count": 2
+          },
+          {
+            "binF": 78,
+            "count": 3
+          },
+          {
+            "binF": 79,
+            "count": 2
+          },
+          {
+            "binF": 80,
+            "count": 3
+          },
+          {
+            "binF": 81,
+            "count": 1
+          },
+          {
+            "binF": 82,
+            "count": 3
+          },
+          {
+            "binF": 83,
+            "count": 3
+          },
+          {
+            "binF": 84,
+            "count": 1
+          },
+          {
+            "binF": 85,
+            "count": 1
+          },
+          {
+            "binF": 86,
+            "count": 1
+          }
+        ]
+      },
+      "02": {
+        "n": 139,
+        "meanF": 68.15,
+        "stdDevF": 7.5,
+        "p10F": 59,
+        "p25F": 62.96,
+        "p50F": 68,
+        "p75F": 73.04,
+        "p90F": 78.98,
+        "histogram1F": [
+          {
+            "binF": 51,
+            "count": 1
+          },
+          {
+            "binF": 53,
+            "count": 1
+          },
+          {
+            "binF": 54,
+            "count": 1
+          },
+          {
+            "binF": 55,
+            "count": 2
+          },
+          {
+            "binF": 56,
+            "count": 3
+          },
+          {
+            "binF": 57,
+            "count": 2
+          },
+          {
+            "binF": 58,
+            "count": 3
+          },
+          {
+            "binF": 59,
+            "count": 3
+          },
+          {
+            "binF": 60,
+            "count": 7
+          },
+          {
+            "binF": 61,
+            "count": 1
+          },
+          {
+            "binF": 62,
+            "count": 9
+          },
+          {
+            "binF": 63,
+            "count": 7
+          },
+          {
+            "binF": 64,
+            "count": 4
+          },
+          {
+            "binF": 65,
+            "count": 12
+          },
+          {
+            "binF": 66,
+            "count": 5
+          },
+          {
+            "binF": 67,
+            "count": 4
+          },
+          {
+            "binF": 68,
+            "count": 10
+          },
+          {
+            "binF": 69,
+            "count": 8
+          },
+          {
+            "binF": 70,
+            "count": 8
+          },
+          {
+            "binF": 71,
+            "count": 7
+          },
+          {
+            "binF": 72,
+            "count": 2
+          },
+          {
+            "binF": 73,
+            "count": 6
+          },
+          {
+            "binF": 74,
+            "count": 5
+          },
+          {
+            "binF": 75,
+            "count": 7
+          },
+          {
+            "binF": 76,
+            "count": 1
+          },
+          {
+            "binF": 77,
+            "count": 4
+          },
+          {
+            "binF": 78,
+            "count": 1
+          },
+          {
+            "binF": 79,
+            "count": 4
+          },
+          {
+            "binF": 80,
+            "count": 1
+          },
+          {
+            "binF": 81,
+            "count": 1
+          },
+          {
+            "binF": 82,
+            "count": 4
+          },
+          {
+            "binF": 83,
+            "count": 2
+          },
+          {
+            "binF": 84,
+            "count": 1
+          },
+          {
+            "binF": 86,
+            "count": 1
+          },
+          {
+            "binF": 88,
+            "count": 1
+          }
+        ]
+      },
+      "03": {
+        "n": 155,
+        "meanF": 67.79,
+        "stdDevF": 6.69,
+        "p10F": 60.08,
+        "p25F": 62.96,
+        "p50F": 66.92,
+        "p75F": 71.96,
+        "p90F": 75.92,
+        "histogram1F": [
+          {
+            "binF": 50,
+            "count": 1
+          },
+          {
+            "binF": 56,
+            "count": 2
+          },
+          {
+            "binF": 57,
+            "count": 3
+          },
+          {
+            "binF": 58,
+            "count": 3
+          },
+          {
+            "binF": 59,
+            "count": 3
+          },
+          {
+            "binF": 60,
+            "count": 7
+          },
+          {
+            "binF": 61,
+            "count": 5
+          },
+          {
+            "binF": 62,
+            "count": 9
+          },
+          {
+            "binF": 63,
+            "count": 8
+          },
+          {
+            "binF": 64,
+            "count": 13
+          },
+          {
+            "binF": 65,
+            "count": 7
+          },
+          {
+            "binF": 66,
+            "count": 9
+          },
+          {
+            "binF": 67,
+            "count": 13
+          },
+          {
+            "binF": 68,
+            "count": 11
+          },
+          {
+            "binF": 69,
+            "count": 8
+          },
+          {
+            "binF": 70,
+            "count": 4
+          },
+          {
+            "binF": 71,
+            "count": 9
+          },
+          {
+            "binF": 72,
+            "count": 6
+          },
+          {
+            "binF": 73,
+            "count": 6
+          },
+          {
+            "binF": 74,
+            "count": 4
+          },
+          {
+            "binF": 75,
+            "count": 4
+          },
+          {
+            "binF": 76,
+            "count": 5
+          },
+          {
+            "binF": 77,
+            "count": 2
+          },
+          {
+            "binF": 78,
+            "count": 3
+          },
+          {
+            "binF": 79,
+            "count": 1
+          },
+          {
+            "binF": 80,
+            "count": 3
+          },
+          {
+            "binF": 82,
+            "count": 1
+          },
+          {
+            "binF": 84,
+            "count": 1
+          },
+          {
+            "binF": 85,
+            "count": 1
+          },
+          {
+            "binF": 86,
+            "count": 1
+          },
+          {
+            "binF": 87,
+            "count": 1
+          },
+          {
+            "binF": 88,
+            "count": 1
+          }
+        ]
+      },
+      "04": {
+        "n": 150,
+        "meanF": 71.86,
+        "stdDevF": 7.24,
+        "p10F": 64.94,
+        "p25F": 66.92,
+        "p50F": 71.06,
+        "p75F": 75.02,
+        "p90F": 82.94,
+        "histogram1F": [
+          {
+            "binF": 59,
+            "count": 1
+          },
+          {
+            "binF": 60,
+            "count": 2
+          },
+          {
+            "binF": 62,
+            "count": 3
+          },
+          {
+            "binF": 63,
+            "count": 7
+          },
+          {
+            "binF": 64,
+            "count": 1
+          },
+          {
+            "binF": 65,
+            "count": 11
+          },
+          {
+            "binF": 66,
+            "count": 10
+          },
+          {
+            "binF": 67,
+            "count": 9
+          },
+          {
+            "binF": 68,
+            "count": 15
+          },
+          {
+            "binF": 69,
+            "count": 6
+          },
+          {
+            "binF": 70,
+            "count": 9
+          },
+          {
+            "binF": 71,
+            "count": 11
+          },
+          {
+            "binF": 72,
+            "count": 10
+          },
+          {
+            "binF": 73,
+            "count": 6
+          },
+          {
+            "binF": 74,
+            "count": 9
+          },
+          {
+            "binF": 75,
+            "count": 6
+          },
+          {
+            "binF": 76,
+            "count": 4
+          },
+          {
+            "binF": 77,
+            "count": 2
+          },
+          {
+            "binF": 78,
+            "count": 3
+          },
+          {
+            "binF": 79,
+            "count": 3
+          },
+          {
+            "binF": 80,
+            "count": 1
+          },
+          {
+            "binF": 81,
+            "count": 4
+          },
+          {
+            "binF": 82,
+            "count": 1
+          },
+          {
+            "binF": 83,
+            "count": 3
+          },
+          {
+            "binF": 84,
+            "count": 2
+          },
+          {
+            "binF": 85,
+            "count": 1
+          },
+          {
+            "binF": 86,
+            "count": 1
+          },
+          {
+            "binF": 87,
+            "count": 1
+          },
+          {
+            "binF": 88,
+            "count": 2
+          },
+          {
+            "binF": 89,
+            "count": 3
+          },
+          {
+            "binF": 90,
+            "count": 1
+          },
+          {
+            "binF": 95,
+            "count": 2
+          }
+        ]
+      },
+      "05": {
+        "n": 155,
+        "meanF": 72.62,
+        "stdDevF": 6.11,
+        "p10F": 66.92,
+        "p25F": 69.08,
+        "p50F": 71.96,
+        "p75F": 73.94,
+        "p90F": 79.63,
+        "histogram1F": [
+          {
+            "binF": 61,
+            "count": 1
+          },
+          {
+            "binF": 62,
+            "count": 1
+          },
+          {
+            "binF": 63,
+            "count": 1
+          },
+          {
+            "binF": 65,
+            "count": 3
+          },
+          {
+            "binF": 66,
+            "count": 5
+          },
+          {
+            "binF": 67,
+            "count": 9
+          },
+          {
+            "binF": 68,
+            "count": 10
+          },
+          {
+            "binF": 69,
+            "count": 19
+          },
+          {
+            "binF": 70,
+            "count": 13
+          },
+          {
+            "binF": 71,
+            "count": 14
+          },
+          {
+            "binF": 72,
+            "count": 18
+          },
+          {
+            "binF": 73,
+            "count": 13
+          },
+          {
+            "binF": 74,
+            "count": 15
+          },
+          {
+            "binF": 75,
+            "count": 10
+          },
+          {
+            "binF": 76,
+            "count": 1
+          },
+          {
+            "binF": 77,
+            "count": 2
+          },
+          {
+            "binF": 79,
+            "count": 4
+          },
+          {
+            "binF": 80,
+            "count": 2
+          },
+          {
+            "binF": 81,
+            "count": 1
+          },
+          {
+            "binF": 83,
+            "count": 1
+          },
+          {
+            "binF": 84,
+            "count": 2
+          },
+          {
+            "binF": 85,
+            "count": 1
+          },
+          {
+            "binF": 87,
+            "count": 2
+          },
+          {
+            "binF": 88,
+            "count": 1
+          },
+          {
+            "binF": 89,
+            "count": 1
+          },
+          {
+            "binF": 90,
+            "count": 1
+          },
+          {
+            "binF": 91,
+            "count": 2
+          },
+          {
+            "binF": 96,
+            "count": 1
+          },
+          {
+            "binF": 99,
+            "count": 1
+          }
+        ]
+      },
+      "06": {
+        "n": 150,
+        "meanF": 78.31,
+        "stdDevF": 5.38,
+        "p10F": 71.96,
+        "p25F": 75.02,
+        "p50F": 78.08,
+        "p75F": 80.96,
+        "p90F": 86,
+        "histogram1F": [
+          {
+            "binF": 67,
+            "count": 2
+          },
+          {
+            "binF": 68,
+            "count": 2
+          },
+          {
+            "binF": 69,
+            "count": 3
+          },
+          {
+            "binF": 70,
+            "count": 1
+          },
+          {
+            "binF": 71,
+            "count": 6
+          },
+          {
+            "binF": 72,
+            "count": 5
+          },
+          {
+            "binF": 73,
+            "count": 9
+          },
+          {
+            "binF": 74,
+            "count": 8
+          },
+          {
+            "binF": 75,
+            "count": 12
+          },
+          {
+            "binF": 76,
+            "count": 14
+          },
+          {
+            "binF": 77,
+            "count": 9
+          },
+          {
+            "binF": 78,
+            "count": 10
+          },
+          {
+            "binF": 79,
+            "count": 11
+          },
+          {
+            "binF": 80,
+            "count": 8
+          },
+          {
+            "binF": 81,
+            "count": 13
+          },
+          {
+            "binF": 82,
+            "count": 7
+          },
+          {
+            "binF": 83,
+            "count": 4
+          },
+          {
+            "binF": 84,
+            "count": 6
+          },
+          {
+            "binF": 85,
+            "count": 3
+          },
+          {
+            "binF": 86,
+            "count": 3
+          },
+          {
+            "binF": 87,
+            "count": 3
+          },
+          {
+            "binF": 88,
+            "count": 2
+          },
+          {
+            "binF": 89,
+            "count": 5
+          },
+          {
+            "binF": 90,
+            "count": 3
+          },
+          {
+            "binF": 91,
+            "count": 1
+          }
+        ]
+      },
+      "07": {
+        "n": 155,
+        "meanF": 83.54,
+        "stdDevF": 3.91,
+        "p10F": 78.98,
+        "p25F": 80.96,
+        "p50F": 82.94,
+        "p75F": 86,
+        "p90F": 89.06,
+        "histogram1F": [
+          {
+            "binF": 75,
+            "count": 1
+          },
+          {
+            "binF": 76,
+            "count": 1
+          },
+          {
+            "binF": 77,
+            "count": 7
+          },
+          {
+            "binF": 78,
+            "count": 6
+          },
+          {
+            "binF": 79,
+            "count": 8
+          },
+          {
+            "binF": 80,
+            "count": 14
+          },
+          {
+            "binF": 81,
+            "count": 15
+          },
+          {
+            "binF": 82,
+            "count": 13
+          },
+          {
+            "binF": 83,
+            "count": 18
+          },
+          {
+            "binF": 84,
+            "count": 14
+          },
+          {
+            "binF": 85,
+            "count": 10
+          },
+          {
+            "binF": 86,
+            "count": 10
+          },
+          {
+            "binF": 87,
+            "count": 8
+          },
+          {
+            "binF": 88,
+            "count": 12
+          },
+          {
+            "binF": 89,
+            "count": 4
+          },
+          {
+            "binF": 90,
+            "count": 8
+          },
+          {
+            "binF": 91,
+            "count": 3
+          },
+          {
+            "binF": 92,
+            "count": 2
+          },
+          {
+            "binF": 93,
+            "count": 1
+          }
+        ]
+      },
+      "08": {
+        "n": 154,
+        "meanF": 85.65,
+        "stdDevF": 4.86,
+        "p10F": 78.98,
+        "p25F": 82.04,
+        "p50F": 84.92,
+        "p75F": 89.06,
+        "p90F": 91.94,
+        "histogram1F": [
+          {
+            "binF": 75,
+            "count": 2
+          },
+          {
+            "binF": 76,
+            "count": 1
+          },
+          {
+            "binF": 77,
+            "count": 2
+          },
+          {
+            "binF": 78,
+            "count": 5
+          },
+          {
+            "binF": 79,
+            "count": 7
+          },
+          {
+            "binF": 80,
+            "count": 5
+          },
+          {
+            "binF": 81,
+            "count": 10
+          },
+          {
+            "binF": 82,
+            "count": 9
+          },
+          {
+            "binF": 83,
+            "count": 11
+          },
+          {
+            "binF": 84,
+            "count": 20
+          },
+          {
+            "binF": 85,
+            "count": 11
+          },
+          {
+            "binF": 86,
+            "count": 5
+          },
+          {
+            "binF": 87,
+            "count": 12
+          },
+          {
+            "binF": 88,
+            "count": 8
+          },
+          {
+            "binF": 89,
+            "count": 10
+          },
+          {
+            "binF": 90,
+            "count": 7
+          },
+          {
+            "binF": 91,
+            "count": 10
+          },
+          {
+            "binF": 92,
+            "count": 4
+          },
+          {
+            "binF": 93,
+            "count": 5
+          },
+          {
+            "binF": 94,
+            "count": 4
+          },
+          {
+            "binF": 95,
+            "count": 3
+          },
+          {
+            "binF": 96,
+            "count": 2
+          },
+          {
+            "binF": 97,
+            "count": 1
+          }
+        ]
+      },
+      "09": {
+        "n": 150,
+        "meanF": 83.21,
+        "stdDevF": 8.2,
+        "p10F": 73.94,
+        "p25F": 77.27,
+        "p50F": 80.96,
+        "p75F": 87.98,
+        "p90F": 93.92,
+        "histogram1F": [
+          {
+            "binF": 68,
+            "count": 1
+          },
+          {
+            "binF": 69,
+            "count": 2
+          },
+          {
+            "binF": 72,
+            "count": 3
+          },
+          {
+            "binF": 73,
+            "count": 6
+          },
+          {
+            "binF": 74,
+            "count": 5
+          },
+          {
+            "binF": 75,
+            "count": 5
+          },
+          {
+            "binF": 76,
+            "count": 11
+          },
+          {
+            "binF": 77,
+            "count": 5
+          },
+          {
+            "binF": 78,
+            "count": 7
+          },
+          {
+            "binF": 79,
+            "count": 17
+          },
+          {
+            "binF": 80,
+            "count": 11
+          },
+          {
+            "binF": 81,
+            "count": 5
+          },
+          {
+            "binF": 82,
+            "count": 4
+          },
+          {
+            "binF": 83,
+            "count": 3
+          },
+          {
+            "binF": 84,
+            "count": 7
+          },
+          {
+            "binF": 85,
+            "count": 5
+          },
+          {
+            "binF": 86,
+            "count": 9
+          },
+          {
+            "binF": 87,
+            "count": 1
+          },
+          {
+            "binF": 88,
+            "count": 8
+          },
+          {
+            "binF": 89,
+            "count": 6
+          },
+          {
+            "binF": 90,
+            "count": 3
+          },
+          {
+            "binF": 91,
+            "count": 1
+          },
+          {
+            "binF": 92,
+            "count": 3
+          },
+          {
+            "binF": 93,
+            "count": 1
+          },
+          {
+            "binF": 94,
+            "count": 7
+          },
+          {
+            "binF": 96,
+            "count": 2
+          },
+          {
+            "binF": 97,
+            "count": 1
+          },
+          {
+            "binF": 98,
+            "count": 3
+          },
+          {
+            "binF": 99,
+            "count": 3
+          },
+          {
+            "binF": 102,
+            "count": 1
+          },
+          {
+            "binF": 103,
+            "count": 1
+          },
+          {
+            "binF": 104,
+            "count": 1
+          },
+          {
+            "binF": 105,
+            "count": 1
+          },
+          {
+            "binF": 112,
+            "count": 1
+          }
+        ]
+      }
+    }
+  }
+}
