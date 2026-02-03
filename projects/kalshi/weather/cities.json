@@ -1,0 +1,42 @@
+{
+  "NYC": {
+    "city": "New York City",
+    "kalshiSeries": "KXHIGHNY",
+    "nwsStation": "KNYC",
+    "stationNote": "Central Park",
+    "lat": 40.7829,
+    "lon": -73.9654
+  },
+  "CHI": {
+    "city": "Chicago",
+    "kalshiSeries": "KXHIGHCHI",
+    "nwsStation": "KMDW",
+    "stationNote": "Midway Airport",
+    "lat": 41.7868,
+    "lon": -87.7522
+  },
+  "MIA": {
+    "city": "Miami",
+    "kalshiSeries": "KXHIGHMI",
+    "nwsStation": "KMIA",
+    "stationNote": "Miami International Airport",
+    "lat": 25.7959,
+    "lon": -80.2870
+  },
+  "AUS": {
+    "city": "Austin",
+    "kalshiSeries": "KXHIGHAUS",
+    "nwsStation": "KAUS",
+    "stationNote": "Austin-Bergstrom Airport",
+    "lat": 30.1945,
+    "lon": -97.6699
+  },
+  "LAX": {
+    "city": "Los Angeles",
+    "kalshiSeries": "KXHIGHLAX",
+    "nwsStation": "KCQT",
+    "stationNote": "Downtown LA / USC",
+    "lat": 34.0236,
+    "lon": -118.2916
+  }
+}

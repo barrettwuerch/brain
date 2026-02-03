@@ -1,0 +1,61 @@
+{
+  "mode": "paper",
+  "baseUrl": "https://api.elections.kalshi.com",
+  "pollIntervalMs": 5000,
+  "orderbookDepth": 1,
+
+  "citiesPath": "/Users/bear/.openclaw/workspace/projects/kalshi/weather/cities.json",
+
+  "marketSelection": {
+    "maxCities": 5,
+    "maxEventsPerCity": 2,
+    "maxBracketsPerEvent": 30
+  },
+
+  "nws": {
+    "userAgent": "OpenClaw-KalshiWeatherBot/0.1 (paper)",
+    "refreshMs": 600000,
+    "observationWeight": 0.3,
+    "forecastWeight": 0.7
+  },
+
+  "fv": {
+    "model": "gaussian_placeholder",
+    "sigmaByHorizonHours": [
+      { "maxH": 6, "sigmaF": 1.5 },
+      { "maxH": 12, "sigmaF": 2.0 },
+      { "maxH": 24, "sigmaF": 2.5 },
+      { "maxH": 48, "sigmaF": 3.0 },
+      { "maxH": 72, "sigmaF": 4.0 },
+      { "maxH": 9999, "sigmaF": 5.5 }
+    ]
+  },
+
+  "strategy": {
+    "quoteHalfSpreadCents": 3,
+    "minQuotedSpreadCents": 3,
+    "repriceThresholdCents": 2,
+    "staleThresholdCents": 4,
+    "maxOrderAgeMs": 120000,
+
+    "maxOrderQty": 2,
+    "maxPositionQtyPerBracket": 5,
+
+    "pauseAfterFillMs": 500,
+    "probFillAtBestBid": 0.02,
+    "maxSpreadForProbFill": 6
+  },
+
+  "risk": {
+    "killSwitchFile": "/Users/bear/.openclaw/secrets/KALSHI_KILL",
+    "maxOpenOrders": 40,
+    "maxErrorStreak": 5,
+    "paperAccountBalance": 2000,
+    "dailyLossLimitPct": 0.05
+  },
+
+  "logging": {
+    "dir": "/Users/bear/.openclaw/workspace/projects/kalshi/weather/logs",
+    "consoleSummaryEveryMs": 15000
+  }
+}
