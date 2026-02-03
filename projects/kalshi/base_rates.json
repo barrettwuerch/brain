@@ -179,65 +179,6 @@
         "tariffs": 0.167
       }
     },
-    "TRUMP_SPEECH": {
-      "ai": {},
-      "bitcoin": {},
-      "border": {
-        "china": 0.75,
-        "immigration": 0.75,
-        "jobs": 1.0,
-        "nato": 0.25,
-        "tariffs": 0.25
-      },
-      "china": {
-        "border": 0.6,
-        "economy": 0.4,
-        "immigration": 1.0,
-        "jobs": 1.0,
-        "nato": 0.4,
-        "tariffs": 0.2
-      },
-      "climate": {},
-      "economy": {
-        "china": 0.667,
-        "immigration": 1.0,
-        "jobs": 1.0,
-        "nato": 0.333
-      },
-      "housing": {},
-      "immigration": {
-        "border": 0.429,
-        "china": 0.714,
-        "economy": 0.429,
-        "jobs": 0.857,
-        "nato": 0.429,
-        "tariffs": 0.143
-      },
-      "inflation": {},
-      "jobs": {
-        "border": 0.5,
-        "china": 0.625,
-        "economy": 0.375,
-        "immigration": 0.75,
-        "nato": 0.25,
-        "tariffs": 0.125
-      },
-      "nato": {
-        "border": 0.333,
-        "china": 0.667,
-        "economy": 0.333,
-        "immigration": 1.0,
-        "jobs": 0.667
-      },
-      "recession": {},
-      "tariffs": {
-        "border": 1.0,
-        "china": 1.0,
-        "immigration": 1.0,
-        "jobs": 1.0
-      },
-      "ukraine": {}
-    },
     "WHITE_HOUSE": {
       "ai": {
         "border": 1.0,
@@ -324,22 +265,6 @@
       "tariffs": 25,
       "ukraine": 30
     },
-    "TRUMP_SPEECH": {
-      "ai": 0,
-      "bitcoin": 0,
-      "border": 40,
-      "china": 50,
-      "climate": 0,
-      "economy": 30,
-      "housing": 0,
-      "immigration": 70,
-      "inflation": 0,
-      "jobs": 80,
-      "nato": 30,
-      "recession": 0,
-      "tariffs": 10,
-      "ukraine": 0
-    },
     "WHITE_HOUSE": {
       "ai": 100,
       "bitcoin": 0,
@@ -357,7 +282,7 @@
       "ukraine": 5
     }
   },
-  "generated_at": 1770142253,
+  "generated_at": 1770107228,
   "keywords": [
     "inflation",
     "recession",
@@ -388,21 +313,6 @@
         "https://www.federalreserve.gov/mediacenter/files/FOMCpresconf20250129.pdf",
         "https://www.federalreserve.gov/mediacenter/files/FOMCpresconf20241218.pdf",
         "https://www.federalreserve.gov/mediacenter/files/FOMCpresconf20241107.pdf"
-      ]
-    },
-    "TRUMP_SPEECH": {
-      "count": 10,
-      "urls": [
-        "https://www.presidency.ucsb.edu/documents/remarks-announcing-candidacy-for-president-new-york-city",
-        "https://www.presidency.ucsb.edu/documents/interview-with-maria-bartiromo-and-charlie-gasparino-fox-business-news",
-        "https://www.presidency.ucsb.edu/documents/remarks-the-aipac-policy-conference-washington-dc",
-        "https://www.presidency.ucsb.edu/documents/remarks-foreign-policy",
-        "https://www.presidency.ucsb.edu/documents/remarks-following-the-montana-south-dakota-new-mexico-new-jersey-and-california-primary",
-        "https://www.presidency.ucsb.edu/documents/remarks-saint-anselm-college-manchester-new-hampshire-0",
-        "https://www.presidency.ucsb.edu/documents/remarks-trump-soho-new-york-city",
-        "https://www.presidency.ucsb.edu/documents/remarks-virginia-beach-virginia-0",
-        "https://www.presidency.ucsb.edu/documents/remarks-introducing-governor-mike-pence-the-2016-republican-vice-presidential-nominee-new",
-        "https://www.presidency.ucsb.edu/documents/news-conference-doral-florida"
       ]
     },
     "WHITE_HOUSE": {
