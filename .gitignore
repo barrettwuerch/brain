@@ -29,6 +29,7 @@ projects/kalshi/news/.cache/
 projects/kalshi/*.jsonl
 projects/kalshi/news/rss_baseline.jsonl
 projects/kalshi/news/*launchd*.log
+projects/kalshi/market_snapshots/
 
 # temp
 /tmp/
