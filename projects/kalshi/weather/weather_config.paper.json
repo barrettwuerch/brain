@@ -36,6 +36,10 @@
     "sortedValuesPath": "/Users/bear/.openclaw/workspace/projects/kalshi/weather/weather_base_rates_sorted_values.json",
     "dailySeriesPath": "/Users/bear/.openclaw/workspace/projects/kalshi/weather/weather_daily_series.json",
 
+    "thinTail": {
+      "minSamples": 5
+    },
+
     "sigmaByHorizonHours": [
       { "maxH": 6, "sigmaF": 1.5 },
       { "maxH": 12, "sigmaF": 2.0 },

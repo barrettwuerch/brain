@@ -57,9 +57,9 @@ function forecastWeightByHorizonHours(h, table) {
   return pts[pts.length - 1].w;
 }
 
-function probFromSamples(samples, bracket) {
+function countAndProbFromSamples(samples, bracket) {
   const n = samples.length;
-  if (!n) return 0;
+  if (!n) return { count: 0, prob: 0 };
 
   // Use continuous boundaries consistent with integer outcomes.
   // range [lo,hi] inclusive -> [lo-0.5, hi+0.5)
@@ -83,7 +83,41 @@ function probFromSamples(samples, bracket) {
   for (const v of samples) {
     if (v >= loB && v < hiB) k++;
   }
-  return k / n;
+  return { count: k, prob: k / n };
+}
+
+function normalCdf(x) {
+  // Abramowitz-Stegun approximation
+  const sign = x < 0 ? -1 : 1;
+  const z = Math.abs(x) / Math.sqrt(2);
+  const t = 1 / (1 + 0.3275911 * z);
+  const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741, a4 = -1.453152027, a5 = 1.061405429;
+  const erf = 1 - (((((a5 * t + a4) * t) + a3) * t + a2) * t + a1) * t * Math.exp(-z * z);
+  return 0.5 * (1 + sign * erf);
+}
+
+function bracketProbabilityNormal(mu, sigma, bracket) {
+  if (!(Number.isFinite(mu) && Number.isFinite(sigma) && sigma > 0)) return null;
+
+  let loB = -Infinity;
+  let hiB = Infinity;
+
+  if (bracket.kind === 'range') {
+    loB = bracket.lo - 0.5;
+    hiB = bracket.hi + 0.5;
+  } else if (bracket.kind === 'gt') {
+    loB = bracket.lo + 0.5;
+  } else if (bracket.kind === 'lt') {
+    hiB = bracket.hi - 0.5;
+  }
+
+  const cdf = (x) => {
+    if (x === Infinity) return 1;
+    if (x === -Infinity) return 0;
+    return normalCdf((x - mu) / sigma);
+  };
+
+  return clamp(cdf(hiB) - cdf(loB), 0, 1);
 }
 
 function allocateCoherentCents(probByTicker) {
@@ -143,6 +177,8 @@ export function computeEmpiricalFVs({
   horizonHours,
   baseRates,
   horizonWeights,
+  gaussianSigmaF, // deprecated (kept for compatibility; not used for smoothing)
+  thinTail,
 }) {
   const mm = String(month).padStart(2, '0');
   const values = baseRates?.sortedValues?.[cityCode]?.[mm] || [];
@@ -164,18 +200,54 @@ export function computeEmpiricalFVs({
     return { model: 'uniform', fvByTicker: fv, meta: { sampleSize, climMeanF: climMean ?? null, forecastHighF: haveForecast ? forecastHighF : null, shiftF: null, forecastWeight: null } };
   }
 
+  const climStd = (baseRates?.stats?.months?.[cityCode]?.[mm]?.stdDevF != null)
+    ? Number(baseRates.stats.months[cityCode][mm].stdDevF)
+    : null;
+
   const shiftF = haveForecast ? (forecastHighF - climMean) : 0;
   const w = haveForecast ? forecastWeightByHorizonHours(horizonHours, horizonWeights) : 0;
 
   // Forecast-shifted samples
   const shifted = haveForecast ? values.map(v => v + shiftF) : values;
 
+  const minSamples = Number(thinTail?.minSamples ?? 0);
+  const canGauss = haveForecast && Number.isFinite(climStd) && climStd > 0;
+
   const probByTicker = new Map();
+  const detailByTicker = new Map();
+  let smoothedBrackets = 0;
+
   for (const b of brackets) {
-    const pShifted = probFromSamples(shifted, b);
-    const pClimo = probFromSamples(values, b);
-    const prob = clamp(w * pShifted + (1 - w) * pClimo, 0, 1);
-    probByTicker.set(b.ticker, prob);
+    const shiftedStats = countAndProbFromSamples(shifted, b);
+    const climoStats = countAndProbFromSamples(values, b);
+
+    // Empirical probability is a blend of forecast-shifted distribution and raw climatology.
+    const pEmp = clamp(w * shiftedStats.prob + (1 - w) * climoStats.prob, 0, 1);
+
+    let pFinal = pEmp;
+    let alpha = 1;
+    let pGauss = null;
+
+    // Thin-tail smoothing (spec): use shifted effectiveN; blend toward Gaussian using climatological σ.
+    const effectiveN = shiftedStats.count;
+    if (minSamples > 0 && canGauss && effectiveN < minSamples) {
+      pGauss = bracketProbabilityNormal(forecastHighF, climStd, b);
+      if (pGauss != null) {
+        alpha = clamp(effectiveN / minSamples, 0, 1);
+        pFinal = clamp(alpha * pEmp + (1 - alpha) * pGauss, 0, 1);
+        smoothedBrackets++;
+      }
+    }
+
+    probByTicker.set(b.ticker, pFinal);
+    detailByTicker.set(b.ticker, {
+      effectiveN,
+      minSamples: (minSamples > 0) ? minSamples : null,
+      alpha,
+      pEmp,
+      pGauss,
+      pFinal,
+    });
   }
 
   const fvByTicker = allocateCoherentCents(probByTicker);
@@ -183,12 +255,16 @@ export function computeEmpiricalFVs({
   return {
     model: 'empirical_shifted_cdf',
     fvByTicker,
+    detailByTicker,
     meta: {
       sampleSize,
       climMeanF: Number.isFinite(climMean) ? climMean : null,
+      climStdDevF: Number.isFinite(climStd) ? climStd : null,
       forecastHighF: haveForecast ? forecastHighF : null,
       shiftF: haveForecast ? shiftF : null,
       forecastWeight: haveForecast ? w : 0,
+      thinTailMinSamples: (minSamples > 0) ? minSamples : null,
+      smoothedBrackets,
     },
   };
 }

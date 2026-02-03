@@ -246,6 +246,7 @@ async function main() {
           horizonHours: horizonH,
           baseRates,
           horizonWeights: cfg?.forecast?.horizonWeights,
+          thinTail: cfg?.fv?.thinTail,
         });
 
         const naive = computeEmpiricalFVs({
@@ -256,6 +257,7 @@ async function main() {
           horizonHours: horizonH,
           baseRates,
           horizonWeights: cfg?.forecast?.horizonWeights,
+          thinTail: { minSamples: 0 },
         });
 
         const gaussProb = new Map();
@@ -309,6 +311,7 @@ async function main() {
           horizonHours: horizonH,
           baseRates,
           horizonWeights: cfg?.forecast?.horizonWeights,
+          thinTail: cfg?.fv?.thinTail,
         });
 
         const naive = computeEmpiricalFVs({
@@ -319,6 +322,7 @@ async function main() {
           horizonHours: horizonH,
           baseRates,
           horizonWeights: cfg?.forecast?.horizonWeights,
+          thinTail: { minSamples: 0 },
         });
 
         const gaussProb = new Map();

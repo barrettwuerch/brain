@@ -465,6 +465,7 @@ async function main() {
           let fvByMarket = null;
           let fvModel = 'gaussian_placeholder';
           let fvMeta = {};
+          let fvDetailMetaByTicker = null;
 
           if (cfg?.fv?.model === 'empirical_shifted_cdf' && baseRates?.sortedValues) {
             const emp = computeEmpiricalFVs({
@@ -475,10 +476,13 @@ async function main() {
               horizonHours: horizonH,
               baseRates,
               horizonWeights: cfg?.forecast?.horizonWeights,
+              gaussianSigmaF: sigma,
+              thinTail: cfg?.fv?.thinTail,
             });
             fvByMarket = emp.fvByTicker;
             fvModel = emp.model;
             fvMeta = emp.meta;
+            fvDetailMetaByTicker = emp.detailByTicker; // Map
           }
 
           // Fallback to Gaussian if empirical missing/unavailable.
@@ -518,7 +522,18 @@ async function main() {
           for (const b of brackets) {
             const v = fvByMarket.get(b.ticker);
             if (!v) continue;
-            fvDetail.push({ ...b, prob: v.prob, fvCents: v.fvCents });
+            const d = (typeof fvDetailMetaByTicker !== 'undefined' && fvDetailMetaByTicker)
+              ? fvDetailMetaByTicker.get(b.ticker)
+              : null;
+            fvDetail.push({
+              ...b,
+              prob: v.prob,
+              fvCents: v.fvCents,
+              effectiveN: d?.effectiveN ?? null,
+              thinTailAlpha: d?.alpha ?? null,
+              pEmp: d?.pEmp ?? null,
+              pGauss: d?.pGauss ?? null,
+            });
           }
           log.write({
             t: nowMs(),
