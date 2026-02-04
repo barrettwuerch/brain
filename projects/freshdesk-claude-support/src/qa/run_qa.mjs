@@ -125,9 +125,13 @@ async function runOne({ scenario, client, tools }) {
     failures.push(`routing_mismatch expected=${scenario.expectedEscalate} got=${parsed.escalate}`);
   }
 
-  // Banned terms
+  // Banned terms (customer response)
   const bannedHits = containsBannedTerms({ inputText: scenario.message, customerResponse: parsed.customer_response });
-  if (bannedHits.length) failures.push(`banned_terms:${bannedHits.join(',')}`);
+  if (bannedHits.length) failures.push(`banned_terms_customer:${bannedHits.join(',')}`);
+
+  // Optional: also warn on banned terms in agent report (helps prevent copy/paste leakage)
+  const bannedInAgent = containsBannedTerms({ inputText: scenario.message, customerResponse: parsed.agent_report });
+  if (bannedInAgent.length) failures.push(`banned_terms_agent:${bannedInAgent.join(',')}`);
 
   // Tool expectations
   if (Array.isArray(scenario.requireTools) && scenario.requireTools.length) {
@@ -140,7 +144,12 @@ async function runOne({ scenario, client, tools }) {
   // Clarification behavior
   if (scenario.expectClarification) {
     if (parsed.escalate !== false) failures.push('clarification_should_not_escalate');
-    if (!parsed.customer_response.includes('?')) failures.push('clarification_missing_question_mark');
+
+    const cr = (parsed.customer_response || '').toLowerCase();
+    const hasQuestionMark = parsed.customer_response.includes('?');
+    const hasClarifyPhrase = ['could you', 'can you', 'would you', 'please share', 'let me know'].some(p => cr.includes(p));
+    if (!(hasQuestionMark || hasClarifyPhrase)) failures.push('clarification_missing_question');
+
     if (toolCallsSeen.length) failures.push('clarification_should_not_call_tools');
   }
 

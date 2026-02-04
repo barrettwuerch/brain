@@ -7,8 +7,8 @@ import Anthropic from '@anthropic-ai/sdk';
  * use the stub client instead.
  */
 export class ClaudeClient {
-  constructor({ apiKey, model, logger, maxTokens = 2048, maxToolRounds = 5 }) {
-    this.client = new Anthropic({ apiKey });
+  constructor({ apiKey, model, logger, maxTokens = 4096, maxToolRounds = 5, timeoutMs = 30000 }) {
+    this.client = new Anthropic({ apiKey, timeout: timeoutMs });
     this.model = model;
     this.log = logger;
     this.maxTokens = maxTokens;
@@ -42,6 +42,10 @@ export class ClaudeClient {
         usage: response.usage,
       });
 
+      if (response.stop_reason === 'max_tokens') {
+        this.log.warn({ event: 'claude_truncated', round, usage: response.usage }, 'Claude response truncated (max_tokens). Consider increasing maxTokens.');
+      }
+
       if (response.stop_reason === 'end_turn') {
         return { ok: true, blocks: response.content, toolCalls, raw: response };
       }
@@ -49,7 +53,7 @@ export class ClaudeClient {
       if (response.stop_reason !== 'tool_use') {
         return {
           ok: true,
-          blocks: [{ type: 'text', text: 'I’m having trouble completing that request. I’m going to escalate this to a human agent.' }],
+          blocks: [{ type: 'text', text: "I'm having trouble completing that request. I'm going to escalate this to a human agent." }],
           toolCalls,
           raw: response,
           forcedEscalate: true,
@@ -84,7 +88,7 @@ export class ClaudeClient {
 
     return {
       ok: true,
-      blocks: [{ type: 'text', text: 'I’m having difficulty resolving this and will connect you with a human agent.' }],
+      blocks: [{ type: 'text', text: "I'm having difficulty resolving this and will connect you with a human agent." }],
       toolCalls,
       raw: null,
       forcedEscalate: true,

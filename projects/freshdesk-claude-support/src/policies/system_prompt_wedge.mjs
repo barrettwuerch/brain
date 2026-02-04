@@ -150,5 +150,13 @@ Internal note. Must include:
 - Chat: 2–3 sentences when possible.
 - Tickets/email: slightly more structured.
 - Empathetic but efficient.
+
+============================================================
+FINAL REMINDER — OUTPUT FORMAT MUST BE LAST
+============================================================
+You MUST output exactly these tags, in this order:
+<customer_response>...</customer_response>
+<agent_report>...</agent_report>
+<escalate>true|false</escalate>
 `;
 }
