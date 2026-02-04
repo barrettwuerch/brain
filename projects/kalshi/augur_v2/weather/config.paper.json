@@ -1,0 +1,56 @@
+{
+  "mode": "paper",
+  "baseUrl": "https://api.elections.kalshi.com",
+
+  "pollIntervalMs": 900000,
+  "scanWindow": { "minHours": 12, "maxHours": 36 },
+
+  "filters": {
+    "priceFloor": 0.93,
+    "priceCeiling": 0.99,
+    "maxSpreadCents": 3,
+    "minAskQty": 25
+  },
+
+  "discovery": {
+    "maxWeatherSeries": 200,
+    "weatherSeriesPrefixes": ["KXHIGH", "KXLOW", "KXRAIN", "KXSNOW", "KXWIND"]
+  },
+
+  "nws": {
+    "userAgent": "OpenClaw-AugurWeather/0.1 (paper)",
+    "minMarginF": 3
+  },
+
+  "paper": {
+    "maxPositions": 20,
+    "minPositions": 8,
+    "maxPositionPct": 0.08,
+    "maxDeployedPct": 0.85,
+    "startingBalance": 2000
+  },
+
+  "stations": {
+    "mapFromWeatherBaseRates": "/Users/bear/.openclaw/workspace/projects/kalshi/weather/weather_base_rates.json"
+  },
+
+  "noaaCdo": {
+    "tokenEnv": "NOAA_CDO_TOKEN",
+    "baseUrl": "https://www.ncei.noaa.gov/cdo-web/api/v2",
+    "datasetid": "GHCND",
+    "tmax": "TMAX",
+    "tmin": "TMIN"
+  },
+
+  "risk": {
+    "killSwitchFile": "/Users/bear/.openclaw/secrets/KALSHI_KILL"
+  },
+
+  "state": {
+    "positionsFile": "/Users/bear/.openclaw/workspace/projects/kalshi/augur_v2/weather/positions_paper.json"
+  },
+
+  "logging": {
+    "dir": "/Users/bear/.openclaw/workspace/projects/kalshi/augur_v2/weather/logs"
+  }
+}

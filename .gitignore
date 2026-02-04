@@ -25,6 +25,13 @@ moltbook-credentials.json
 projects/kalshi/logs/
 projects/kalshi/daemon-logs/
 projects/kalshi/augur_v2/logs/
+projects/kalshi/augur_v2/weather/logs/
+projects/kalshi/augur_v2/weather/positions_*.json
+projects/kalshi/augur_v2/weather/*.jsonl
+projects/kalshi/weather/.cache/
+projects/kalshi/weather/forecast_archive.jsonl
+projects/kalshi/weather/logs/
+
 projects/kalshi/news/.venv/
 projects/kalshi/news/.cache/
 projects/kalshi/*.jsonl

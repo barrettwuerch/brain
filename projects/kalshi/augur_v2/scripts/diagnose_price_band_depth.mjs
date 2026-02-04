@@ -66,11 +66,11 @@ function computeSpreads(orderbook) {
   };
 }
 
-async function fetchMarketsWindow({ client, minClose, maxClose, limit = 1000, maxPages = 30 }) {
+async function fetchMarketsWindow({ client, minClose, maxClose, limit = 1000, maxPages = 30, extra = {} }) {
   let cursor = null;
   const out = [];
   for (let page = 0; page < maxPages; page++) {
-    const params = { status: 'open', limit: String(limit), min_close_time: minClose, max_close_time: maxClose };
+    const params = { status: 'open', limit: String(limit), min_close_time: minClose, max_close_time: maxClose, ...extra };
     if (cursor) params.cursor = cursor;
 
     let resp;
@@ -95,6 +95,26 @@ async function fetchMarketsWindow({ client, minClose, maxClose, limit = 1000, ma
   return out;
 }
 
+function pct(sorted, p) {
+  if (!sorted.length) return null;
+  const x = Math.max(0, Math.min(1, p)) * (sorted.length - 1);
+  const lo = Math.floor(x);
+  const hi = Math.ceil(x);
+  if (lo === hi) return sorted[lo];
+  const w = x - lo;
+  return sorted[lo] * (1 - w) + sorted[hi] * w;
+}
+
+function isWeatherSeriesTicker(t) {
+  const s = String(t || '');
+  return /^(KXHIGH|KXLOW|KXRAIN|KXSNOW|KXWIND)/.test(s);
+}
+
+function isWeatherMarket(m) {
+  const t = String(m?.ticker || '');
+  return /^(KXHIGH|KXLOW|KXRAIN|KXSNOW|KXWIND)/.test(t);
+}
+
 async function main() {
   const configPath = arg('--config', path.join(os.homedir(), '.openclaw/workspace/projects/kalshi/augur_v2/config.paper.json'));
   const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -114,6 +134,9 @@ async function main() {
   const lo = Number(arg('--lo', String(cfg.selection.priceFloor ?? 0.93)));
   const hi = Number(arg('--hi', String(cfg.selection.priceCeiling ?? 0.99)));
   const sampleN = Number(arg('--sample', '120'));
+
+  const weatherHours = Number(arg('--weatherHours', '48'));
+  const weatherMaxPages = Number(arg('--weatherPages', '10'));
 
   const minClose = new Date(Date.now() + minDays * 86400000).toISOString();
   const maxClose = new Date(Date.now() + maxDays * 86400000).toISOString();
@@ -218,6 +241,71 @@ async function main() {
 
   console.log('\nFirst 10 hit tickers:');
   for (const h of hits.slice(0, 10)) console.log(`${h.ticker} yesAsk=${h.yesAsk} noAsk=${h.noAsk} vol=${h.volume}`);
+
+  // --- Weather sub-diagnostic: 0-48h close window, distribution of near-certain side ask ---
+  // Note: global close-time window queries don't seem to surface weather tickers reliably,
+  // so we explicitly discover weather series and pull markets by series_ticker.
+  const wMinClose = new Date(Date.now()).toISOString();
+  const wMaxClose = new Date(Date.now() + weatherHours * 3600_000).toISOString();
+
+  // Discover weather series tickers
+  let seriesCursor = null;
+  const weatherSeries = [];
+  for (let page = 0; page < 30; page++) {
+    const params = { limit: '500' };
+    if (seriesCursor) params.cursor = seriesCursor;
+    let resp;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try { resp = await client.getSeries(params); break; }
+      catch (e) { if (e?.status === 429) { await sleep(250 * Math.pow(2, attempt)); continue; } throw e; }
+    }
+    const batch = resp?.series || [];
+    for (const s of batch) {
+      if (isWeatherSeriesTicker(s?.ticker)) weatherSeries.push(s.ticker);
+    }
+    seriesCursor = resp?.cursor || resp?.next_cursor || resp?.nextCursor || null;
+    if (!seriesCursor || batch.length === 0) break;
+    await sleep(80);
+  }
+
+  const seriesToPull = [...new Set(weatherSeries)].slice(0, 120);
+
+  const wx = [];
+  let weatherMarketsScanned = 0;
+  for (const st of seriesToPull) {
+    const ms = await fetchMarketsWindow({
+      client,
+      minClose: wMinClose,
+      maxClose: wMaxClose,
+      limit: 200,
+      maxPages: 10,
+      extra: { series_ticker: st },
+    });
+    weatherMarketsScanned += ms.length;
+    for (const m of ms) {
+      if (isWeatherMarket(m)) wx.push(m);
+    }
+    await sleep(60);
+  }
+
+  const bestSideAsks = [];
+  let ge93 = 0, ge95 = 0, ge97 = 0, ge99 = 0;
+  for (const m of wx) {
+    const ya = to01(m.yes_ask);
+    const na = to01(m.no_ask);
+    const best = Math.max(ya ?? 0, na ?? 0);
+    if (!Number.isFinite(best) || best <= 0) continue;
+    bestSideAsks.push(best);
+    if (best >= 0.93) ge93++;
+    if (best >= 0.95) ge95++;
+    if (best >= 0.97) ge97++;
+    if (best >= 0.99) ge99++;
+  }
+  bestSideAsks.sort((a, b) => a - b);
+
+  console.log(`\nWEATHER PRICE DISTRIBUTION | close window=[now..+${weatherHours}h] weather_markets_scanned=${weatherMarketsScanned} weather_markets=${wx.length}`);
+  console.log(`bestSideAsk count=${bestSideAsks.length} >=0.93:${ge93} >=0.95:${ge95} >=0.97:${ge97} >=0.99:${ge99}`);
+  console.log(`bestSideAsk percentiles: p50=${pct(bestSideAsks,0.50)?.toFixed?.(3)} p75=${pct(bestSideAsks,0.75)?.toFixed?.(3)} p90=${pct(bestSideAsks,0.90)?.toFixed?.(3)} p95=${pct(bestSideAsks,0.95)?.toFixed?.(3)} p99=${pct(bestSideAsks,0.99)?.toFixed?.(3)}`);
 }
 
 main().catch((e) => {
