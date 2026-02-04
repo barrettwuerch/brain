@@ -1,0 +1,44 @@
+{
+  "mode": "scan_only",
+  "baseUrl": "https://api.elections.kalshi.com",
+  "pollIntervalMs": 60000,
+  "orderbookDepth": 1,
+
+  "selection": {
+    "priceFloor": 0.93,
+    "priceCeiling": 0.99,
+    "minDaysToSettlement": 0.5,
+    "maxDaysToSettlement": 21,
+
+    "minVolumeUsd": 5000,
+    "minBestAskQty": 50,
+
+    "limit": 200,
+    "status": "open",
+    "seriesTickers": ["KXHIGHNY","KXHIGHCHI","KXHIGHMI","KXHIGHAUS","KXHIGHLAX"]
+  },
+
+  "categories": {
+    "allow": [
+      { "name": "weather", "tickerPrefix": "KXHIGH" },
+      { "name": "weather", "tickerPrefix": "KXLOW" },
+      { "name": "weather", "tickerPrefix": "KXRAIN" },
+      { "name": "sports_settled", "titleRegex": "(?i)(already\\s*played|final\\s*score|was\\s+the\\s+score|did\\s+.*\\s+win\\?)" },
+      { "name": "econ_settled", "titleRegex": "(?i)(cpi|jobs|unemployment|gdp|fed|pce).*\\b(was|were)\\b" }
+    ],
+    "deny": [
+      { "name": "politics", "titleRegex": "(?i)(election|trump|biden|senate|house|president|primary)" },
+      { "name": "mentions", "titleRegex": "(?i)(mentions|say\\s+the\\s+word|speech|press\\s+conference)" },
+      { "name": "entertainment", "titleRegex": "(?i)(oscars|grammys|movie|album|tv|celebrity)" }
+    ]
+  },
+
+  "logging": {
+    "dir": "/Users/bear/.openclaw/workspace/projects/kalshi/augur_v2/logs",
+    "consoleTopN": 25
+  },
+
+  "risk": {
+    "killSwitchFile": "/Users/bear/.openclaw/secrets/KALSHI_KILL"
+  }
+}
