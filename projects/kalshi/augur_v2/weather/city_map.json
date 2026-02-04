@@ -1,0 +1,523 @@
+{
+  "generatedAt": "2026-02-04T01:24:39.847Z",
+  "note": "Heuristic mapping series->GHCNd station using token overlap on series title vs station name.",
+  "series": {
+    "KXLOWTNYC": {
+      "title": "Lowest temperature in NYC",
+      "ghcndStationId": null,
+      "lat": null,
+      "lon": null,
+      "stationName": null,
+      "confidence": 0
+    },
+    "KXLOWCHI": {
+      "title": "Lowest temperature in Chicago",
+      "ghcndStationId": "USW00094892",
+      "lat": 41.8964,
+      "lon": -88.2511,
+      "stationName": "CHICAGO W CHICAGO DUPAGE AP",
+      "confidence": 1.1547005383792517
+    },
+    "KXSNOWS": {
+      "title": "White Christmas",
+      "ghcndStationId": "USC00109760",
+      "lat": 42.4333,
+      "lon": -116.2,
+      "stationName": "WHITE'S",
+      "confidence": 1
+    },
+    "KXWINDSORWEST": {
+      "title": "Windsor West",
+      "ghcndStationId": "USC00439600",
+      "lat": 43.4667,
+      "lon": -72.5333,
+      "stationName": "WEST WINDSOR",
+      "confidence": 1.414213562373095
+    },
+    "KXHIGHAUS": {
+      "title": "Highest temperature in Austin",
+      "ghcndStationId": "USC00120336",
+      "lat": 38.7833,
+      "lon": -85.8333,
+      "stationName": "AUSTIN 2 NW",
+      "confidence": 1
+    },
+    "KXLOWESTRATE": {
+      "title": "Fed funds lowest rate",
+      "ghcndStationId": "USW00023244",
+      "lat": 37.4058,
+      "lon": -122.0481,
+      "stationName": "MOFFETT FED AIRFIELD",
+      "confidence": 0.5773502691896258
+    },
+    "KXHIGHTEMPDEN": {
+      "title": "High temperature denver",
+      "ghcndStationId": "USC00031956",
+      "lat": 36.3833,
+      "lon": -93.3,
+      "stationName": "DENVER",
+      "confidence": 1
+    },
+    "KXRAINLAXM": {
+      "title": "Rain Los Angeles",
+      "ghcndStationId": "USC00045112",
+      "lat": 34.0667,
+      "lon": -118.2333,
+      "stationName": "LOS ANGELES TERMINAL A",
+      "confidence": 1.1547005383792517
+    },
+    "KXHIGHHOU": {
+      "title": "Highest temperature in Houston",
+      "ghcndStationId": "USC00414327",
+      "lat": 29.8733,
+      "lon": -95.5275,
+      "stationName": "HOUSTON N HOUSTON",
+      "confidence": 1.414213562373095
+    },
+    "KXSNOWCHIM": {
+      "title": "Total snow in Chicago",
+      "ghcndStationId": "USW00094892",
+      "lat": 41.8964,
+      "lon": -88.2511,
+      "stationName": "CHICAGO W CHICAGO DUPAGE AP",
+      "confidence": 1.1547005383792517
+    },
+    "KXLOWTCHI": {
+      "title": "Lowest Temperature Chicago",
+      "ghcndStationId": "USW00094892",
+      "lat": 41.8964,
+      "lon": -88.2511,
+      "stationName": "CHICAGO W CHICAGO DUPAGE AP",
+      "confidence": 1.1547005383792517
+    },
+    "KXRAINNYC": {
+      "title": "NYC rain",
+      "ghcndStationId": "USC00245088",
+      "lat": 45.6969,
+      "lon": -110.4539,
+      "stationName": "LIVINGSTON RAIN GAUGE",
+      "confidence": 0.5773502691896258
+    },
+    "KXHIGHTSEA": {
+      "title": "Seattle Maximum Temperature Daily",
+      "ghcndStationId": "USC00450410",
+      "lat": 47.65,
+      "lon": -122.3833,
+      "stationName": "BALLARD (SEATTLE)",
+      "confidence": 0.7071067811865475
+    },
+    "KXHIGHINFLATION": {
+      "title": "Highest Inflation",
+      "ghcndStationId": null,
+      "lat": null,
+      "lon": null,
+      "stationName": null,
+      "confidence": 0
+    },
+    "KXLOWLAX": {
+      "title": "Lowest temperature in Los Angeles",
+      "ghcndStationId": "USC00045112",
+      "lat": 34.0667,
+      "lon": -118.2333,
+      "stationName": "LOS ANGELES TERMINAL A",
+      "confidence": 1.1547005383792517
+    },
+    "KXHIGHTLV": {
+      "title": "Las Vegas Max Daily Temperature",
+      "ghcndStationId": "USC00264429",
+      "lat": 36.1667,
+      "lon": -115.1333,
+      "stationName": "LAS VEGAS",
+      "confidence": 1.414213562373095
+    },
+    "KXLOWPHIL": {
+      "title": "Lowest temperature in Philadelphia",
+      "ghcndStationId": "USC00226899",
+      "lat": 32.7333,
+      "lon": -89.1833,
+      "stationName": "PHILADELPHIA 5 SW",
+      "confidence": 1
+    },
+    "KXHIGHTMIN": {
+      "title": "Minneapolis Daily High Temperature",
+      "ghcndStationId": "USC00145363",
+      "lat": 39.1247,
+      "lon": -97.7047,
+      "stationName": "MINNEAPOLIS",
+      "confidence": 1
+    },
+    "KXRAINHOUM": {
+      "title": "Rain Houston",
+      "ghcndStationId": "USC00414327",
+      "lat": 29.8733,
+      "lon": -95.5275,
+      "stationName": "HOUSTON N HOUSTON",
+      "confidence": 1.414213562373095
+    },
+    "KXSNOWNYM": {
+      "title": "Total snow in NYC",
+      "ghcndStationId": "USC00017620",
+      "lat": 32,
+      "lon": -87.0167,
+      "stationName": "SNOW HILL",
+      "confidence": 0.7071067811865475
+    },
+    "KXHIGHTNOLA": {
+      "title": "New Orleans Max temp Daily",
+      "ghcndStationId": "USC00166661",
+      "lat": 30.0333,
+      "lon": -90.0333,
+      "stationName": "NEW ORLEANS AP",
+      "confidence": 1.414213562373095
+    },
+    "KXHIGHCHI": {
+      "title": "Highest temperature in Chicago",
+      "ghcndStationId": "USW00094892",
+      "lat": 41.8964,
+      "lon": -88.2511,
+      "stationName": "CHICAGO W CHICAGO DUPAGE AP",
+      "confidence": 1.1547005383792517
+    },
+    "KXLOWTMIA": {
+      "title": "Lowest temperature in Miami",
+      "ghcndStationId": "USC00025512",
+      "lat": 33.4044,
+      "lon": -110.87,
+      "stationName": "MIAMI",
+      "confidence": 1
+    },
+    "KXSNOWNY": {
+      "title": "Snow in NYC",
+      "ghcndStationId": "USC00017620",
+      "lat": 32,
+      "lon": -87.0167,
+      "stationName": "SNOW HILL",
+      "confidence": 0.7071067811865475
+    },
+    "KXHIGHTDC": {
+      "title": "Washington DC Daily Max Temp",
+      "ghcndStationId": "USC00068859",
+      "lat": 41.6333,
+      "lon": -73.3167,
+      "stationName": "WASHINGTON",
+      "confidence": 1
+    },
+    "KXRAINNO": {
+      "title": "New Orleans rain",
+      "ghcndStationId": "USC00166661",
+      "lat": 30.0333,
+      "lon": -90.0333,
+      "stationName": "NEW ORLEANS AP",
+      "confidence": 1.414213562373095
+    },
+    "KXRAINNYCM": {
+      "title": "Monthly rain in New York",
+      "ghcndStationId": "USC00215902",
+      "lat": 46.5203,
+      "lon": -95.3372,
+      "stationName": "NEW YORK MILLS",
+      "confidence": 1.1547005383792517
+    },
+    "KXHIGHNY0": {
+      "title": "NYC high temperature",
+      "ghcndStationId": "USC00314063",
+      "lat": 35.9675,
+      "lon": -79.9708,
+      "stationName": "HIGH PT",
+      "confidence": 1
+    },
+    "KXHIGHUS": {
+      "title": "High temp in United States",
+      "ghcndStationId": "USC00314063",
+      "lat": 35.9675,
+      "lon": -79.9708,
+      "stationName": "HIGH PT",
+      "confidence": 1
+    },
+    "KXLOWAUS": {
+      "title": "Lowest temperature in Austin",
+      "ghcndStationId": "USC00120336",
+      "lat": 38.7833,
+      "lon": -85.8333,
+      "stationName": "AUSTIN 2 NW",
+      "confidence": 1
+    },
+    "KXRAINAUSM": {
+      "title": "RAIN AUSTIN",
+      "ghcndStationId": "USC00120336",
+      "lat": 38.7833,
+      "lon": -85.8333,
+      "stationName": "AUSTIN 2 NW",
+      "confidence": 1
+    },
+    "KXSNOWSTORM": {
+      "title": "Snowstorms",
+      "ghcndStationId": null,
+      "lat": null,
+      "lon": null,
+      "stationName": null,
+      "confidence": 0
+    },
+    "KXHIGHMOVKH": {
+      "title": "Highest margin of victory for Harris",
+      "ghcndStationId": "USC00233641",
+      "lat": 40.3167,
+      "lon": -93.35,
+      "stationName": "HARRIS",
+      "confidence": 1
+    },
+    "KXLOWDEN": {
+      "title": "Lowest temperature in Denver",
+      "ghcndStationId": "USC00031956",
+      "lat": 36.3833,
+      "lon": -93.3,
+      "stationName": "DENVER",
+      "confidence": 1
+    },
+    "KXHIGHDEN": {
+      "title": "Highest temperature in Denver",
+      "ghcndStationId": "USC00031956",
+      "lat": 36.3833,
+      "lon": -93.3,
+      "stationName": "DENVER",
+      "confidence": 1
+    },
+    "KXRAINCHIM": {
+      "title": "Rain Chicago",
+      "ghcndStationId": "USW00094892",
+      "lat": 41.8964,
+      "lon": -88.2511,
+      "stationName": "CHICAGO W CHICAGO DUPAGE AP",
+      "confidence": 1.1547005383792517
+    },
+    "KXRAINDALM": {
+      "title": "Rain Dallas",
+      "ghcndStationId": "USC00092485",
+      "lat": 33.9983,
+      "lon": -84.7511,
+      "stationName": "DALLAS 7 NE",
+      "confidence": 1
+    },
+    "KXLOWTDEN": {
+      "title": "Lowest temperature in Denver",
+      "ghcndStationId": "USC00031956",
+      "lat": 36.3833,
+      "lon": -93.3,
+      "stationName": "DENVER",
+      "confidence": 1
+    },
+    "KXHIGHTSFO": {
+      "title": "San Francisco High Temperature Daily",
+      "ghcndStationId": "USC00047767",
+      "lat": 37.7281,
+      "lon": -122.5053,
+      "stationName": "SAN FRANCISCO OCEANSIDE",
+      "confidence": 1.1547005383792517
+    },
+    "KXRAINDENM": {
+      "title": "RAIN DENVER",
+      "ghcndStationId": "USC00031956",
+      "lat": 36.3833,
+      "lon": -93.3,
+      "stationName": "DENVER",
+      "confidence": 1
+    },
+    "KXLOWTAUS": {
+      "title": "Lowest temperature in Austin",
+      "ghcndStationId": "USC00120336",
+      "lat": 38.7833,
+      "lon": -85.8333,
+      "stationName": "AUSTIN 2 NW",
+      "confidence": 1
+    },
+    "KXRAINNY": {
+      "title": "NYC rain",
+      "ghcndStationId": "USC00245088",
+      "lat": 45.6969,
+      "lon": -110.4539,
+      "stationName": "LIVINGSTON RAIN GAUGE",
+      "confidence": 0.5773502691896258
+    },
+    "KXHIGHTATL": {
+      "title": "Atlanta Max Temperature",
+      "ghcndStationId": "USC00030310",
+      "lat": 33.1167,
+      "lon": -93.0333,
+      "stationName": "ATLANTA",
+      "confidence": 1
+    },
+    "KXRAINSEAM": {
+      "title": "RAIN SEATTLE",
+      "ghcndStationId": "USC00450410",
+      "lat": 47.65,
+      "lon": -122.3833,
+      "stationName": "BALLARD (SEATTLE)",
+      "confidence": 0.7071067811865475
+    },
+    "KXRAINHOU": {
+      "title": "Houston rain",
+      "ghcndStationId": "USC00414327",
+      "lat": 29.8733,
+      "lon": -95.5275,
+      "stationName": "HOUSTON N HOUSTON",
+      "confidence": 1.414213562373095
+    },
+    "KXLOWMIA": {
+      "title": "Lowest temperature in Miami",
+      "ghcndStationId": "USC00025512",
+      "lat": 33.4044,
+      "lon": -110.87,
+      "stationName": "MIAMI",
+      "confidence": 1
+    },
+    "KXSNOWNYC": {
+      "title": "SNOW IN NYC",
+      "ghcndStationId": "USC00017620",
+      "lat": 32,
+      "lon": -87.0167,
+      "stationName": "SNOW HILL",
+      "confidence": 0.7071067811865475
+    },
+    "KXHIGHTBOS": {
+      "title": "Boston Maximum Daily Temperature",
+      "ghcndStationId": "USC00150874",
+      "lat": 37.7667,
+      "lon": -85.7,
+      "stationName": "BOSTON 2 SW",
+      "confidence": 1
+    },
+    "KXHIGHPHIL": {
+      "title": "Highest temperature in Philadelphia",
+      "ghcndStationId": "USC00226899",
+      "lat": 32.7333,
+      "lon": -89.1833,
+      "stationName": "PHILADELPHIA 5 SW",
+      "confidence": 1
+    },
+    "KXLOWNYC": {
+      "title": "Lowest temperature in New York",
+      "ghcndStationId": "USC00215902",
+      "lat": 46.5203,
+      "lon": -95.3372,
+      "stationName": "NEW YORK MILLS",
+      "confidence": 1.1547005383792517
+    },
+    "KXHIGHTPHX": {
+      "title": "Phoenix High Temperature Daily",
+      "ghcndStationId": "USC00206582",
+      "lat": 47.4,
+      "lon": -88.1,
+      "stationName": "PHOENIX",
+      "confidence": 1
+    },
+    "KXHIGHLAX": {
+      "title": "Highest temperature in Los Angeles",
+      "ghcndStationId": "USC00045112",
+      "lat": 34.0667,
+      "lon": -118.2333,
+      "stationName": "LOS ANGELES TERMINAL A",
+      "confidence": 1.1547005383792517
+    },
+    "KXRAINNOSB": {
+      "title": "Super Bowl Sunday rain",
+      "ghcndStationId": "USC00178598",
+      "lat": 44.5,
+      "lon": -70.8667,
+      "stationName": "SUNDAY RIVER",
+      "confidence": 0.7071067811865475
+    },
+    "KXRAINSFOM": {
+      "title": "RAIN SAN FRANCISCO",
+      "ghcndStationId": "USC00047767",
+      "lat": 37.7281,
+      "lon": -122.5053,
+      "stationName": "SAN FRANCISCO OCEANSIDE",
+      "confidence": 1.1547005383792517
+    },
+    "KXLOWTPHIL": {
+      "title": "Lowest temperature in Philadelphia",
+      "ghcndStationId": "USC00226899",
+      "lat": 32.7333,
+      "lon": -89.1833,
+      "stationName": "PHILADELPHIA 5 SW",
+      "confidence": 1
+    },
+    "KXRAINSEA": {
+      "title": "Seattle rain",
+      "ghcndStationId": "USC00450410",
+      "lat": 47.65,
+      "lon": -122.3833,
+      "stationName": "BALLARD (SEATTLE)",
+      "confidence": 0.7071067811865475
+    },
+    "KXSNOWAZ": {
+      "title": "Snow in Phoenix",
+      "ghcndStationId": "USC00206582",
+      "lat": 47.4,
+      "lon": -88.1,
+      "stationName": "PHOENIX",
+      "confidence": 1
+    },
+    "KXLOWNY": {
+      "title": "Lowest Temperature in NYC",
+      "ghcndStationId": null,
+      "lat": null,
+      "lon": null,
+      "stationName": null,
+      "confidence": 0
+    },
+    "KXHIGHNY": {
+      "title": "Highest temperature in NYC",
+      "ghcndStationId": null,
+      "lat": null,
+      "lon": null,
+      "stationName": null,
+      "confidence": 0
+    },
+    "KXLOWTLAX": {
+      "title": "Lowest Temperature in LA",
+      "ghcndStationId": null,
+      "lat": null,
+      "lon": null,
+      "stationName": null,
+      "confidence": 0
+    },
+    "KXRAINMIAM": {
+      "title": "Rain Miami",
+      "ghcndStationId": "USC00025512",
+      "lat": 33.4044,
+      "lon": -110.87,
+      "stationName": "MIAMI",
+      "confidence": 1
+    },
+    "KXHIGHMOVDJT": {
+      "title": "Highest margin of victory. forTrump",
+      "ghcndStationId": "USC00409339",
+      "lat": 35.0833,
+      "lon": -87.8167,
+      "stationName": "VICTORY",
+      "confidence": 1
+    },
+    "KXHIGHMIA": {
+      "title": "Highest temperature in Miami",
+      "ghcndStationId": "USC00025512",
+      "lat": 33.4044,
+      "lon": -110.87,
+      "stationName": "MIAMI",
+      "confidence": 1
+    },
+    "KXHIGHOU": {
+      "title": "Highest temperature in Houston",
+      "ghcndStationId": "USC00414327",
+      "lat": 29.8733,
+      "lon": -95.5275,
+      "stationName": "HOUSTON N HOUSTON",
+      "confidence": 1.414213562373095
+    }
+  },
+  "stats": {
+    "totalSeries": 64,
+    "mapped": 58,
+    "lowConfidence": 6
+  }
+}

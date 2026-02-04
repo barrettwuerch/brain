@@ -31,7 +31,7 @@
   },
 
   "stations": {
-    "mapFromWeatherBaseRates": "/Users/bear/.openclaw/workspace/projects/kalshi/weather/weather_base_rates.json"
+    "cityMapPath": "/Users/bear/.openclaw/workspace/projects/kalshi/augur_v2/weather/city_map.json"
   },
 
   "noaaCdo": {

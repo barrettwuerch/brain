@@ -95,8 +95,8 @@ async function main() {
   const log = jsonlWriter(cfg.logging.dir, 'augur_weather');
   const client = new KalshiClient({ baseUrl, keyId, privateKeyPem });
 
-  const stationsMeta = JSON.parse(fs.readFileSync(cfg.stations.mapFromWeatherBaseRates, 'utf8'));
-  const stationMap = stationsMeta?.stations || {}; // cityCode -> {ghcndStationId,...}
+  const cityMapPath = cfg.stations.cityMapPath || path.join(path.dirname(configPath), 'city_map.json');
+  const cityMap = JSON.parse(fs.readFileSync(cityMapPath, 'utf8'));
 
   const token = process.env[cfg.noaaCdo.tokenEnv] || env[cfg.noaaCdo.tokenEnv];
   if (!token) {
@@ -149,24 +149,11 @@ async function main() {
     const minClose = new Date(now + cfg.scanWindow.minHours * 3600_000).toISOString();
     const maxClose = new Date(now + cfg.scanWindow.maxHours * 3600_000).toISOString();
 
-    // Discover weather series
-    let cursor = null;
-    const series = [];
-    for (let page = 0; page < 30; page++) {
-      const params = { limit: '500' };
-      if (cursor) params.cursor = cursor;
-      const resp = await client.getSeries(params);
-      const batch = resp?.series || [];
-      for (const s of batch) {
-        const t = String(s?.ticker || '');
-        if (cfg.discovery.weatherSeriesPrefixes.some(p => t.startsWith(p))) series.push(t);
-      }
-      cursor = resp?.cursor || resp?.next_cursor || resp?.nextCursor || null;
-      if (!cursor || batch.length === 0) break;
-      await sleep(80);
-    }
-
-    const seriesTickers = [...new Set(series)].slice(0, cfg.discovery.maxWeatherSeries);
+    // Weather series list from city_map (pre-built). Only include mapped ones.
+    const seriesTickers = Object.entries(cityMap.series || {})
+      .filter(([ticker, info]) => info && info.ghcndStationId && Number.isFinite(info.lat) && Number.isFinite(info.lon))
+      .map(([ticker]) => ticker)
+      .slice(0, cfg.discovery.maxWeatherSeries);
 
     const candidates = [];
 
@@ -210,23 +197,14 @@ async function main() {
           const strike = parseStrike(m);
           if (!strike) continue;
 
-          // NWS sanity check: for TMAX markets, require forecast high margin.
-          // We only support city tickers we can map to stations + lat/lon via weather_base_rates + existing cities.json.
-          const cityKey = ticker.match(/^KX(?:HIGH|LOW)([A-Z]{2,4})/i)?.[1] || null;
-          const stationEntry = Object.values(stationMap).find(x => String(x.ghcndStationId||'').length>0 && (String(x.city||'').toUpperCase().includes(cityKey||''))) || null;
-          // Better: rely on weather project cities.json for lat/lon mapping.
-          // For v0.1, only accept KXHIGHNY/KXHIGHCHI/KXHIGHMI/KXHIGHAUS/KXHIGHLAX (and LOW variants).
-          const cMap = {
-            NY: { lat: 40.7829, lon: -73.9654, stationId: 'USW00094728' },
-            CHI: { lat: 41.7868, lon: -87.7522, stationId: 'USW00014819' },
-            MI: { lat: 25.7959, lon: -80.2870, stationId: 'USW00012839' },
-            AUS: { lat: 30.1945, lon: -97.6699, stationId: 'USW00013904' },
-            LAX: { lat: 34.0236, lon: -118.2916, stationId: 'USW00093134' },
-          };
-          const city = Object.keys(cMap).find(k => ticker.includes(k)) || null;
-          if (!city) continue;
-
-          const { lat, lon, stationId } = cMap[city];
+          // NWS sanity check: requires city_map entries (lat/lon + stationId) for this series.
+          const seriesTicker = st;
+          const mapEntry = cityMap.series?.[seriesTicker];
+          if (!mapEntry || !mapEntry.ghcndStationId) continue;
+          const lat = Number(mapEntry.lat);
+          const lon = Number(mapEntry.lon);
+          const stationId = String(mapEntry.ghcndStationId);
+          if (!(Number.isFinite(lat) && Number.isFinite(lon) && stationId)) continue;
 
           const closeTimeIso = m.close_time;
           const windowStartIso = new Date(Date.parse(closeTimeIso) - 24 * 3600_000).toISOString();
