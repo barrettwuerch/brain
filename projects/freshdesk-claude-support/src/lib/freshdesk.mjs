@@ -6,14 +6,19 @@ function basicAuthHeader(apiKey) {
   return `Basic ${token}`;
 }
 
+import { normalizeFreshdeskDomain } from './url_normalize.mjs';
+
 export class FreshdeskClient {
   constructor({ domain, apiKey, logger }) {
-    this.baseUrl = `https://${domain}`.replace(/\/$/, '');
+    const nd = normalizeFreshdeskDomain(domain);
+    this.baseUrl = `https://${nd}`.replace(/\/$/, '');
     this.apiKey = apiKey;
     this.log = logger;
   }
 
   async _req(method, path, { query, body } = {}) {
+    if (!this.apiKey) throw new Error('Freshdesk API key not configured');
+
     const url = new URL(this.baseUrl + path);
     if (query) {
       for (const [k, v] of Object.entries(query)) {
@@ -32,9 +37,25 @@ export class FreshdeskClient {
       body: body ? JSON.stringify(body) : undefined,
     });
 
+    // Rate limit headers (best-effort logging)
+    const remaining = res.headers['x-ratelimit-remaining'];
+    const total = res.headers['x-ratelimit-total'];
+    if (remaining != null && total != null) {
+      this.log?.debug?.({ remaining, total, path }, 'freshdesk ratelimit');
+    }
+
     const text = await res.body.text();
     let data;
     try { data = text ? JSON.parse(text) : null; } catch { data = { raw: text }; }
+
+    if (res.statusCode === 429) {
+      const err = new Error(`Freshdesk HTTP 429 rate limited ${method} ${path}`);
+      const ra = res.headers['retry-after'];
+      err.status = 429;
+      err.retryAfterMs = ra ? Number(ra) * 1000 : 5000;
+      err.data = data;
+      throw err;
+    }
 
     if (res.statusCode < 200 || res.statusCode >= 300) {
       const err = new Error(`Freshdesk HTTP ${res.statusCode} ${method} ${path}`);

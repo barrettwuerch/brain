@@ -5,27 +5,37 @@
  * Replace with the official Anthropic SDK in production.
  */
 
-export class ClaudeClient {
-  constructor({ apiKey, model, logger, maxToolCallsPerTurn = 6 }) {
-    this.apiKey = apiKey;
+export class ClaudeClientStub {
+  constructor({ model, logger }) {
     this.model = model;
     this.log = logger;
-    this.maxToolCallsPerTurn = maxToolCallsPerTurn;
   }
 
-  async generate({ system, messages, tools }) {
-    // For MVP scaffold: return a deterministic placeholder.
-    // We still log what we'd send.
+  async generateWithTools({ system, messages, tools }) {
+    void system;
+    void tools;
+
     this.log.info({ event: 'claude_stub_generate', model: this.model, tools: tools?.length || 0 }, 'Claude stub called');
 
     const lastUser = [...messages].reverse().find(m => m.role === 'user');
-    const userText = lastUser?.content?.[0]?.text || '(no user message found)';
+    const userText = lastUser?.content?.[0]?.text || lastUser?.content || '(no user message found)';
 
     return {
       ok: true,
-      confidence: 0.5,
       blocks: [
-        { type: 'text', text: `I’m not fully wired up to Claude yet, but I received your message:\n\n"${userText}"\n\nIf you paste your order ID or account email, I can look it up once the admin portal tool is connected.` },
+        {
+          type: 'text',
+          text:
+            `(<customer_response>)\n` +
+            `I’m currently running in setup mode (API keys not configured yet), but I received your message and logged it.\n\n` +
+            `Message: "${String(userText).slice(0, 800)}"\n\n` +
+            `If you share your account email and any transaction/order ID, I can investigate once tools are connected.\n` +
+            `</customer_response>\n` +
+            `(<agent_report>)\n` +
+            `Stub mode: Claude/Freshdesk/Freshchat keys not configured. No tools executed.\n` +
+            `</agent_report>\n` +
+            `(<escalate>)false</escalate>`,
+        },
       ],
       toolCalls: [],
       raw: null,

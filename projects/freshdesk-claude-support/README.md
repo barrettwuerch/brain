@@ -2,11 +2,13 @@
 
 Middleware service that connects **Freshdesk/Freshchat** webhooks to the **Anthropic Claude API**, with optional **RAG** (Freshdesk Solutions KB → vector search) and **admin portal tool use**.
 
-This is the Phase-1 MVP from the PRD:
+This is the Phase-1 MVP from the PRD, updated per the wiring guide:
 - Receive Freshdesk webhook events for ticket updates/new messages
-- Assemble context (ticket + conversations + contact)
-- Ask Claude for a response (with tool-use schema available)
-- Post reply back to Freshdesk (and/or add private note)
+- Receive Freshchat webhook events for live chat
+- Normalize both channels into a shared internal message format
+- Assemble context (ticket + conversations + contact) and (best-effort) chat context
+- Ask Claude for a response (real Anthropic SDK when keys are present; stub mode otherwise)
+- Post reply back to Freshdesk/Freshchat and add an internal agent report note (Freshdesk)
 - Escalate when policy says to hand off
 
 ## Quick start
@@ -21,8 +23,9 @@ npm run dev
 Health check:
 - `GET http://localhost:8787/health`
 
-Webhook endpoint:
+Webhook endpoints:
 - `POST http://localhost:8787/webhooks/freshdesk`
+- `POST http://localhost:8787/webhooks/freshchat`
 
 ## Freshdesk setup (recommended)
 
