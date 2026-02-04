@@ -1,0 +1,259 @@
+[
+  {
+    "id": 1,
+    "title": "Failed payment w/ amount/date",
+    "message": "My payment of $47.50 to Corner Store failed yesterday and I still don't see my money back.",
+    "expectedEscalate": true,
+    "requireTools": ["check_transaction_status"],
+    "mockTools": {
+      "check_transaction_status": {
+        "ok": true,
+        "found": true,
+        "transaction": {
+          "id": "txn_1",
+          "amount": 47.5,
+          "currency": "USD",
+          "status": "needs_funds",
+          "failure_reason": "insufficient_funds",
+          "attempt_count": 1,
+          "max_attempts": 3,
+          "merchant": "Corner Store"
+        }
+      },
+      "lookup_plaid_balance": {
+        "ok": true,
+        "found": true,
+        "linked_account": { "institution": "Bank", "current_balance": 12.5, "available_balance": 12.5, "currency": "USD" },
+        "plaid_connection_status": "active"
+      }
+    }
+  },
+  {
+    "id": 2,
+    "title": "Account Issue error",
+    "message": "I keep getting an 'Account Issue' error when I try to pay at the register.",
+    "expectedEscalate": true,
+    "requireTools": [],
+    "mockTools": {}
+  },
+  {
+    "id": 3,
+    "title": "ACH return notification",
+    "message": "I got a notification that my ACH transfer was returned. I definitely have enough money.",
+    "expectedEscalate": true,
+    "requireTools": ["check_transaction_status"],
+    "mockTools": {
+      "check_transaction_status": {
+        "ok": true,
+        "found": true,
+        "transaction": {
+          "id": "txn_3",
+          "amount": 50,
+          "currency": "USD",
+          "status": "failed",
+          "failure_reason": "bank_return",
+          "issue_type": "ACH_RETURN",
+          "attempt_count": 2,
+          "max_attempts": 3
+        }
+      }
+    }
+  },
+  {
+    "id": 4,
+    "title": "Locked out",
+    "message": "I'm completely locked out of my account. I've tried resetting my password three times.",
+    "expectedEscalate": true,
+    "requireTools": ["check_transaction_status"],
+    "mockTools": {
+      "check_transaction_status": {
+        "ok": true,
+        "found": true,
+        "transaction": {
+          "id": "txn_4",
+          "amount": 32,
+          "currency": "USD",
+          "status": "needs_funds",
+          "failure_reason": "insufficient_funds",
+          "attempt_count": 3,
+          "max_attempts": 3
+        }
+      }
+    }
+  },
+  {
+    "id": 5,
+    "title": "Failed then successful same amount (not duplicate)",
+    "message": "The store charged me $23 but it shows as failed AND I see a second $23 charge that went through.",
+    "expectedEscalate": false,
+    "requireTools": ["check_transaction_status"],
+    "mockTools": {
+      "check_transaction_status": {
+        "ok": true,
+        "found": true,
+        "recent": [
+          { "id": "txn_a", "amount": 23, "status": "failed", "merchant": "Dispensary", "created_at": "2026-02-04T10:00:00Z" },
+          { "id": "txn_b", "amount": 23, "status": "completed", "merchant": "Dispensary", "created_at": "2026-02-04T10:05:00Z" }
+        ]
+      }
+    }
+  },
+
+  {
+    "id": 6,
+    "title": "IDV blurry photo",
+    "message": "I tried to verify my identity but it keeps saying the photo is blurry.",
+    "expectedEscalate": false,
+    "requireTools": [],
+    "mockTools": {}
+  },
+  {
+    "id": 7,
+    "title": "Bank linking maiden name",
+    "message": "I'm trying to link my Chase account but it keeps failing. My name on Chase is my maiden name.",
+    "expectedEscalate": false,
+    "requireTools": [],
+    "mockTools": {}
+  },
+  {
+    "id": 8,
+    "title": "Delete account",
+    "message": "How do I delete my account?",
+    "expectedEscalate": false,
+    "requireTools": [],
+    "mockTools": {}
+  },
+  {
+    "id": 9,
+    "title": "Update payment info",
+    "message": "I need to update my debit card on file.",
+    "expectedEscalate": false,
+    "requireTools": [],
+    "mockTools": {}
+  },
+  {
+    "id": 10,
+    "title": "IDV unable to verify (press for reason)",
+    "message": "I failed identity verification and it just says 'unable to verify.' Can you tell me why?",
+    "expectedEscalate": false,
+    "requireTools": [],
+    "mockTools": {}
+  },
+  {
+    "id": 17,
+    "title": "ZenPay cashback",
+    "message": "Can I get cashback on ZenPay?",
+    "expectedEscalate": false,
+    "requireTools": [],
+    "mockTools": {}
+  },
+  {
+    "id": 18,
+    "title": "App won't let me make a payment (3 open txns)",
+    "message": "The app won't let me make a payment.",
+    "expectedEscalate": false,
+    "requireTools": ["check_transaction_status"],
+    "mockTools": {
+      "check_transaction_status": {
+        "ok": true,
+        "found": true,
+        "open_transaction_count": 3,
+        "recent": [
+          { "id": "p1", "amount": 10, "status": "processing" },
+          { "id": "p2", "amount": 12, "status": "processing" },
+          { "id": "p3", "amount": 9, "status": "processing" }
+        ]
+      }
+    }
+  },
+  {
+    "id": 19,
+    "title": "Caregiver pickup",
+    "message": "Can someone else pick up my ZenPay order for me?",
+    "expectedEscalate": false,
+    "requireTools": [],
+    "mockTools": {}
+  },
+  {
+    "id": 20,
+    "title": "Transfer money back",
+    "message": "I loaded money into ZenPay but want to send it back to my bank.",
+    "expectedEscalate": false,
+    "requireTools": [],
+    "mockTools": {}
+  },
+
+  {
+    "id": 11,
+    "title": "Ambiguous payment didn't go through",
+    "message": "My payment didn't go through.",
+    "expectedEscalate": false,
+    "expectClarification": true,
+    "requireTools": [],
+    "mockTools": {}
+  },
+  {
+    "id": 12,
+    "title": "Ambiguous charged twice",
+    "message": "I got charged twice for my coffee this morning.",
+    "expectedEscalate": false,
+    "expectClarification": true,
+    "requireTools": [],
+    "mockTools": {}
+  },
+  {
+    "id": 16,
+    "title": "Two pending charges",
+    "message": "I see two pending charges — one for $15 and one for $15. Is that normal?",
+    "expectedEscalate": false,
+    "requireTools": ["check_transaction_status"],
+    "mockTools": {
+      "check_transaction_status": {
+        "ok": true,
+        "found": true,
+        "recent": [
+          { "id": "t1", "amount": 15, "status": "processing", "merchant": "Dispensary" },
+          { "id": "t2", "amount": 15, "status": "completed", "merchant": "Dispensary" }
+        ]
+      }
+    }
+  },
+
+  {
+    "id": 13,
+    "title": "Mixed-tier: IDV then lockout",
+    "message": "I verified my identity but then my account got locked right after.",
+    "expectedEscalate": true,
+    "requireTools": ["check_transaction_status"],
+    "mockTools": {
+      "check_transaction_status": {
+        "ok": true,
+        "found": true,
+        "transaction": { "id": "txn_13", "status": "needs_funds", "amount": 40 }
+      }
+    }
+  },
+  {
+    "id": 14,
+    "title": "Mixed-tier: bank name mismatch, asks to update it",
+    "message": "I need to link my bank but I changed my legal name and my bank has my old one. Can you update it?",
+    "expectedEscalate": false,
+    "requireTools": [],
+    "mockTools": {}
+  },
+
+  {
+    "id": 15,
+    "title": "Always-escalate trigger: human request + repeat contact + failed payment",
+    "message": "This is the third time I'm contacting you about my failed payment. I want to talk to someone who can actually fix this.",
+    "expectedEscalate": true,
+    "requireTools": ["check_transaction_status"],
+    "mockTools": {
+      "check_transaction_status": {
+        "ok": true,
+        "found": true,
+        "transaction": { "id": "txn_15", "status": "needs_funds", "amount": 55 }
+      }
+    }
+  }
+]

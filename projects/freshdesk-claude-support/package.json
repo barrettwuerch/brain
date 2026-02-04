@@ -7,7 +7,8 @@
     "test": "node src/cli/selfcheck.mjs",
     "dev": "node --watch src/server.mjs",
     "start": "node src/server.mjs",
-    "lint": "node src/cli/selfcheck.mjs"
+    "lint": "node src/cli/selfcheck.mjs",
+    "qa": "node src/qa/run_qa.mjs"
   },
   "keywords": [],
   "author": "",
