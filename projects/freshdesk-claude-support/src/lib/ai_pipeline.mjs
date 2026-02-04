@@ -1,8 +1,9 @@
-import { buildSystemPromptV2 } from '../policies/system_prompt_v2.mjs';
+import { buildSystemPromptWedge } from '../policies/system_prompt_wedge.mjs';
 import { parseClaudeXmlResponse } from './xml_parse.mjs';
 
 export async function runAiTurn({ env, claudeClient, toolSchemas, executeTool, internalMessage, context }) {
-  const system = buildSystemPromptV2();
+  void env;
+  const system = buildSystemPromptWedge();
 
   const messages = buildMessages({
     conversationHistory: context.conversationHistory,
