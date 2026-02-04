@@ -1,0 +1,27 @@
+{
+  "name": "freshdesk-claude-support",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node src/cli/selfcheck.mjs",
+    "dev": "node --watch src/server.mjs",
+    "start": "node src/server.mjs",
+    "lint": "node src/cli/selfcheck.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "pino": "^10.3.0",
+    "pino-http": "^11.0.0",
+    "undici": "^7.20.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.11"
+  }
+}
