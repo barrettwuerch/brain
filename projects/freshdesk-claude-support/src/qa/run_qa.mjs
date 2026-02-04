@@ -13,15 +13,17 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function containsBannedTerms({ inputText, customerResponse }) {
+function scanTerms({ inputText, text, mode }) {
   const input = String(inputText || '');
-  const out = String(customerResponse || '');
+  const out = String(text || '');
   const lower = out.toLowerCase();
+  const inputLower = input.toLowerCase();
 
-  const banned = [];
+  // Universal bans (fail anywhere: customer + agent)
+  const universal = ['fraud', 'flagged', 'suspicious'];
 
-  // Hard-banned always
-  const always = [
+  // Customer-facing-only bans (fail in customer_response; warn-only in agent_report)
+  const customerOnly = [
     'straddle',
     'straddle portal',
     'pending_resolution',
@@ -35,28 +37,38 @@ function containsBannedTerms({ inputText, customerResponse }) {
     "i'm a bot",
     'i am a bot',
     'as an ai',
-    'fraud',
-    'flagged',
   ];
 
-  for (const t of always) {
-    if (lower.includes(t)) banned.push(t);
-  }
-
-  // Conditionally banned unless customer used the term
-  const inputLower = input.toLowerCase();
-  const conditional = [
+  // Conditionally banned in customer-facing text unless user used the term.
+  // In agent_report, these are allowed.
+  const conditionalCustomer = [
     { term: 'plaid', allowedIfInputIncludes: 'plaid' },
     { term: 'ach', allowedIfInputIncludes: 'ach' },
   ];
 
-  for (const { term, allowedIfInputIncludes } of conditional) {
-    if (lower.includes(term) && !inputLower.includes(allowedIfInputIncludes)) {
-      banned.push(term);
-    }
+  const hits = [];
+
+  for (const t of universal) {
+    if (lower.includes(t)) hits.push({ term: t, severity: 'fail', rule: 'universal' });
   }
 
-  return banned;
+  if (mode === 'customer') {
+    for (const t of customerOnly) {
+      if (lower.includes(t)) hits.push({ term: t, severity: 'fail', rule: 'customer_only' });
+    }
+    for (const { term, allowedIfInputIncludes } of conditionalCustomer) {
+      if (lower.includes(term) && !inputLower.includes(allowedIfInputIncludes)) {
+        hits.push({ term, severity: 'fail', rule: 'customer_only_conditional' });
+      }
+    }
+  } else if (mode === 'agent') {
+    for (const t of customerOnly) {
+      if (lower.includes(t)) hits.push({ term: t, severity: 'warn', rule: 'customer_only' });
+    }
+    // plaid/ach are allowed in agent mode.
+  }
+
+  return hits;
 }
 
 function hasAllXmlTags(text) {
@@ -126,12 +138,16 @@ async function runOne({ scenario, client, tools }) {
   }
 
   // Banned terms (customer response)
-  const bannedHits = containsBannedTerms({ inputText: scenario.message, customerResponse: parsed.customer_response });
-  if (bannedHits.length) failures.push(`banned_terms_customer:${bannedHits.join(',')}`);
+  const customerHits = scanTerms({ inputText: scenario.message, text: parsed.customer_response, mode: 'customer' });
+  const customerFails = customerHits.filter(h => h.severity === 'fail');
+  if (customerFails.length) failures.push(`banned_terms_customer:${customerFails.map(h => h.term).join(',')}`);
 
-  // Optional: also warn on banned terms in agent report (helps prevent copy/paste leakage)
-  const bannedInAgent = containsBannedTerms({ inputText: scenario.message, customerResponse: parsed.agent_report });
-  if (bannedInAgent.length) failures.push(`banned_terms_agent:${bannedInAgent.join(',')}`);
+  // Banned terms (agent report): universal = fail; customer-only = warn
+  const agentHits = scanTerms({ inputText: scenario.message, text: parsed.agent_report, mode: 'agent' });
+  const agentFails = agentHits.filter(h => h.severity === 'fail');
+  const agentWarns = agentHits.filter(h => h.severity === 'warn');
+  if (agentFails.length) failures.push(`banned_terms_agent:${agentFails.map(h => h.term).join(',')}`);
+  if (agentWarns.length) failures.push(`warn_agent_terms:${agentWarns.map(h => h.term).join(',')}`);
 
   // Tool expectations
   if (Array.isArray(scenario.requireTools) && scenario.requireTools.length) {
