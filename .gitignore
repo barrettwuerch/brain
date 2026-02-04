@@ -24,6 +24,7 @@ moltbook-credentials.json
 # Kalshi project generated artifacts
 projects/kalshi/logs/
 projects/kalshi/daemon-logs/
+projects/kalshi/augur_v2/logs/
 projects/kalshi/news/.venv/
 projects/kalshi/news/.cache/
 projects/kalshi/*.jsonl

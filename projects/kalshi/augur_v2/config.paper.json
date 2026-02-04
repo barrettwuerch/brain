@@ -7,23 +7,48 @@
   "selection": {
     "priceFloor": 0.93,
     "priceCeiling": 0.99,
-    "minDaysToSettlement": 0.5,
+    "minDaysToSettlement": 2,
     "maxDaysToSettlement": 21,
 
     "minVolumeUsd": 5000,
     "minBestAskQty": 50,
 
     "limit": 200,
-    "status": "open",
-    "seriesTickers": ["KXHIGHNY","KXHIGHCHI","KXHIGHMI","KXHIGHAUS","KXHIGHLAX"]
+    "status": "open"
+  },
+
+  "discovery": {
+    "enabled": true,
+    "seriesPageLimit": 500,
+    "maxSeriesScan": 8000,
+    "maxSeriesUse": 120,
+
+    "weatherTickerPrefixes": ["KXHIGH", "KXLOW", "KXRAIN", "KXSNOW", "KXWIND"],
+    "weatherTitleKeywords": ["temperature", "high temp", "low temp", "rain", "precip", "snow", "wind"],
+
+    "econTickerPrefixes": ["CPI", "GDP", "JOBS", "CLAIMS", "PCE", "FED"],
+    "econTitleKeywords": ["cpi", "inflation", "unemployment", "jobs", "jobless", "gdp", "pce", "fed", "fomc", "rate"]
   },
 
   "categories": {
     "allow": [
+      { "name": "weather", "seriesTickerPrefix": "KXHIGH" },
+      { "name": "weather", "seriesTickerPrefix": "KXLOW" },
+      { "name": "weather", "seriesTickerPrefix": "KXRAIN" },
+      { "name": "weather", "seriesTickerPrefix": "KXSNOW" },
+      { "name": "weather", "seriesTickerPrefix": "KXWIND" },
       { "name": "weather", "tickerPrefix": "KXHIGH" },
       { "name": "weather", "tickerPrefix": "KXLOW" },
       { "name": "weather", "tickerPrefix": "KXRAIN" },
+      { "name": "weather", "tickerPrefix": "KXSNOW" },
+      { "name": "weather", "tickerPrefix": "KXWIND" },
       { "name": "sports_settled", "titleRegex": "(?i)(already\\s*played|final\\s*score|was\\s+the\\s+score|did\\s+.*\\s+win\\?)" },
+      { "name": "econ", "tickerPrefix": "CPI" },
+      { "name": "econ", "tickerPrefix": "GDP" },
+      { "name": "econ", "tickerPrefix": "JOBS" },
+      { "name": "econ", "tickerPrefix": "CLAIMS" },
+      { "name": "econ", "tickerPrefix": "PCE" },
+      { "name": "econ", "tickerPrefix": "FED" },
       { "name": "econ_settled", "titleRegex": "(?i)(cpi|jobs|unemployment|gdp|fed|pce).*\\b(was|were)\\b" }
     ],
     "deny": [

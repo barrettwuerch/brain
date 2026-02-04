@@ -22,7 +22,7 @@ export function compileRules(rules = []) {
 
 export function matchAny(mkt, compiledRules) {
   const title = String(mkt?.title || '');
-  const series = String(mkt?.series_ticker || mkt?.seriesTicker || '');
+  const series = String(mkt?.series_ticker || mkt?.seriesTicker || mkt?.__series_ticker || '');
   const ticker = String(mkt?.ticker || '');
 
   for (const r of compiledRules) {

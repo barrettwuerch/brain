@@ -11,6 +11,8 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { KalshiClient } from './lib/kalshi_client.mjs';
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 import { loadEnvFile, jsonlWriter, clamp, toDays, annualizedYield } from './lib/util.mjs';
 import { compileRules, matchAny } from './lib/filters.mjs';
 
@@ -87,50 +89,131 @@ async function main() {
   const sel = cfg.selection;
   const limit = sel.limit || 500;
 
-  const markets = [];
-
-  async function fetchPaged(paramsBase) {
+  async function fetchPaged(kind, fn, paramsBase, outArr, maxPages = 50) {
     let cursor = null;
-    for (let page = 0; page < 25; page++) {
+    for (let page = 0; page < maxPages; page++) {
       const params = { ...paramsBase };
       if (cursor) params.cursor = cursor;
-      const mkResp = await client.getMarkets(params);
-      const batch = mkResp?.markets || [];
-      markets.push(...batch);
-      cursor = mkResp?.cursor || mkResp?.next_cursor || mkResp?.nextCursor || null;
+
+      let resp;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          resp = await fn(params);
+          break;
+        } catch (e) {
+          if (e?.status === 429) {
+            const backoff = 250 * Math.pow(2, attempt);
+            await sleep(backoff);
+            continue;
+          }
+          throw e;
+        }
+      }
+      if (!resp) throw new Error(`fetchPaged failed after retries (${kind})`);
+
+      const batch = resp?.[kind] || [];
+      if (kind === 'markets' && paramsBase.series_ticker) {
+        for (const m of batch) m.__series_ticker = paramsBase.series_ticker;
+      }
+      outArr.push(...batch);
+
+      cursor = resp?.cursor || resp?.next_cursor || resp?.nextCursor || null;
       if (!cursor || batch.length === 0) break;
+      await sleep(80);
     }
   }
 
-  // If we have seriesTickers, prefer targeted fetch (faster + covers weather).
-  if (Array.isArray(sel.seriesTickers) && sel.seriesTickers.length) {
-    for (const st of sel.seriesTickers) {
-      await fetchPaged({ status: sel.status || 'open', limit: String(limit), series_ticker: st });
-    }
-  } else {
-    await fetchPaged({ status: sel.status || 'open', limit: String(limit) });
+  function looksLikeWeatherSeries(s, dcfg) {
+    const t = String(s?.ticker || '');
+    const title = String(s?.title || '').toLowerCase();
+    if ((dcfg.weatherTickerPrefixes || []).some(p => t.startsWith(p))) return true;
+    return (dcfg.weatherTitleKeywords || []).some(k => title.includes(String(k).toLowerCase()));
   }
+
+  function looksLikeEconSeries(s, dcfg) {
+    const t = String(s?.ticker || '');
+    const title = String(s?.title || '').toLowerCase();
+    if ((dcfg.econTickerPrefixes || []).some(p => t.startsWith(p))) return true;
+    return (dcfg.econTitleKeywords || []).some(k => title.includes(String(k).toLowerCase()));
+  }
+
+  // --- Series discovery ---
+  let seriesTickers = [];
+  const seriesCategoryByTicker = new Map();
+  const dcfg = cfg.discovery || {};
+  if (dcfg.enabled) {
+    const series = [];
+    await fetchPaged('series', (p) => client.getSeries(p), { limit: String(dcfg.seriesPageLimit || 500) }, series, Math.ceil((dcfg.maxSeriesScan || 8000) / (dcfg.seriesPageLimit || 500)) + 2);
+
+    const weather = [];
+    const econ = [];
+    for (const s of series) {
+      if (looksLikeWeatherSeries(s, dcfg)) { weather.push(s.ticker); seriesCategoryByTicker.set(s.ticker, 'weather'); }
+      else if (looksLikeEconSeries(s, dcfg)) { econ.push(s.ticker); seriesCategoryByTicker.set(s.ticker, 'econ'); }
+    }
+
+    seriesTickers = [...new Set([...weather, ...econ])].slice(0, dcfg.maxSeriesUse || 500);
+    log.write({ t: Date.now(), type: 'discovery', seriesScanned: series.length, weatherSeries: weather.length, econSeries: econ.length, seriesUsed: seriesTickers.length });
+  }
+
+  // --- Fetch markets ---
+  const markets = [];
+
+  const minClose = new Date(Date.now() + sel.minDaysToSettlement * 86400000).toISOString();
+  const maxClose = new Date(Date.now() + sel.maxDaysToSettlement * 86400000).toISOString();
+
+  // Primary: global fetch in close-time window (much faster than per-series).
+  await fetchPaged(
+    'markets',
+    (p) => client.getMarkets(p),
+    { status: sel.status || 'open', limit: String(limit), min_close_time: minClose, max_close_time: maxClose },
+    markets,
+    50,
+  );
+
+  log.write({ t: Date.now(), type: 'market_fetch', mode: 'close_time_window', minClose, maxClose, markets: markets.length });
 
   const tNow = Date.now();
   const candidates = [];
+
+  const funnel = {
+    totalMarkets: markets.length,
+    deny: 0,
+    notAllowed: 0,
+    days: 0,
+    volume: 0,
+    orderbookError: 0,
+    noAsk: 0,
+    price: 0,
+    askQty: 0,
+    passedTier12: 0,
+    candidates: 0,
+  };
 
   for (const mkt of markets) {
     const ticker = mkt?.ticker;
     if (!ticker) continue;
 
     const title = String(mkt?.title || '');
-    const series = String(mkt?.series_ticker || '');
+    const series = String(mkt?.series_ticker || mkt?.__series_ticker || '');
 
     // Deny first
     const denyHit = matchAny(mkt, deny);
     if (denyHit.ok) {
+      funnel.deny++;
       log.write({ t: Date.now(), type: 'reject', ticker, title, series, reason: 'deny', rule: denyHit.rule });
       continue;
     }
 
     // Allow
-    const allowHit = matchAny(mkt, allow);
+    let allowHit = null;
+    // We can only infer category from discovery if the market provides series_ticker (often missing).
+    const inferredCat = series ? seriesCategoryByTicker.get(series) : null;
+    if (inferredCat) allowHit = { ok: true, rule: inferredCat, why: 'series_discovery' };
+    else allowHit = matchAny(mkt, allow);
+
     if (!allowHit.ok) {
+      funnel.notAllowed++;
       log.write({ t: Date.now(), type: 'reject', ticker, title, series, reason: 'not_allowed' });
       continue;
     }
@@ -139,6 +222,7 @@ async function main() {
     const closeMs = Date.parse(mkt?.close_time || mkt?.closeTime || mkt?.settlement_time || mkt?.settlementTime || '');
     const days = Number.isFinite(closeMs) ? toDays(closeMs - tNow) : null;
     if (!(days != null && days >= sel.minDaysToSettlement && days <= sel.maxDaysToSettlement)) {
+      funnel.days++;
       log.write({ t: Date.now(), type: 'reject', ticker, title, series, reason: 'days_to_settlement', days });
       continue;
     }
@@ -146,6 +230,7 @@ async function main() {
     // Volume (USD) if present
     const vol = Number(mkt?.volume || mkt?.volume_usd || mkt?.volumeUsd || 0);
     if (Number.isFinite(sel.minVolumeUsd) && vol < sel.minVolumeUsd) {
+      funnel.volume++;
       log.write({ t: Date.now(), type: 'reject', ticker, title, series, reason: 'volume', vol });
       continue;
     }
@@ -154,24 +239,29 @@ async function main() {
     let ob;
     try {
       ob = await client.getOrderbook(ticker, cfg.orderbookDepth || 1);
+      await sleep(30);
     } catch (e) {
+      funnel.orderbookError++;
       log.write({ t: Date.now(), type: 'error', where: 'orderbook', ticker, message: String(e?.message || e) });
       continue;
     }
 
     const asks = bestAsks(ob);
     if (!asks.yes && !asks.no) {
+      funnel.noAsk++;
       log.write({ t: Date.now(), type: 'reject', ticker, title, series, reason: 'no_ask' });
       continue;
     }
+
+    funnel.passedTier12++;
 
     for (const side of ['yes', 'no']) {
       const ask = asks[side];
       if (!ask) continue;
 
       const price = ask.price;
-      if (price < sel.priceFloor || price > sel.priceCeiling) continue;
-      if (ask.qty < sel.minBestAskQty) continue;
+      if (price < sel.priceFloor || price > sel.priceCeiling) { funnel.price++; continue; }
+      if (ask.qty < sel.minBestAskQty) { funnel.askQty++; continue; }
 
       const ay = annualizedYield({ price, days });
 
@@ -191,7 +281,9 @@ async function main() {
   }
 
   candidates.sort((a, b) => (b.annualizedYield ?? -1) - (a.annualizedYield ?? -1));
+  funnel.candidates = candidates.length;
 
+  log.write({ t: Date.now(), type: 'scan_funnel', ...funnel });
   log.write({ t: Date.now(), type: 'scan_summary', total: markets.length, candidates: candidates.length, top: candidates.slice(0, 50) });
 
   const topN = cfg.logging.consoleTopN || 25;

@@ -56,4 +56,12 @@ export class KalshiClient {
   getOrderbook(ticker, depth = 1) {
     return this.signedFetch('GET', `/trade-api/v2/markets/${ticker}/orderbook`, { query: { depth: String(depth) } });
   }
+
+  getSeries(params) {
+    return this.signedFetch('GET', '/trade-api/v2/series', { query: params });
+  }
+
+  getEvents(params) {
+    return this.signedFetch('GET', '/trade-api/v2/events', { query: params });
+  }
 }
