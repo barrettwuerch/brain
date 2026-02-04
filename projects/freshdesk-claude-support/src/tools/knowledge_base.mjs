@@ -1,9 +1,20 @@
 import { request } from 'undici';
 import { normalizeFreshdeskDomain } from '../lib/url_normalize.mjs';
 
+import { localKbSearch } from '../rag/local_kb_search.mjs';
+
 export async function searchKnowledgeBase({ env, query }) {
+  // If Freshdesk isn't configured yet, fall back to local markdown KB search.
   if (!env.FRESHDESK_API_KEY) {
-    return { ok: false, stub: true, found: false, articles: [], note: 'Freshdesk API key not configured.' };
+    const local = localKbSearch(query);
+    return {
+      ok: local.ok,
+      provider: local.provider,
+      found: local.found,
+      articles: [],
+      snippets: local.snippets || [],
+      note: 'Freshdesk API key not configured; used local KB.',
+    };
   }
 
   const domain = normalizeFreshdeskDomain(env.FRESHDESK_DOMAIN);
