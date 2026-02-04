@@ -140,16 +140,8 @@
     "mockTools": {}
   },
   {
-    "id": 17,
-    "title": "ZenPay cashback",
-    "message": "Can I get cashback on ZenPay?",
-    "expectedEscalate": false,
-    "requireTools": [],
-    "mockTools": {}
-  },
-  {
     "id": 18,
-    "title": "App won't let me make a payment (3 open txns)",
+    "title": "App won't let me make a payment (3 open transactions)",
     "message": "The app won't let me make a payment.",
     "expectedEscalate": false,
     "requireTools": ["check_transaction_status"],
@@ -165,22 +157,6 @@
         ]
       }
     }
-  },
-  {
-    "id": 19,
-    "title": "Caregiver pickup",
-    "message": "Can someone else pick up my ZenPay order for me?",
-    "expectedEscalate": false,
-    "requireTools": [],
-    "mockTools": {}
-  },
-  {
-    "id": 20,
-    "title": "Transfer money back",
-    "message": "I loaded money into ZenPay but want to send it back to my bank.",
-    "expectedEscalate": false,
-    "requireTools": [],
-    "mockTools": {}
   },
 
   {

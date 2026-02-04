@@ -107,22 +107,5 @@ Important: add new first before deleting old; name must match verified identity.
 
 ---
 
-## ZenPay FAQ (seed)
-### Cashback & Rewards
-- Users can earn cashback (configurable by Verano).
-- Example: $10 cashback for first transaction of $60 or first wallet load.
-- Cashback does not expire.
-
-### Orders & Transactions
-- Preauthorized order cancellation releases preauth (funds not moved until pickup).
-- Order timeouts dictated by POS.
-- ZenPay ecom transactions handled like other ecom orders.
-- Lockout: only allow 3 open transactions at a time.
-
-### Thresholds & Policies
-- 120%/80% threshold not based on subtotal.
-- Caregiver pickup: store policy dependent.
-- Transfer money back after loading: no.
-
-### Support
-- All tickets currently go to customer-service@wedge.us within Freshchat.
+## Removed: ZenPay FAQ
+This bot is scoped to **Wedge customers only** (not ZenPay). ZenPay-specific guidance should live in a separate KB + prompt if needed.
