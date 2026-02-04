@@ -26,15 +26,14 @@ export class ClaudeClientStub {
         {
           type: 'text',
           text:
-            `(<customer_response>)\n` +
-            `I’m currently running in setup mode (API keys not configured yet), but I received your message and logged it.\n\n` +
-            `Message: "${String(userText).slice(0, 800)}"\n\n` +
-            `If you share your account email and any transaction/order ID, I can investigate once tools are connected.\n` +
+            `<customer_response>\n` +
+            `Thanks — I received your message. I’m going to need one detail to look this up: could you share the email on your Wedge account (or the approximate amount/date of the transaction)?\n` +
             `</customer_response>\n` +
-            `(<agent_report>)\n` +
-            `Stub mode: Claude/Freshdesk/Freshchat keys not configured. No tools executed.\n` +
+            `<agent_report>\n` +
+            `Stub mode (keys not configured). No tools executed. Awaiting customer clarification to proceed.\n` +
+            `Last message (truncated): ${String(userText).slice(0, 400)}\n` +
             `</agent_report>\n` +
-            `(<escalate>)false</escalate>`,
+            `<escalate>false</escalate>`,
         },
       ],
       toolCalls: [],
