@@ -22,7 +22,7 @@
     "pregameLockMinProb": 0.65,
     "entryMinProb": 0.30,
     "entryMaxProb": 0.50,
-    "exitTargetProb": 0.60,
+    "exitTargetProb": 0.68,
     "exitStopProb": 0.25
   },
 

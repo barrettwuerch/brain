@@ -8,6 +8,8 @@
  * - % positive >= 55%
  * - maximize avg pnl (cents)
  * Also prints per-quarter breakdown for each candidate.
+ *
+ * Supports Q4 cap modeling: truncate/force-exit at Q4 start using ESPN summary state mapping.
  */
 
 import fs from 'node:fs';
@@ -15,6 +17,9 @@ import path from 'node:path';
 
 import { parseArgs, sleep } from '../src/util.mjs';
 import { KalshiClient } from '../src/kalshi_client.mjs';
+import { fetchEspnNbaScoreboard } from '../src/espn_scoreboard.mjs';
+import { fetchEspnNbaSummary, buildStateTimelineFromSummary, stateAtOrBefore } from '../src/espn_summary.mjs';
+import { parseNbaEventTicker } from '../src/nba_ticker_parse.mjs';
 
 function loadLatestDatasetFile(dir) {
   const files = fs.readdirSync(dir)
@@ -57,15 +62,25 @@ function pct(n, d) {
   return d ? (n / d) * 100 : null;
 }
 
-function simulatePnlC({ entryProb, series, targetC, stopC, stopDisabled }) {
+function simulatePnlC({ entryProb, series, targetC, stopC, stopDisabled, q4CutIndex = null }) {
   const entryC = Math.round(entryProb * 100);
 
-  for (const pt of series.slice(1)) {
+  const end = (q4CutIndex != null) ? Math.min(series.length, q4CutIndex + 1) : series.length;
+  const s = series.slice(0, end);
+
+  for (const pt of s.slice(1)) {
     const c = Math.round(pt.prob * 100);
     if (c >= targetC) return { pnlC: targetC - entryC, reason: 'target' };
     if (!stopDisabled && c < stopC) return { pnlC: stopC - entryC, reason: 'stop' };
   }
-  const maxC = Math.max(...series.map(pt => Math.round(pt.prob * 100)));
+
+  // Forced close at Q4 boundary if provided
+  if (q4CutIndex != null && q4CutIndex >= 0 && q4CutIndex < series.length) {
+    const c = Math.round(series[q4CutIndex].prob * 100);
+    return { pnlC: c - entryC, reason: 'q4_forced' };
+  }
+
+  const maxC = Math.max(...s.map(pt => Math.round(pt.prob * 100)));
   return { pnlC: maxC - entryC, reason: 'max_after' };
 }
 
@@ -132,6 +147,7 @@ async function main() {
   const dir = args.dir || './data_full';
   const file = args.file || loadLatestDatasetFile(dir);
   const windowHours = args.windowHours ? Number(args.windowHours) : 4;
+  const modelQ4Cap = (String(args.q4cap || 'true') === 'true');
 
   const targets = [60, 63, 65, 68];
   const fixedStops = [25, 22, 20, 17];
@@ -161,8 +177,39 @@ async function main() {
   console.log(`Dataset: ${file}`);
   console.log(`Qualifying events (rows): ${events.length}`);
 
-  // Pre-fetch candle series for each event once.
+  // Pre-fetch candle series AND (optionally) Q4 boundary index for each event.
   const seriesByKey = new Map();
+  const q4CutByKey = new Map();
+
+  const espnScoreboardCache = new Map(); // isoDate -> scoreboard
+  const espnSummaryCache = new Map(); // eventId -> summary
+
+  async function getEspnEventIdForGame(gameId) {
+    const parsed = parseNbaEventTicker(gameId);
+    if (!parsed?.ok) return null;
+
+    const isoDate = parsed.date;
+    let sb = espnScoreboardCache.get(isoDate);
+    if (!sb) {
+      sb = await fetchEspnNbaScoreboard({ isoDate });
+      espnScoreboardCache.set(isoDate, sb);
+    }
+
+    const toEspn = (a) => ({ GSW: 'GS', SAS: 'SA', NOP: 'NO', NYK: 'NY' }[a] || a);
+    const awayE = toEspn(parsed.away);
+    const homeE = toEspn(parsed.home);
+
+    const g = sb.games.find(x => x.awayAbbr === awayE && x.homeAbbr === homeE);
+    return g?.espnEventId || null;
+  }
+
+  async function getSummaryTimeline(eventId) {
+    if (espnSummaryCache.has(eventId)) return espnSummaryCache.get(eventId);
+    const summary = await fetchEspnNbaSummary({ eventId });
+    const tl = buildStateTimelineFromSummary(summary);
+    espnSummaryCache.set(eventId, tl);
+    return tl;
+  }
 
   let fetched = 0;
   for (const ev of events) {
@@ -185,7 +232,26 @@ async function main() {
       .filter(x => x.tSec >= entryTs);
     if (cs.length < 2) continue;
 
-    seriesByKey.set(marketTicker + '@' + entryTs, cs);
+    const key = marketTicker + '@' + entryTs;
+    seriesByKey.set(key, cs);
+
+    if (modelQ4Cap) {
+      try {
+        const eventId = await getEspnEventIdForGame(gameId);
+        if (eventId) {
+          const tl = await getSummaryTimeline(eventId);
+          let cut = null;
+          for (let i = 0; i < cs.length; i++) {
+            const st = stateAtOrBefore(tl, cs[i].tSec);
+            if (st?.period >= 4) { cut = i; break; }
+          }
+          if (cut != null) q4CutByKey.set(key, cut);
+        }
+      } catch {
+        // ignore; no cap for this event
+      }
+    }
+
     fetched++;
     if (fetched % 25 === 0) console.log(`...fetched series ${fetched}/${events.length}`);
     await sleep(40);
@@ -212,12 +278,16 @@ async function main() {
           const stopDecision = v.fn(ev);
           if (stopDecision.action === 'skip') continue;
 
+          const key2 = marketTicker + '@' + entryTs;
+          const cut = q4CutByKey.get(key2) ?? null;
+
           const sim = simulatePnlC({
             entryProb: Number(ev.entry_prob),
             series,
             targetC: tgtC,
             stopC: stopDecision.stopC,
             stopDisabled: stopDecision.stopDisabled,
+            q4CutIndex: cut,
           });
 
           pnls.push(sim.pnlC);

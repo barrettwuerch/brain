@@ -15,7 +15,7 @@
     "score": "node src/score_cli.mjs",
     "hist:summary": "node scripts/hist_summary.mjs --dir ./data_full",
     "hist:exitopt": "node scripts/exit_optimize.mjs --dir ./data_full",
-    "hist:exitgrid": "node scripts/exit_grid.mjs --dir ./data_full",
+    "hist:exitgrid": "node scripts/exit_grid.mjs --dir ./data_full --q4cap true",
     "lint": "node src/health.mjs"
   },
   "dependencies": {
