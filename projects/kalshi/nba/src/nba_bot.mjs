@@ -20,6 +20,7 @@ import { discoverNbaMarkets } from './discovery.mjs';
 import { JsonStateStore } from './state_store.mjs';
 import { jsonlLogger, loadEnvFile, nowMs, parseArgs, sleep } from './util.mjs';
 import { shouldEnter, shouldExit, computeMidProbFromTob } from './engine.mjs';
+import * as scorer from './scorer.mjs';
 
 function loadConfig(p) {
   const abs = path.isAbsolute(p) ? p : path.resolve(process.cwd(), p);
@@ -257,7 +258,16 @@ async function main() {
           }
         }
 
-        // Entry engine
+        // Momentum approximation: use last 4 observed mids for this market
+        const hist = g.probHist || (g.probHist = []);
+        if (midProb != null) {
+          hist.push(midProb);
+          while (hist.length > 4) hist.shift();
+        }
+        const momentum_3min = (hist.length >= 4) ? (hist[hist.length - 1] - hist[0]) : null;
+        state.save();
+
+        // Entry engine (includes scorer gating)
         const ent = shouldEnter({
           gameId,
           ticker: m.ticker,
@@ -268,8 +278,10 @@ async function main() {
           gs: g.lastEspnStateOk ? g.lastEspnState : null,
           cfg,
           alreadyTraded: broker.hasTradedGame(gameId),
+          scorer,
+          momentum_3min,
         });
-        log.write({ t: tickT, type: 'entry_check', gameId, ticker: m.ticker, ...ent });
+        log.write({ t: tickT, type: 'entry_check', gameId, ticker: m.ticker, momentum_3min, ...ent });
 
         if (ent.ok) {
           // v0: fixed small size; risk sizing to follow.

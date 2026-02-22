@@ -13,6 +13,8 @@
     "dashboard": "node src/dashboard_server.mjs",
     "pull:historical": "node scripts/pull_historical.mjs",
     "score": "node src/score_cli.mjs",
+    "scorer:calibrate": "node scripts/calibrate_scorer.mjs --dir ./data_full",
+    "reviewer:test": "node scripts/test_reviewer.mjs --dir ./data_full",
     "hist:summary": "node scripts/hist_summary.mjs --dir ./data_full",
     "hist:exitopt": "node scripts/exit_optimize.mjs --dir ./data_full",
     "hist:exitgrid": "node scripts/exit_grid.mjs --dir ./data_full --q4cap true",

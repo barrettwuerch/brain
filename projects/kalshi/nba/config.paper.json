@@ -52,6 +52,12 @@
     "assumedFeeRateOnWinnings": 0.01
   },
 
+  "scorer": {
+    "skip_below": 0.35,
+    "reduced_size_below": 0.55,
+    "full_size_above": 0.70
+  },
+
   "logging": {
     "dir": "./logs",
     "consoleSummaryEveryMs": 15000

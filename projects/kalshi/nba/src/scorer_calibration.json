@@ -1,0 +1,195 @@
+{
+  "dataset_file": "data_full/dataset_2026-02-22_1771800142334.jsonl",
+  "generated_at": "2026-02-22T23:47:24.252Z",
+  "grouping": {
+    "prob_bucket": "floor(entry_prob*20)/20",
+    "quarter_bucket": "entry_quarter (1,2,3)",
+    "deficit_bucket": "low<=5, mid<=10, high<=15, blowout>15"
+  },
+  "groups": [
+    {
+      "prob_bucket": 0.45,
+      "quarter": 2,
+      "deficit_bucket": "mid",
+      "n": 24,
+      "recovered": 17,
+      "recovery_rate": 0.7083333333333334
+    },
+    {
+      "prob_bucket": 0.45,
+      "quarter": 3,
+      "deficit_bucket": "low",
+      "n": 15,
+      "recovered": 9,
+      "recovery_rate": 0.6
+    },
+    {
+      "prob_bucket": 0.45,
+      "quarter": 2,
+      "deficit_bucket": "high",
+      "n": 18,
+      "recovered": 12,
+      "recovery_rate": 0.6666666666666666
+    },
+    {
+      "prob_bucket": 0.45,
+      "quarter": 2,
+      "deficit_bucket": "low",
+      "n": 4,
+      "recovered": 3,
+      "recovery_rate": 0.75
+    },
+    {
+      "prob_bucket": 0.45,
+      "quarter": 3,
+      "deficit_bucket": "mid",
+      "n": 25,
+      "recovered": 18,
+      "recovery_rate": 0.72
+    },
+    {
+      "prob_bucket": 0.45,
+      "quarter": 1,
+      "deficit_bucket": "high",
+      "n": 12,
+      "recovered": 7,
+      "recovery_rate": 0.5833333333333334
+    },
+    {
+      "prob_bucket": 0.4,
+      "quarter": 1,
+      "deficit_bucket": "high",
+      "n": 2,
+      "recovered": 2,
+      "recovery_rate": 1
+    },
+    {
+      "prob_bucket": 0.45,
+      "quarter": 3,
+      "deficit_bucket": "high",
+      "n": 4,
+      "recovered": 3,
+      "recovery_rate": 0.75
+    },
+    {
+      "prob_bucket": 0.45,
+      "quarter": 1,
+      "deficit_bucket": "mid",
+      "n": 17,
+      "recovered": 14,
+      "recovery_rate": 0.8235294117647058
+    },
+    {
+      "prob_bucket": 0.35,
+      "quarter": 2,
+      "deficit_bucket": "mid",
+      "n": 1,
+      "recovered": 0,
+      "recovery_rate": 0
+    },
+    {
+      "prob_bucket": 0.5,
+      "quarter": 1,
+      "deficit_bucket": "high",
+      "n": 3,
+      "recovered": 3,
+      "recovery_rate": 1
+    },
+    {
+      "prob_bucket": 0.4,
+      "quarter": 3,
+      "deficit_bucket": "high",
+      "n": 3,
+      "recovered": 1,
+      "recovery_rate": 0.3333333333333333
+    },
+    {
+      "prob_bucket": 0.5,
+      "quarter": 2,
+      "deficit_bucket": "mid",
+      "n": 6,
+      "recovered": 6,
+      "recovery_rate": 1
+    },
+    {
+      "prob_bucket": 0.5,
+      "quarter": 3,
+      "deficit_bucket": "low",
+      "n": 2,
+      "recovered": 2,
+      "recovery_rate": 1
+    },
+    {
+      "prob_bucket": 0.4,
+      "quarter": 3,
+      "deficit_bucket": "mid",
+      "n": 6,
+      "recovered": 5,
+      "recovery_rate": 0.8333333333333334
+    },
+    {
+      "prob_bucket": 0.4,
+      "quarter": 2,
+      "deficit_bucket": "high",
+      "n": 3,
+      "recovered": 0,
+      "recovery_rate": 0
+    },
+    {
+      "prob_bucket": 0.4,
+      "quarter": 3,
+      "deficit_bucket": "low",
+      "n": 3,
+      "recovered": 3,
+      "recovery_rate": 1
+    },
+    {
+      "prob_bucket": 0.45,
+      "quarter": 2,
+      "deficit_bucket": "blowout",
+      "n": 3,
+      "recovered": 1,
+      "recovery_rate": 0.3333333333333333
+    },
+    {
+      "prob_bucket": 0.4,
+      "quarter": 2,
+      "deficit_bucket": "mid",
+      "n": 2,
+      "recovered": 1,
+      "recovery_rate": 0.5
+    },
+    {
+      "prob_bucket": 0.5,
+      "quarter": 2,
+      "deficit_bucket": "low",
+      "n": 2,
+      "recovered": 1,
+      "recovery_rate": 0.5
+    },
+    {
+      "prob_bucket": 0.5,
+      "quarter": 1,
+      "deficit_bucket": "mid",
+      "n": 3,
+      "recovered": 2,
+      "recovery_rate": 0.6666666666666666
+    },
+    {
+      "prob_bucket": 0.45,
+      "quarter": 1,
+      "deficit_bucket": "low",
+      "n": 1,
+      "recovered": 1,
+      "recovery_rate": 1
+    },
+    {
+      "prob_bucket": 0.35,
+      "quarter": 3,
+      "deficit_bucket": "high",
+      "n": 1,
+      "recovered": 0,
+      "recovery_rate": 0
+    }
+  ]
+}
