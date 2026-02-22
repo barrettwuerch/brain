@@ -18,7 +18,7 @@ import { KalshiClient } from '../src/kalshi_client.mjs';
 import { loadEnvFile, parseArgs, safeMkdirp, sleep } from '../src/util.mjs';
 import { parseNbaEventTicker } from '../src/nba_ticker_parse.mjs';
 import { fetchEspnNbaScoreboard } from '../src/espn_scoreboard.mjs';
-import { fetchEspnNbaSummary, buildMinuteScoresFromSummary } from '../src/espn_summary.mjs';
+import { fetchEspnNbaSummary, buildStateTimelineFromSummary, stateAtOrBefore } from '../src/espn_summary.mjs';
 
 function mustRead(p) { return fs.readFileSync(p, 'utf8'); }
 function loadCfg(cfgPath) {
@@ -190,13 +190,33 @@ async function main() {
     const away = parsed.away;
     const home = parsed.home;
     // ESPN abbreviations can differ (GS/GSW, SA/SAS, NO/NOP)
-    const toEspn = (a) => ({ GSW: 'GS', SAS: 'SA', NOP: 'NO' }[a] || a);
+    const toEspn = (a) => ({ GSW: 'GS', SAS: 'SA', NOP: 'NO', NYK: 'NY' }[a] || a);
     const awayE = toEspn(away);
     const homeE = toEspn(home);
 
-    const espnGame = sb.games.find(g => g.awayAbbr === awayE && g.homeAbbr === homeE);
+    let espnGame = sb.games.find(g => g.awayAbbr === awayE && g.homeAbbr === homeE);
     if (!espnGame) {
-      writeJsonl(datasetFile, { type: 'skip_game', eventTicker, reason: 'espn_game_not_found', isoDate: parsed.date, away, home });
+      // date mismatch can happen around UTC midnight; try ±1 day scoreboards
+      const d0 = new Date(parsed.date + 'T00:00:00Z');
+      const tryDates = [
+        new Date(d0.getTime() - 86400_000).toISOString().slice(0,10),
+        new Date(d0.getTime() + 86400_000).toISOString().slice(0,10),
+      ];
+      for (const d of tryDates) {
+        let sb2 = espnCache.get(d);
+        if (!sb2) {
+          try { sb2 = await fetchEspnNbaScoreboard({ isoDate: d }); espnCache.set(d, sb2); }
+          catch { sb2 = null; }
+        }
+        if (sb2) {
+          const g2 = sb2.games.find(g => g.awayAbbr === awayE && g.homeAbbr === homeE);
+          if (g2) { espnGame = g2; break; }
+        }
+      }
+    }
+
+    if (!espnGame) {
+      writeJsonl(datasetFile, { type: 'skip_game', eventTicker, reason: 'espn_game_not_found', isoDate: parsed.date, away, home, awayE, homeE });
       continue;
     }
 
@@ -261,7 +281,7 @@ async function main() {
     const needsHistorical = arr[0].needsHistorical;
 
     // Fetch ESPN summaries for games in this group (cache per espnEventId)
-    const minuteScoresByGame = new Map();
+    const stateTimelineByGame = new Map();
     for (const g of arr) {
       const cachePath = path.join(cacheDir, `espn_summary_${g.espnEventId}.json`);
       let summary;
@@ -273,7 +293,7 @@ async function main() {
           fs.writeFileSync(cachePath, JSON.stringify(summary));
           await sleep(100);
         }
-        minuteScoresByGame.set(g.eventTicker, buildMinuteScoresFromSummary(summary));
+        stateTimelineByGame.set(g.eventTicker, buildStateTimelineFromSummary(summary));
       } catch (e) {
         writeJsonl(datasetFile, { type: 'skip_game', eventTicker: g.eventTicker, reason: 'espn_summary_failed', error: String(e?.message || e) });
       }
@@ -365,45 +385,56 @@ async function main() {
           .filter(x => Number.isFinite(x.tSec) && x.prob != null)
           .filter(x => x.tSec >= startTsSec);
 
-        const minuteScores = minuteScoresByGame.get(g.eventTicker) || new Map();
+        const stateTimeline = stateTimelineByGame.get(g.eventTicker) || [];
 
-        // Walk minutes to find FIRST qualifying minute
+        // Walk REAL-TIME candlesticks and map each candle to ESPN state via wallclock timestamps.
         let qualifying = null;
-        for (const pt of timeline) {
-          const mIdx = minuteIndexFromSec(pt.tSec, startTsSec);
-          const { quarter, clockSec } = quarterClockFromMinute(mIdx);
-          if (quarter < 1 || quarter > 3) continue;
-
+        for (let idxPt = 0; idxPt < timeline.length; idxPt++) {
+          const pt = timeline[idxPt];
           const prob = pt.prob;
           if (prob < 0.30 || prob > 0.50) continue;
 
-          // Determine losing using ESPN play-derived minute scores (fill-forward)
-          let score = minuteScores.get(mIdx);
-          if (!score) {
-            // find nearest earlier minute
-            for (let j = mIdx; j >= 0; j--) { if (minuteScores.has(j)) { score = minuteScores.get(j); break; } }
-          }
-          if (!score) continue;
+          const st = stateAtOrBefore(stateTimeline, pt.tSec);
+          if (!st) continue;
+          const quarter = st.period;
+          const clockSec = st.clockSec;
+          if (quarter < 1 || quarter > 3) continue;
 
           const favIsHome = (favoriteTeam === g.home);
-          const favScore = favIsHome ? score.homeScore : score.awayScore;
-          const oppScore = favIsHome ? score.awayScore : score.homeScore;
+          const favScore = favIsHome ? st.homeScore : st.awayScore;
+          const oppScore = favIsHome ? st.awayScore : st.homeScore;
           if (!(favScore < oppScore)) continue;
 
-          // momentum over prior 3 minutes
-          const prev = timeline.find(x => minuteIndexFromSec(x.tSec, startTsSec) === mIdx - 3);
-          const momentum3 = prev ? (prob - prev.prob) : null;
+          // momentum over prior 3 candles (3 real minutes)
+          const prev = timeline[Math.max(0, idxPt - 3)];
+          const momentum3 = (idxPt >= 3 && prev?.prob != null) ? (prob - prev.prob) : null;
 
-          // recovered_60, time_to_recover
+          // recovered_60, time_to_recover (GAME CLOCK seconds)
+          // We compute delta in game-clock time using ESPN state at entry and at recovery.
+          const gameElapsed = (st) => (Number.isFinite(st?.period) && Number.isFinite(st?.clockSec))
+            ? ((st.period - 1) * 12 * 60 + (12 * 60 - st.clockSec))
+            : null;
+
           let recovered60 = false;
           let timeToRecoverSec = null;
-          for (const fut of timeline) {
-            const futIdx = minuteIndexFromSec(fut.tSec, startTsSec);
-            if (futIdx <= mIdx) continue;
-            if (fut.prob >= 0.60) { recovered60 = true; timeToRecoverSec = (futIdx - mIdx) * 60; break; }
+          const entryElapsed = gameElapsed(st);
+
+          for (let j = idxPt + 1; j < timeline.length; j++) {
+            if (timeline[j].prob >= 0.60) {
+              const st2 = stateAtOrBefore(stateTimeline, timeline[j].tSec);
+              const recElapsed = gameElapsed(st2);
+              if (entryElapsed != null && recElapsed != null && recElapsed >= entryElapsed) {
+                recovered60 = true;
+                timeToRecoverSec = (recElapsed - entryElapsed);
+              } else {
+                recovered60 = true;
+                timeToRecoverSec = null;
+              }
+              break;
+            }
           }
 
-          const pnlSim = computeImpliedPnlCents({ entryProb: prob, timeline: timeline.filter(x => minuteIndexFromSec(x.tSec, startTsSec) >= mIdx) });
+          const pnlSim = computeImpliedPnlCents({ entryProb: prob, timeline: timeline.slice(idxPt) });
 
           qualifying = {
             game_id: g.eventTicker,
@@ -415,7 +446,7 @@ async function main() {
             entry_clock_sec: clockSec,
             score_deficit: oppScore - favScore,
             momentum_3min: momentum3,
-            peak_prob_after: Math.max(...timeline.filter(x => minuteIndexFromSec(x.tSec, startTsSec) >= mIdx).map(x => x.prob)),
+            peak_prob_after: Math.max(...timeline.slice(idxPt).map(x => x.prob)),
             recovered_60: recovered60,
             time_to_recover_sec: timeToRecoverSec,
             implied_pnl_cents: pnlSim.pnlCents,
@@ -425,7 +456,10 @@ async function main() {
           break;
         }
 
-        if (qualifying) {
+        // Enforce pregame >= 0.65 for dataset rows (matches strategy)
+        if (pregameProb < 0.65) {
+          writeJsonl(datasetFile, { type: 'no_event', game_id: g.eventTicker, game_date: g.isoDate, pregame_prob: pregameProb, favorite_team: favoriteTeam, note: 'pregame_below_threshold' });
+        } else if (qualifying) {
           writeJsonl(datasetFile, { type: 'qualifying_event', ...qualifying });
         } else {
           writeJsonl(datasetFile, { type: 'no_event', game_id: g.eventTicker, game_date: g.isoDate, pregame_prob: pregameProb, favorite_team: favoriteTeam });

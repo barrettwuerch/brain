@@ -38,30 +38,43 @@ function periodElapsedSec(period, clockSec, periodLenSec = 12 * 60) {
 }
 
 /**
- * Build a per-minute score timeline from ESPN plays.
- * Output: Map<minuteIndex, { homeScore, awayScore, period, clockSec }>
- * minuteIndex counts minutes since tip (0 = [0:00,0:59]).
+ * Build a wallclock-indexed game state timeline from ESPN plays.
+ * Output: sorted array of { tSec, period, clockSec, homeScore, awayScore }
+ *
+ * This is critical: Kalshi candlesticks are in REAL TIME. We must map candle timestamps to
+ * ESPN game state using ESPN play wallclock timestamps (not using a naive 12-min quarter mapping).
  */
-export function buildMinuteScoresFromSummary(summaryData) {
+export function buildStateTimelineFromSummary(summaryData) {
   const plays = summaryData?.data?.plays || summaryData?.plays || [];
-  const out = new Map();
+  const out = [];
 
   for (const p of plays) {
+    const wall = p?.wallclock;
+    const tMs = wall ? Date.parse(wall) : null;
+    if (!tMs) continue;
+
     const period = Number(p?.period?.number ?? p?.period ?? p?.periodNumber);
-    const clockSec = parseClock(p?.clock?.displayValue ?? p?.clock?.displayValue ?? p?.clock);
-    const homeScore = Number(p?.homeScore ?? p?.score?.home ?? p?.scoreValueHome);
-    const awayScore = Number(p?.awayScore ?? p?.score?.away ?? p?.scoreValueAway);
+    const clockSec = parseClock(p?.clock?.displayValue ?? p?.clock);
+    const homeScore = Number(p?.homeScore);
+    const awayScore = Number(p?.awayScore);
 
     if (!Number.isFinite(period) || !Number.isFinite(clockSec)) continue;
     if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) continue;
 
-    const elapsed = periodElapsedSec(period, clockSec);
-    if (elapsed == null) continue;
-
-    const minuteIndex = Math.floor(elapsed / 60);
-    // Keep the latest play we saw for that minuteIndex (plays are usually chronological).
-    out.set(minuteIndex, { homeScore, awayScore, period, clockSec });
+    out.push({ tSec: Math.floor(tMs / 1000), period, clockSec, homeScore, awayScore });
   }
 
+  out.sort((a, b) => a.tSec - b.tSec);
   return out;
+}
+
+export function stateAtOrBefore(timeline, tSec) {
+  // binary search for rightmost timeline[i].tSec <= tSec
+  let lo = 0, hi = timeline.length - 1, ans = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (timeline[mid].tSec <= tSec) { ans = mid; lo = mid + 1; }
+    else hi = mid - 1;
+  }
+  return ans >= 0 ? timeline[ans] : null;
 }
