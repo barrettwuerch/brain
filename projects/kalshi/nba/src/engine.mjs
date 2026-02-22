@@ -131,23 +131,32 @@ export function shouldEnter({
   };
 }
 
-export function shouldExit({ gameId, ticker, tob, gs, cfg, position, now = nowMs() }) {
+export function shouldExit({ gameId, ticker, tob, gs, cfg, position, score_deficit = null, now = nowMs() }) {
   if (!position || position.status !== 'open') return { ok: false, skip_reason: 'no_open_position' };
   if (!gs?.ok) {
     // If no game state, do nothing here; staleness handler will decide safety exit.
     return { ok: false, skip_reason: 'no_game_state' };
   }
 
-  // Q4 forced exit
-  if (isQ4OrLater(gs)) {
-    return { ok: true, reason: 'q4_forced' };
-  }
-
   const midProb = computeMidProbFromTob(tob);
   if (midProb == null) return { ok: false, skip_reason: 'no_mid' };
 
+  // Forced close: Q4 with <= 0:30 remaining
+  if (Number(gs.quarter) === 4 && Number.isFinite(gs.clockSec) && gs.clockSec <= 30) {
+    return { ok: true, reason: 'q4_0m30_forced', midProb };
+  }
+
+  // Target
   if (midProb >= cfg.probability.exitTargetProb) return { ok: true, reason: 'target_hit', midProb };
-  if (midProb < cfg.probability.exitStopProb) return { ok: true, reason: 'stop_loss', midProb };
+
+  // Rule B stop logic
+  // - if deficit <= 8 => no stop
+  // - else stop at cfg.probability.exitStopProb
+  const d = Number(score_deficit);
+  const stopDisabled = Number.isFinite(d) && d <= 8;
+  if (!stopDisabled && midProb < cfg.probability.exitStopProb) {
+    return { ok: true, reason: 'stop_loss', midProb, score_deficit: d };
+  }
 
   return { ok: false, skip_reason: 'hold', midProb };
 }

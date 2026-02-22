@@ -78,6 +78,12 @@ async function main() {
 
   const logDir = path.resolve(path.dirname(path.resolve(process.cwd(), cfgPath)), cfg.logging.dir);
   const log = jsonlLogger(logDir);
+
+  // Attach immutable version string to every log row for hygiene.
+  const EXIT_RULE_VERSION = '68c_ruleB_q4_0m30_stopFirstBars_v1';
+  const _write = log.write;
+  log.write = (obj) => _write({ exit_rule_version: EXIT_RULE_VERSION, ...obj });
+
   const broker = new PaperBroker({ log });
   const state = new JsonStateStore({ dir: logDir, filename: 'state.json', log });
 
@@ -237,8 +243,13 @@ async function main() {
 
         // Exit monitor
         if (pos && pos.status === 'open' && g.lastEspnStateOk) {
-          const ex = shouldExit({ gameId, ticker: m.ticker, tob, gs: g.lastEspnState, cfg, position: pos });
-          log.write({ t: tickT, type: 'exit_check', gameId, ticker: m.ticker, ...ex });
+          const favIsHome = (g.favoriteTeam === g.parsed?.home);
+          const favScore = favIsHome ? g.lastEspnState.homeScore : g.lastEspnState.awayScore;
+          const oppScore = favIsHome ? g.lastEspnState.awayScore : g.lastEspnState.homeScore;
+          const score_deficit = (Number.isFinite(favScore) && Number.isFinite(oppScore)) ? (oppScore - favScore) : null;
+
+          const ex = shouldExit({ gameId, ticker: m.ticker, tob, gs: g.lastEspnState, cfg, position: pos, score_deficit });
+          log.write({ t: tickT, type: 'exit_check', gameId, ticker: m.ticker, score_deficit, ...ex });
           if (ex.ok) {
             // Close at midLockedC (paper). Fees/PnL calc next.
             broker.closePosition({ gameId, exitPriceC: tob?.midLockedC ?? null, reason: ex.reason });
