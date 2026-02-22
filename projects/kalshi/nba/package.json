@@ -13,6 +13,7 @@
     "dashboard": "node src/dashboard_server.mjs",
     "pull:historical": "node scripts/pull_historical.mjs",
     "score": "node src/score_cli.mjs",
+    "hist:summary": "node scripts/hist_summary.mjs --dir ./data_full",
     "lint": "node src/health.mjs"
   },
   "dependencies": {
