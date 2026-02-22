@@ -12,6 +12,7 @@
     "run": "node src/nba_bot.mjs",
     "dashboard": "node src/dashboard_server.mjs",
     "pull:historical": "node scripts/pull_historical.mjs",
+    "score": "node src/score_cli.mjs",
     "lint": "node src/health.mjs"
   },
   "dependencies": {
