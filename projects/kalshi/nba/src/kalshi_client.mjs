@@ -77,6 +77,19 @@ export class KalshiClient {
     return this.signedFetch('GET', `/trade-api/v2/series/${seriesTicker}/markets/${ticker}/candlesticks`, { query: params });
   }
 
+  async getCandlesticksAuto(seriesTicker, ticker, params) {
+    // Prefer series path; fall back to historical tier.
+    try {
+      return await this.getSeriesMarketCandlesticks(seriesTicker, ticker, params);
+    } catch (e) {
+      // historical endpoints usually require the same query params
+      if (e?.status === 404 || e?.status === 400) {
+        return await this.getHistoricalCandlesticks(ticker, params);
+      }
+      throw e;
+    }
+  }
+
   async getBatchCandlesticks(params) {
     // Batch endpoint for pulling multiple markets' candlesticks.
     // Requires: market_tickers (comma-separated), start_ts, end_ts, period_interval.
