@@ -79,6 +79,7 @@ export class KalshiClient {
 
   async getBatchCandlesticks(params) {
     // Batch endpoint for pulling multiple markets' candlesticks.
+    // Requires: market_tickers (comma-separated), start_ts, end_ts, period_interval.
     return this.signedFetch('GET', '/trade-api/v2/markets/candlesticks', { query: params });
   }
 
