@@ -181,28 +181,43 @@ async function main() {
 
         // --- Baseline lock ---
         // Lock baseline at first observed Kalshi mid at/after ESPN scheduled tip-off.
-        // Also lock which team was the pregame favorite (favoriteTeam) based on the *higher* mid at lock time.
-        if (!g.pregameLockedProb && Number.isFinite(g.scheduledStartMs) && tickT >= g.scheduledStartMs) {
-          const team = String(m.ticker).split('-').at(-1);
-          if (midProb != null) {
-            // Track candidates; choose max midProb across team markets.
-            const c = g.baselineCandidates || (g.baselineCandidates = {});
-            c[team] = midProb;
-            // Once we have both teams (or at least one), pick current max.
-            let bestTeam = null;
-            let bestProb = -1;
-            for (const [k, v] of Object.entries(c)) {
-              if (Number.isFinite(v) && v > bestProb) { bestProb = v; bestTeam = k; }
-            }
-            if (bestTeam) {
-              g.pregameLockedProb = bestProb;
-              g.favoriteTeam = bestTeam;
-              g.pregameLockedAtMs = tickT;
-              g.pregameLockedAtIso = new Date(tickT).toISOString();
-              g.eventTicker = m.eventTicker;
-              g.parsed = m.parsed;
-              state.save();
-              log.write({ t: tickT, type: 'pregame_locked', gameId, favoriteTeam: bestTeam, pregameLockedProb: bestProb, scheduledStartIso: g.scheduledStartIso || null });
+        // Baseline is the favorite team's midProb at lock time. We must not lock until we have BOTH team markets.
+        if (Number.isFinite(g.scheduledStartMs) && tickT >= g.scheduledStartMs) {
+          // Invalidate legacy locks that happened before scheduled tip-off (older code used Kalshi open_time).
+          if (Number.isFinite(g.pregameLockedAtMs) && g.pregameLockedAtMs < g.scheduledStartMs) {
+            delete g.pregameLockedProb;
+            delete g.favoriteTeam;
+            delete g.pregameLockedAtMs;
+            delete g.pregameLockedAtIso;
+            delete g.openTime;
+            delete g.ticker;
+            state.save();
+            log.write({ t: tickT, type: 'pregame_lock_invalidated', gameId, reason: 'legacy_pre_tip_lock' });
+          }
+
+          if (!g.pregameLockedProb) {
+            const p = m.parsed;
+            const team = String(m.ticker).split('-').at(-1);
+            if (p?.ok && midProb != null) {
+              const c = g.baselineCandidates || (g.baselineCandidates = {});
+              c[team] = midProb;
+
+              // Only lock once we have BOTH teams' candidates.
+              if (Number.isFinite(c[p.away]) && Number.isFinite(c[p.home])) {
+                const awayProb = c[p.away];
+                const homeProb = c[p.home];
+                const bestTeam = (homeProb >= awayProb) ? p.home : p.away;
+                const bestProb = Math.max(homeProb, awayProb);
+
+                g.pregameLockedProb = bestProb;
+                g.favoriteTeam = bestTeam;
+                g.pregameLockedAtMs = tickT;
+                g.pregameLockedAtIso = new Date(tickT).toISOString();
+                g.eventTicker = m.eventTicker;
+                g.parsed = p;
+                state.save();
+                log.write({ t: tickT, type: 'pregame_locked', gameId, favoriteTeam: bestTeam, pregameLockedProb: bestProb, scheduledStartIso: g.scheduledStartIso || null });
+              }
             }
           }
         }
