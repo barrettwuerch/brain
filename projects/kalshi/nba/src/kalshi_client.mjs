@@ -65,6 +65,23 @@ export class KalshiClient {
     return this.signedFetch('GET', `/trade-api/v2/markets/${ticker}/orderbook`, { query: { depth: String(depth) } });
   }
 
+  async getHistoricalCutoff() {
+    return this.signedFetch('GET', '/trade-api/v2/historical/cutoff');
+  }
+
+  async getHistoricalCandlesticks(ticker, params) {
+    return this.signedFetch('GET', `/trade-api/v2/historical/markets/${ticker}/candlesticks`, { query: params });
+  }
+
+  async getSeriesMarketCandlesticks(seriesTicker, ticker, params) {
+    return this.signedFetch('GET', `/trade-api/v2/series/${seriesTicker}/markets/${ticker}/candlesticks`, { query: params });
+  }
+
+  async getBatchCandlesticks(params) {
+    // Batch endpoint for pulling multiple markets' candlesticks.
+    return this.signedFetch('GET', '/trade-api/v2/markets/candlesticks', { query: params });
+  }
+
   getEvents(params) {
     return this.signedFetch('GET', '/trade-api/v2/events', { query: params });
   }

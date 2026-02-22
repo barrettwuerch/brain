@@ -11,6 +11,7 @@
     "start": "node src/nba_bot.mjs --config config.paper.json",
     "run": "node src/nba_bot.mjs",
     "dashboard": "node src/dashboard_server.mjs",
+    "pull:historical": "node scripts/pull_historical.mjs",
     "lint": "node src/health.mjs"
   },
   "dependencies": {
