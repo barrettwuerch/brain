@@ -17,6 +17,13 @@ export class PaperBroker {
     return this.positions.has(gameId);
   }
 
+  hasOpenOrderForGame(gameId) {
+    for (const o of this.orders.values()) {
+      if (o.gameId === gameId && o.status === 'open') return true;
+    }
+    return false;
+  }
+
   getPosition(gameId) {
     return this.positions.get(gameId) || null;
   }

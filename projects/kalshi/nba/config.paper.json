@@ -3,6 +3,10 @@
 
   "kalshi": {
     "baseUrl": "https://api.elections.kalshi.com",
+
+    "keyIdPath": "/Users/bear/.openclaw/secrets/kalshi_key_id.txt",
+    "privateKeyPemPath": "/Users/bear/.openclaw/secrets/kalshi_private_key.pem",
+
     "envFile": "",
     "keyIdEnv": "KALSHI_KEY_ID",
     "privateKeyEnv": "KALSHI_PRIVATE_KEY_PEM"

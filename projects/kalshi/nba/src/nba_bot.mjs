@@ -19,6 +19,7 @@ import { fetchGameStateFromKalshi } from './game_state_kalshi.mjs';
 import { discoverNbaMarkets } from './discovery.mjs';
 import { JsonStateStore } from './state_store.mjs';
 import { jsonlLogger, loadEnvFile, nowMs, parseArgs, sleep } from './util.mjs';
+import { shouldEnter, shouldExit, computeMidProbFromTob } from './engine.mjs';
 
 function loadConfig(p) {
   const abs = path.isAbsolute(p) ? p : path.resolve(process.cwd(), p);
@@ -117,7 +118,7 @@ async function main() {
         log.write({ t: tickT, type: 'market_snapshot', ticker: tickerProbe, tob, midProb, depthYesNearMid, micro: { skip: skipMicro.skip, reason: skipMicro.reason || null } });
       }
 
-      // 3) Per-market monitoring (baseline lock only for now)
+      // 3) Per-market monitoring
       for (const m of discovered) {
         if (!m.ticker) continue;
         const ob = await client.getOrderbook(m.ticker, 10);
@@ -145,43 +146,126 @@ async function main() {
           micro: { skip: skipMicro.skip, reason: skipMicro.reason || null },
         });
 
-        // Game state: first probe Kalshi endpoints; fall back to ESPN (not implemented yet)
+        // --- Game state ---
+        // First probe Kalshi endpoints; fall back to ESPN scoreboard.
         const gsk = await fetchGameStateFromKalshi({ client, eventTicker: m.eventTicker, marketTicker: m.ticker });
         log.write({ t: tickT, type: 'game_state', gameId, ticker: m.ticker, ...gsk });
 
+        let gs = null;
         if (!gsk.ok) {
-          // ESPN fallback (required if Kalshi API doesn't expose quarter/clock/score)
           const p = m.parsed;
           if (p?.ok) {
             const todayIso = new Date().toISOString().slice(0, 10);
             if (p.date !== todayIso) {
-              log.write({ t: tickT, type: 'game_state_fallback', gameId, ticker: m.ticker, ok: false, provider: 'espn', reason: 'skip_non_today', isoDate: p.date, todayIso });
+              gs = { ok: false, provider: 'espn', reason: 'skip_non_today', updatedAtMs: tickT, isoDate: p.date, todayIso };
             } else {
-              const gs = await fetchGameStateEspn({ isoDate: p.date, awayAbbr: p.away, homeAbbr: p.home });
-              log.write({ t: tickT, type: 'game_state_fallback', gameId, ticker: m.ticker, ...gs });
-
-              // Upgrade pregame lock to use scheduled tip-off (locked requirement)
-              const schedMs = gs?.scheduledStartMs;
-              if (schedMs && !g.scheduledStartMs) {
-                g.scheduledStartMs = schedMs;
-                g.scheduledStartIso = gs?.scheduledStartIso;
-                state.save();
-              }
-
-              if (!g.pregameLockedProb && midProb != null && schedMs && tickT >= schedMs) {
-                g.pregameLockedProb = midProb;
-                g.pregameLockedAtMs = tickT;
-                g.pregameLockedAtIso = new Date(tickT).toISOString();
-                g.ticker = m.ticker;
-                g.eventTicker = m.eventTicker;
-                g.parsed = m.parsed;
-                state.save();
-                log.write({ t: tickT, type: 'pregame_locked', gameId, ticker: m.ticker, eventTicker: m.eventTicker, scheduledStartIso: gs?.scheduledStartIso, pregameLockedProb: midProb });
-              }
+              gs = await fetchGameStateEspn({ isoDate: p.date, awayAbbr: p.away, homeAbbr: p.home });
             }
           } else {
-            log.write({ t: tickT, type: 'game_state_fallback', gameId, ticker: m.ticker, ok: false, provider: 'espn', reason: 'no_parsed_event_ticker' });
+            gs = { ok: false, provider: 'espn', reason: 'no_parsed_event_ticker', updatedAtMs: tickT };
           }
+          log.write({ t: tickT, type: 'game_state_fallback', gameId, ticker: m.ticker, ...gs });
+        }
+
+        if (gs?.ok) {
+          g.lastEspnStateOk = true;
+          g.lastEspnState = gs;
+          if (gs.scheduledStartMs && !g.scheduledStartMs) {
+            g.scheduledStartMs = gs.scheduledStartMs;
+            g.scheduledStartIso = gs.scheduledStartIso;
+          }
+          state.save();
+        }
+
+        // --- Baseline lock ---
+        // Lock baseline at first observed Kalshi mid at/after ESPN scheduled tip-off.
+        // Also lock which team was the pregame favorite (favoriteTeam) based on the *higher* mid at lock time.
+        if (!g.pregameLockedProb && Number.isFinite(g.scheduledStartMs) && tickT >= g.scheduledStartMs) {
+          const team = String(m.ticker).split('-').at(-1);
+          if (midProb != null) {
+            // Track candidates; choose max midProb across team markets.
+            const c = g.baselineCandidates || (g.baselineCandidates = {});
+            c[team] = midProb;
+            // Once we have both teams (or at least one), pick current max.
+            let bestTeam = null;
+            let bestProb = -1;
+            for (const [k, v] of Object.entries(c)) {
+              if (Number.isFinite(v) && v > bestProb) { bestProb = v; bestTeam = k; }
+            }
+            if (bestTeam) {
+              g.pregameLockedProb = bestProb;
+              g.favoriteTeam = bestTeam;
+              g.pregameLockedAtMs = tickT;
+              g.pregameLockedAtIso = new Date(tickT).toISOString();
+              g.eventTicker = m.eventTicker;
+              g.parsed = m.parsed;
+              state.save();
+              log.write({ t: tickT, type: 'pregame_locked', gameId, favoriteTeam: bestTeam, pregameLockedProb: bestProb, scheduledStartIso: g.scheduledStartIso || null });
+            }
+          }
+        }
+
+        // --- Trading logic (paper) ---
+        const pos = broker.getPosition(gameId);
+
+        // Staleness safety for OPEN positions only (3 minutes)
+        if (pos && pos.status === 'open') {
+          const updatedAt = g.lastEspnStateOk ? g.lastEspnState?.updatedAtMs : null;
+          if (Number.isFinite(updatedAt) && (tickT - updatedAt) > cfg.gameState.staleForceExitMs) {
+            const exitMid = computeMidProbFromTob(tob);
+            broker.closePosition({ gameId, exitPriceC: tob?.midLockedC ?? null, reason: 'stale_force_exit' });
+            log.write({ t: tickT, type: 'exit', gameId, ticker: m.ticker, ok: true, reason: 'stale_force_exit', midProb: exitMid });
+          }
+        }
+
+        // Exit monitor
+        if (pos && pos.status === 'open' && g.lastEspnStateOk) {
+          const ex = shouldExit({ gameId, ticker: m.ticker, tob, gs: g.lastEspnState, cfg, position: pos });
+          log.write({ t: tickT, type: 'exit_check', gameId, ticker: m.ticker, ...ex });
+          if (ex.ok) {
+            // Close at midLockedC (paper). Fees/PnL calc next.
+            broker.closePosition({ gameId, exitPriceC: tob?.midLockedC ?? null, reason: ex.reason });
+            log.write({ t: tickT, type: 'exit', gameId, ticker: m.ticker, ok: true, reason: ex.reason, midProb: ex.midProb ?? null });
+          }
+        }
+
+        // Entry engine
+        const ent = shouldEnter({
+          gameId,
+          ticker: m.ticker,
+          tob,
+          depthNearMid: depthYesNearMid,
+          micro: { skip: skipMicro.skip },
+          stateGame: g,
+          gs: g.lastEspnStateOk ? g.lastEspnState : null,
+          cfg,
+          alreadyTraded: broker.hasTradedGame(gameId),
+        });
+        log.write({ t: tickT, type: 'entry_check', gameId, ticker: m.ticker, ...ent });
+
+        if (ent.ok) {
+          // v0: fixed small size; risk sizing to follow.
+          const qty = 10;
+
+          // Ensure only one live attempt at a time for this game.
+          if (!broker.hasOpenOrderForGame(gameId) && (!pos || pos.status !== 'open')) {
+            const order = broker.placeLimit({
+              gameId,
+              ticker: m.ticker,
+              side: 'YES',
+              priceC: tob.midLockedC,
+              qty,
+              goodForMs: cfg.execution.cancelUnfilledAfterMs,
+            });
+            log.write({ t: tickT, type: 'entry_order_placed', gameId, ticker: m.ticker, orderId: order.id, priceC: order.priceC, qty });
+          }
+        }
+
+        // Poll open paper orders for this market (fills or expires automatically)
+        for (const o of broker.orders.values()) {
+          if (o.gameId !== gameId || o.ticker !== m.ticker || o.status !== 'open') continue;
+          const fill = broker.pollFill(o.id, { tob });
+          log.write({ t: tickT, type: 'entry_order_poll', gameId, ticker: m.ticker, orderId: o.id, fillStatus: fill.status });
         }
 
         if (nowMs() - lastSummaryAt >= cfg.logging.consoleSummaryEveryMs) {

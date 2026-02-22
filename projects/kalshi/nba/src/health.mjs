@@ -10,4 +10,7 @@ for (const k of ['mode','kalshi','nba','pollIntervalMs','probability','execution
   if (!(k in cfg)) throw new Error(`Config missing key: ${k}`);
 }
 
+// quick import check for ESPN module
+await import('./game_state_espn.mjs');
+
 console.log('health ok');
