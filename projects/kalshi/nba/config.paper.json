@@ -1,0 +1,51 @@
+{
+  "mode": "paper",
+
+  "kalshi": {
+    "baseUrl": "https://api.elections.kalshi.com",
+    "envFile": "",
+    "keyIdEnv": "KALSHI_KEY_ID",
+    "privateKeyEnv": "KALSHI_PRIVATE_KEY_PEM"
+  },
+
+  "pollIntervalMs": 30000,
+
+  "probability": {
+    "pregameLockMinProb": 0.65,
+    "entryMinProb": 0.30,
+    "entryMaxProb": 0.50,
+    "exitTargetProb": 0.60,
+    "exitStopProb": 0.25
+  },
+
+  "execution": {
+    "maxSpreadCents": 5,
+    "minDepthContractsNearMid": 10,
+    "limitAtMid": true,
+    "cancelUnfilledAfterMs": 30000
+  },
+
+  "gameState": {
+    "provider": "espn",
+    "staleFreezeEntryMs": 60000,
+    "staleForceExitMs": 180000
+  },
+
+  "rules": {
+    "maxOneTradePerGame": true,
+    "allowQuarters": [1, 2, 3]
+  },
+
+  "risk": {
+    "paperAccountBalanceUsd": 50000,
+    "maxDailyExposurePct": 0.10,
+    "month1PositionPct": 0.025,
+    "month2to6PositionPct": 0.04,
+    "assumedFeeRateOnWinnings": 0.01
+  },
+
+  "logging": {
+    "dir": "./logs",
+    "consoleSummaryEveryMs": 15000
+  }
+}

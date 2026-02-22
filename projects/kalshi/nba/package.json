@@ -1,0 +1,15 @@
+{
+  "name": "kalshi-nba-bot",
+  "private": true,
+  "type": "module",
+  "version": "0.1.0",
+  "description": "Kalshi NBA live probability mean reversion bot (paper/shadow v0)",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/nba_bot.mjs --config config.paper.json",
+    "run": "node src/nba_bot.mjs",
+    "lint": "node src/health.mjs"
+  }
+}
