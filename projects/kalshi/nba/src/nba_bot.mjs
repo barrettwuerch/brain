@@ -15,6 +15,8 @@ import { KalshiClient } from './kalshi_client.mjs';
 import { computeTopOfBook, depthNearMid } from './market_math.mjs';
 import { PaperBroker } from './paper_broker.mjs';
 import { fetchGameState } from './game_state_espn.mjs';
+import { discoverNbaMarkets } from './discovery.mjs';
+import { JsonStateStore } from './state_store.mjs';
 import { jsonlLogger, loadEnvFile, nowMs, parseArgs, sleep } from './util.mjs';
 
 function loadConfig(p) {
@@ -68,18 +70,17 @@ async function main() {
   const logDir = path.resolve(path.dirname(path.resolve(process.cwd(), cfgPath)), cfg.logging.dir);
   const log = jsonlLogger(logDir);
   const broker = new PaperBroker({ log });
+  const state = new JsonStateStore({ dir: logDir, filename: 'state.json', log });
 
-  log.write({ t: nowMs(), type: 'boot', cfgPath, mode: cfg.mode, logFile: log.file });
+  log.write({ t: nowMs(), type: 'boot', cfgPath, mode: cfg.mode, logFile: log.file, stateFile: state.file });
 
   const client = (keyId && privateKeyPem)
     ? new KalshiClient({ baseUrl: cfg.kalshi.baseUrl, keyId, privateKeyPem })
     : null;
 
-  // TODO: market discovery for NBA live markets.
-  // For now, the bot supports passing a single ticker via --ticker for probing.
-  const ticker = args.ticker;
-  if (!ticker) {
-    console.log('v0 scaffold: pass --ticker <KALSHI_TICKER> to probe orderbook + compute mid/spread.');
+  const tickerProbe = args.ticker;
+  if (tickerProbe) {
+    console.log('ticker probe mode enabled');
   }
 
   let lastSummaryAt = 0;
@@ -94,18 +95,53 @@ async function main() {
         continue;
       }
 
-      if (ticker) {
-        const ob = await client.getOrderbook(ticker, 10);
+      // 1) Discover NBA markets
+      const discovered = await discoverNbaMarkets({ client, seriesTicker: cfg.nba.seriesTicker });
+      log.write({ t: tickT, type: 'discovery', seriesTicker: cfg.nba.seriesTicker, count: discovered.length });
+
+      // 2) Optional ticker probe
+      if (tickerProbe) {
+        const ob = await client.getOrderbook(tickerProbe, 10);
         const tob = computeTopOfBook(ob);
         const midProb = midProbFromLockedCents(tob.midLockedC);
-
         const depthYesNearMid = depthNearMid(ob, { side: 'yes', midC: tob.midLockedC, nearC: 1 });
         const skipMicro = shouldSkipByMicrostructure({ tob, cfg });
+        log.write({ t: tickT, type: 'market_snapshot', ticker: tickerProbe, tob, midProb, depthYesNearMid, micro: { skip: skipMicro.skip, reason: skipMicro.reason || null } });
+      }
+
+      // 3) Per-market monitoring (baseline lock only for now)
+      for (const m of discovered) {
+        if (!m.ticker) continue;
+        const ob = await client.getOrderbook(m.ticker, 10);
+        const tob = computeTopOfBook(ob);
+        const midProb = midProbFromLockedCents(tob.midLockedC);
+        const depthYesNearMid = depthNearMid(ob, { side: 'yes', midC: tob.midLockedC, nearC: 1 });
+        const skipMicro = shouldSkipByMicrostructure({ tob, cfg });
+
+        const gameId = m.eventTicker || m.ticker;
+        const g = state.ensureGame(gameId);
+
+        // Pregame baseline lock: first observed mid at/after open_time
+        const openTimeMs = m.openTime ? Date.parse(m.openTime) : null;
+        if (!g.pregameLockedProb && midProb != null && openTimeMs && tickT >= openTimeMs) {
+          g.pregameLockedProb = midProb;
+          g.pregameLockedAtMs = tickT;
+          g.pregameLockedAtIso = new Date(tickT).toISOString();
+          g.openTime = m.openTime;
+          g.ticker = m.ticker;
+          g.eventTicker = m.eventTicker;
+          g.parsed = m.parsed;
+          state.save();
+          log.write({ t: tickT, type: 'pregame_locked', gameId, ticker: m.ticker, eventTicker: m.eventTicker, openTime: m.openTime, pregameLockedProb: midProb });
+        }
 
         log.write({
           t: tickT,
           type: 'market_snapshot',
-          ticker,
+          gameId,
+          ticker: m.ticker,
+          eventTicker: m.eventTicker,
+          parsed: m.parsed,
           tob,
           midProb,
           depthYesNearMid,
@@ -114,11 +150,11 @@ async function main() {
 
         // ESPN integration placeholder
         const gs = await fetchGameState({});
-        log.write({ t: tickT, type: 'game_state', ticker, ...gs });
+        log.write({ t: tickT, type: 'game_state', gameId, ticker: m.ticker, ...gs });
 
         if (nowMs() - lastSummaryAt >= cfg.logging.consoleSummaryEveryMs) {
           lastSummaryAt = nowMs();
-          console.log(`[${new Date().toISOString()}] ${ticker} mid=${midProb ?? 'n/a'} spreadC=${tob.spreadC ?? 'n/a'} depthNearMid=${depthYesNearMid}`);
+          console.log(`[${new Date().toISOString()}] ${m.ticker} mid=${midProb ?? 'n/a'} spreadC=${tob.spreadC ?? 'n/a'} depthNearMid=${depthYesNearMid} locked=${g.pregameLockedProb ?? 'n/a'}`);
         }
       }
 

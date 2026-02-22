@@ -30,6 +30,14 @@ This project expects Kalshi API credentials in environment variables (or an env 
 
 No secrets should be committed.
 
+## NBA market discovery (locked)
+- Series: `KXNBAGAME`
+- Event ticker pattern: `KXNBAGAME-{YY}{MON}{DD}{AWAYTEAM}{HOMETEAM}`
+- Discovery call:
+  - `GET /trade-api/v2/markets?series_ticker=KXNBAGAME&status=open`
+
 ## Status
 - v0 scaffolding: **in progress**
+- Discovery + baseline locking: **implemented**
+- ESPN game-state + entry/exit logic: **next**
 - Live execution: **not implemented**
