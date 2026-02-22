@@ -113,6 +113,7 @@ async function main() {
         const ob = await client.getOrderbook(tickerProbe, 10);
         const tob = computeTopOfBook(ob);
         const midProb = midProbFromLockedCents(tob.midLockedC);
+        // Depth check is computed near the locked mid (`midLockedC`), not near YES bid.
         const depthYesNearMid = depthNearMid(ob, { side: 'yes', midC: tob.midLockedC, nearC: 1 });
         const skipMicro = shouldSkipByMicrostructure({ tob, cfg });
         log.write({ t: tickT, type: 'market_snapshot', ticker: tickerProbe, tob, midProb, depthYesNearMid, micro: { skip: skipMicro.skip, reason: skipMicro.reason || null } });
@@ -124,6 +125,7 @@ async function main() {
         const ob = await client.getOrderbook(m.ticker, 10);
         const tob = computeTopOfBook(ob);
         const midProb = midProbFromLockedCents(tob.midLockedC);
+        // Depth check is computed near the locked mid (`midLockedC`), not near YES bid.
         const depthYesNearMid = depthNearMid(ob, { side: 'yes', midC: tob.midLockedC, nearC: 1 });
         const skipMicro = shouldSkipByMicrostructure({ tob, cfg });
 
@@ -266,6 +268,9 @@ async function main() {
           if (o.gameId !== gameId || o.ticker !== m.ticker || o.status !== 'open') continue;
           const fill = broker.pollFill(o.id, { tob });
           log.write({ t: tickT, type: 'entry_order_poll', gameId, ticker: m.ticker, orderId: o.id, fillStatus: fill.status });
+          if (fill.status === 'expired') {
+            log.write({ t: tickT, type: 'entry_fill_timeout', gameId, ticker: m.ticker, skip_reason: 'fill_timeout', orderId: o.id });
+          }
         }
 
         if (nowMs() - lastSummaryAt >= cfg.logging.consoleSummaryEveryMs) {

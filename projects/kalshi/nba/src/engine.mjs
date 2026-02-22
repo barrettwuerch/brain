@@ -44,7 +44,12 @@ export function shouldEnter({
 
   // Game state required
   if (!gs?.ok) {
-    return { ok: false, skip_reason: 'no_game_state', t, gameId, ticker, gsReason: gs?.reason || null };
+    return { ok: false, skip_reason: 'stale_game_state', t, gameId, ticker, gsReason: gs?.reason || null };
+  }
+
+  // If ESPN returns ok but required fields are missing, treat as stale/invalid.
+  if (!Number.isFinite(Number(gs.quarter)) || gs.clockSec === null || gs.clockSec === undefined) {
+    return { ok: false, skip_reason: 'stale_game_state', t, gameId, ticker, gsReason: 'missing_period_or_clock' };
   }
 
   // Staleness gate: blocks entries only.
@@ -60,7 +65,7 @@ export function shouldEnter({
 
   // Baseline favorite gate
   if (baseline < cfg.probability.pregameLockMinProb) {
-    return { ok: false, skip_reason: 'not_favorite', t, gameId, ticker, baseline };
+    return { ok: false, skip_reason: 'pregame_below_threshold', t, gameId, ticker, baseline };
   }
 
   // Losing gate: favorite team must be trailing.
@@ -109,7 +114,7 @@ export function shouldEnter({
   if (midProb == null) return { ok: false, skip_reason: 'no_mid', t, gameId, ticker };
 
   if (midProb < cfg.probability.entryMinProb || midProb > cfg.probability.entryMaxProb) {
-    return { ok: false, skip_reason: 'prob_out_of_range', t, gameId, ticker, midProb };
+    return { ok: false, skip_reason: 'prob_out_of_window', t, gameId, ticker, midProb };
   }
 
   return {
