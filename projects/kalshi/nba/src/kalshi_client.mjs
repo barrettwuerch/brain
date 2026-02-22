@@ -69,6 +69,11 @@ export class KalshiClient {
     return this.signedFetch('GET', '/trade-api/v2/events', { query: params });
   }
 
+  // Not documented in our notes, but likely supported; used to probe if Kalshi exposes game state.
+  getEvent(eventTicker) {
+    return this.signedFetch('GET', `/trade-api/v2/events/${eventTicker}`);
+  }
+
   getSeries(params) {
     return this.signedFetch('GET', '/trade-api/v2/series', { query: params });
   }

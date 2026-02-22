@@ -15,6 +15,7 @@ import { KalshiClient } from './kalshi_client.mjs';
 import { computeTopOfBook, depthNearMid } from './market_math.mjs';
 import { PaperBroker } from './paper_broker.mjs';
 import { fetchGameState } from './game_state_espn.mjs';
+import { fetchGameStateFromKalshi } from './game_state_kalshi.mjs';
 import { discoverNbaMarkets } from './discovery.mjs';
 import { JsonStateStore } from './state_store.mjs';
 import { jsonlLogger, loadEnvFile, nowMs, parseArgs, sleep } from './util.mjs';
@@ -148,9 +149,14 @@ async function main() {
           micro: { skip: skipMicro.skip, reason: skipMicro.reason || null },
         });
 
-        // ESPN integration placeholder
-        const gs = await fetchGameState({});
-        log.write({ t: tickT, type: 'game_state', gameId, ticker: m.ticker, ...gs });
+        // Game state: first probe Kalshi endpoints; fall back to ESPN (not implemented yet)
+        const gsk = await fetchGameStateFromKalshi({ client, eventTicker: m.eventTicker, marketTicker: m.ticker });
+        log.write({ t: tickT, type: 'game_state', gameId, ticker: m.ticker, ...gsk });
+
+        if (!gsk.ok) {
+          const gs = await fetchGameState({});
+          log.write({ t: tickT, type: 'game_state_fallback', gameId, ticker: m.ticker, ...gs });
+        }
 
         if (nowMs() - lastSummaryAt >= cfg.logging.consoleSummaryEveryMs) {
           lastSummaryAt = nowMs();
