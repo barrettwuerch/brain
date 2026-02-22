@@ -14,7 +14,7 @@ import path from 'node:path';
 import { KalshiClient } from './kalshi_client.mjs';
 import { computeTopOfBook, depthNearMid } from './market_math.mjs';
 import { PaperBroker } from './paper_broker.mjs';
-import { fetchGameState } from './game_state_espn.mjs';
+import { fetchGameStateEspn } from './game_state_espn.mjs';
 import { fetchGameStateFromKalshi } from './game_state_kalshi.mjs';
 import { discoverNbaMarkets } from './discovery.mjs';
 import { JsonStateStore } from './state_store.mjs';
@@ -60,8 +60,15 @@ async function main() {
   const cfg = loadConfig(cfgPath);
 
   const envFromFile = loadEnvFile(cfg.kalshi.envFile);
-  const keyId = envFromFile[cfg.kalshi.keyIdEnv] || process.env[cfg.kalshi.keyIdEnv];
-  const privateKeyPem = envFromFile[cfg.kalshi.privateKeyEnv] || process.env[cfg.kalshi.privateKeyEnv];
+
+  // Prefer file-based secrets (safer than multiline env vars)
+  const keyId = (cfg.kalshi.keyIdPath && fs.existsSync(cfg.kalshi.keyIdPath))
+    ? fs.readFileSync(cfg.kalshi.keyIdPath, 'utf8').trim()
+    : (envFromFile[cfg.kalshi.keyIdEnv] || process.env[cfg.kalshi.keyIdEnv]);
+
+  const privateKeyPem = (cfg.kalshi.privateKeyPemPath && fs.existsSync(cfg.kalshi.privateKeyPemPath))
+    ? fs.readFileSync(cfg.kalshi.privateKeyPemPath, 'utf8')
+    : (envFromFile[cfg.kalshi.privateKeyEnv] || process.env[cfg.kalshi.privateKeyEnv]);
 
   // We allow running without secrets for development (market fetch will fail), but warn.
   if (!keyId || !privateKeyPem) {
@@ -122,19 +129,8 @@ async function main() {
         const gameId = m.eventTicker || m.ticker;
         const g = state.ensureGame(gameId);
 
-        // Pregame baseline lock: first observed mid at/after open_time
-        const openTimeMs = m.openTime ? Date.parse(m.openTime) : null;
-        if (!g.pregameLockedProb && midProb != null && openTimeMs && tickT >= openTimeMs) {
-          g.pregameLockedProb = midProb;
-          g.pregameLockedAtMs = tickT;
-          g.pregameLockedAtIso = new Date(tickT).toISOString();
-          g.openTime = m.openTime;
-          g.ticker = m.ticker;
-          g.eventTicker = m.eventTicker;
-          g.parsed = m.parsed;
-          state.save();
-          log.write({ t: tickT, type: 'pregame_locked', gameId, ticker: m.ticker, eventTicker: m.eventTicker, openTime: m.openTime, pregameLockedProb: midProb });
-        }
+        // Pregame baseline lock is handled after scheduled tip-off via ESPN fallback (locked requirement).
+        // We do not use Kalshi open_time, which may be days before tip-off.
 
         log.write({
           t: tickT,
@@ -154,8 +150,38 @@ async function main() {
         log.write({ t: tickT, type: 'game_state', gameId, ticker: m.ticker, ...gsk });
 
         if (!gsk.ok) {
-          const gs = await fetchGameState({});
-          log.write({ t: tickT, type: 'game_state_fallback', gameId, ticker: m.ticker, ...gs });
+          // ESPN fallback (required if Kalshi API doesn't expose quarter/clock/score)
+          const p = m.parsed;
+          if (p?.ok) {
+            const todayIso = new Date().toISOString().slice(0, 10);
+            if (p.date !== todayIso) {
+              log.write({ t: tickT, type: 'game_state_fallback', gameId, ticker: m.ticker, ok: false, provider: 'espn', reason: 'skip_non_today', isoDate: p.date, todayIso });
+            } else {
+              const gs = await fetchGameStateEspn({ isoDate: p.date, awayAbbr: p.away, homeAbbr: p.home });
+              log.write({ t: tickT, type: 'game_state_fallback', gameId, ticker: m.ticker, ...gs });
+
+              // Upgrade pregame lock to use scheduled tip-off (locked requirement)
+              const schedMs = gs?.scheduledStartMs;
+              if (schedMs && !g.scheduledStartMs) {
+                g.scheduledStartMs = schedMs;
+                g.scheduledStartIso = gs?.scheduledStartIso;
+                state.save();
+              }
+
+              if (!g.pregameLockedProb && midProb != null && schedMs && tickT >= schedMs) {
+                g.pregameLockedProb = midProb;
+                g.pregameLockedAtMs = tickT;
+                g.pregameLockedAtIso = new Date(tickT).toISOString();
+                g.ticker = m.ticker;
+                g.eventTicker = m.eventTicker;
+                g.parsed = m.parsed;
+                state.save();
+                log.write({ t: tickT, type: 'pregame_locked', gameId, ticker: m.ticker, eventTicker: m.eventTicker, scheduledStartIso: gs?.scheduledStartIso, pregameLockedProb: midProb });
+              }
+            }
+          } else {
+            log.write({ t: tickT, type: 'game_state_fallback', gameId, ticker: m.ticker, ok: false, provider: 'espn', reason: 'no_parsed_event_ticker' });
+          }
         }
 
         if (nowMs() - lastSummaryAt >= cfg.logging.consoleSummaryEveryMs) {
