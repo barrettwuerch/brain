@@ -604,47 +604,54 @@ export default function App() {
               {games.map((game) => {
                 const ap = (game?.probs && game.away) ? (game.probs[game.away] ?? null) : null;
                 const hp = (game?.probs && game.home) ? (game.probs[game.home] ?? null) : null;
-                const hasPos = openPositions.some(p => p.gameId === game.gameId);
+                const pos = openPositions.find(p => p.gameId === game.gameId) || null;
+                const hasPos = !!pos;
                 const inWindow = (ap != null && ap >= 0.30 && ap <= 0.50) || (hp != null && hp >= 0.30 && hp <= 0.50);
 
+                const status = game?.espn?.state === 'in' ? 'live' : 'pre';
+                const quarter = game?.espn?.quarter ?? 0;
+                const clock = game?.espn?.clockDisplay ?? '';
+                const awayScore = game?.espn?.awayScore ?? 0;
+                const homeScore = game?.espn?.homeScore ?? 0;
+
                 return (
-                  <div key={game.id} className={`game-card ${hasPos ? "active" : inWindow && game.status === "live" ? "watching" : ""}`}>
+                  <div key={game.gameId} className={`game-card ${hasPos ? "active" : inWindow && status === "live" ? "watching" : ""}`}>
                     <div className="game-header">
-                      <div className={`game-status ${game.status}`}>
-                        {game.status === "live" && <div className="game-status-dot" />}
-                        {game.status === "live" ? `Q${game.quarter} · ${game.clock}` : "PREGAME"}
+                      <div className={`game-status ${status}`}>
+                        {status === "live" && <div className="game-status-dot" />}
+                        {status === "live" ? `Q${quarter} · ${clock}` : "PREGAME"}
                       </div>
                       <div style={{ fontSize: 9, color: "#444", letterSpacing: 1 }}>
-                        {hasPos ? <span style={{ color: "#00e87a" }}>● POSITION</span> : inWindow && game.status === "live" ? <span style={{ color: "#ff6b6b" }}>◎ WATCHING</span> : "—"}
+                        {hasPos ? <span style={{ color: "#00e87a" }}>● POSITION</span> : inWindow && status === "live" ? <span style={{ color: "#ff6b6b" }}>◎ WATCHING</span> : "—"}
                       </div>
                     </div>
                     <div className="game-matchup">
                       <div className="team-row">
                         <div className="team-name">{game.away}</div>
-                        <div className="team-score">{game.awayScore}</div>
-                        <div className={`team-prob ${ap >= 0.3 && ap <= 0.5 ? "red" : ap >= 0.65 ? "green" : ""}`}>
-                          {Math.round(ap * 100)}%
+                        <div className="team-score">{awayScore}</div>
+                        <div className={`team-prob ${ap != null && ap >= 0.3 && ap <= 0.5 ? "red" : ap != null && ap >= 0.65 ? "green" : ""}`}>
+                          {ap == null ? '—' : `${Math.round(ap * 100)}%`}
                         </div>
                       </div>
                       <div className="team-row">
                         <div className="team-name">{game.home}</div>
-                        <div className="team-score">{game.homeScore}</div>
-                        <div className={`team-prob ${hp >= 0.3 && hp <= 0.5 ? "red" : hp >= 0.65 ? "green" : ""}`}>
-                          {Math.round(hp * 100)}%
+                        <div className="team-score">{homeScore}</div>
+                        <div className={`team-prob ${hp != null && hp >= 0.3 && hp <= 0.5 ? "red" : hp != null && hp >= 0.65 ? "green" : ""}`}>
+                          {hp == null ? '—' : `${Math.round(hp * 100)}%`}
                         </div>
                       </div>
                     </div>
                     <div className="prob-bar-wrap">
                       <div className="prob-bar-bg">
-                        <div className="prob-bar-fill" style={{ width: `${ap * 100}%` }} />
+                        <div className="prob-bar-fill" style={{ width: `${(ap ?? 0) * 100}%` }} />
                       </div>
                     </div>
                     <div className={`flow-indicator ${hasPos ? "in-position" : ""}`}>
                       <span style={{ color: "#666" }}>
-                        {hasPos ? `ENTRY ${Math.round(game.position.entry * 100)}¢` : game.pregame ? `PRE ${Math.round(game.pregame.prob * 100)}%` : "NO BASELINE"}
+                        {hasPos ? `ENTRY ${pos.entryPriceC ?? '—'}¢` : game.pregame ? `PRE ${Math.round(game.pregame.prob * 100)}%` : "NO BASELINE"}
                       </span>
                       <span className={`flow-amount ${hasPos ? "green" : ""}`}>
-                        {hasPos ? `$${game.position.size.toLocaleString()}` : "—"}
+                        {hasPos ? `$${((pos.qty || 0) * 1).toLocaleString()}` : "—"}
                       </span>
                     </div>
                   </div>
