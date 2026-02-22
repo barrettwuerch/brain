@@ -17,6 +17,8 @@
     "hist:exitopt": "node scripts/exit_optimize.mjs --dir ./data_full",
     "hist:exitgrid": "node scripts/exit_grid.mjs --dir ./data_full --q4cap true",
     "hist:q4cut": "node scripts/exit_q4_cutoffs.mjs --dir ./data_full",
+    "hist:audit": "node scripts/hist_audit.mjs --dir ./data_full",
+    "hist:oos": "node scripts/hist_oos.mjs --dir ./data_full",
     "lint": "node src/health.mjs"
   },
   "dependencies": {
