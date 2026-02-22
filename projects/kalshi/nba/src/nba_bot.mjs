@@ -19,8 +19,10 @@ import { fetchGameStateFromKalshi } from './game_state_kalshi.mjs';
 import { discoverNbaMarkets } from './discovery.mjs';
 import { JsonStateStore } from './state_store.mjs';
 import { jsonlLogger, loadEnvFile, nowMs, parseArgs, sleep } from './util.mjs';
+import { isGameCompleted } from './game_state_utils.mjs';
 import { shouldEnter, shouldExit, computeMidProbFromTob } from './engine.mjs';
 import * as scorer from './scorer.mjs';
+import { reviewGame, logReviewerError } from './claude_reviewer.mjs';
 
 function loadConfig(p) {
   const abs = path.isAbsolute(p) ? p : path.resolve(process.cwd(), p);
@@ -88,6 +90,9 @@ async function main() {
   const broker = new PaperBroker({ log });
   const state = new JsonStateStore({ dir: logDir, filename: 'state.json', log });
 
+  // In-memory per-game state for reviewer payloads
+  const gameState = new Map(); // gameId -> { entry_checks:[], prob_timeline:[], trade:null, pregame_prob, pregame_team }
+
   log.write({ t: nowMs(), type: 'boot', cfgPath, mode: cfg.mode, logFile: log.file, stateFile: state.file });
 
   const client = (keyId && privateKeyPem)
@@ -138,6 +143,10 @@ async function main() {
 
         const gameId = m.eventTicker || m.ticker;
         const g = state.ensureGame(gameId);
+
+        // initialize reviewer state
+        const mem = gameState.get(gameId) || { entry_checks: [], prob_timeline: [], trade: null, pregame_prob: null, pregame_team: null };
+        gameState.set(gameId, mem);
 
         // Pregame baseline lock is handled after scheduled tip-off via ESPN fallback (locked requirement).
         // We do not use Kalshi open_time, which may be days before tip-off.
@@ -218,6 +227,8 @@ async function main() {
 
                 g.pregameLockedProb = bestProb;
                 g.favoriteTeam = bestTeam;
+                mem.pregame_prob = bestProb;
+                mem.pregame_team = bestTeam;
                 g.pregameLockedAtMs = tickT;
                 g.pregameLockedAtIso = new Date(tickT).toISOString();
                 g.eventTicker = m.eventTicker;
@@ -252,9 +263,15 @@ async function main() {
           const ex = shouldExit({ gameId, ticker: m.ticker, tob, gs: g.lastEspnState, cfg, position: pos, score_deficit });
           log.write({ t: tickT, type: 'exit_check', gameId, ticker: m.ticker, score_deficit, ...ex });
           if (ex.ok) {
-            // Close at midLockedC (paper). Fees/PnL calc next.
             broker.closePosition({ gameId, exitPriceC: tob?.midLockedC ?? null, reason: ex.reason });
             log.write({ t: tickT, type: 'exit', gameId, ticker: m.ticker, ok: true, reason: ex.reason, midProb: ex.midProb ?? null });
+
+            // Update reviewer trade
+            if (mem.trade && !mem.trade.exit_reason) {
+              mem.trade.exit_reason = ex.reason;
+              mem.trade.exit_prob = computeMidProbFromTob(tob);
+              mem.trade.exit_ts = new Date(tickT).toISOString();
+            }
           }
         }
 
@@ -283,11 +300,37 @@ async function main() {
         });
         log.write({ t: tickT, type: 'entry_check', gameId, ticker: m.ticker, momentum_3min, ...ent });
 
+        // Capture entry_checks for reviewer (only when we have ESPN state)
+        if (g.lastEspnStateOk) {
+          const favIsHome = (g.favoriteTeam === g.parsed?.home);
+          const favScore = favIsHome ? g.lastEspnState.homeScore : g.lastEspnState.awayScore;
+          const oppScore = favIsHome ? g.lastEspnState.awayScore : g.lastEspnState.homeScore;
+          const score_deficit = (Number.isFinite(favScore) && Number.isFinite(oppScore)) ? (oppScore - favScore) : null;
+
+          mem.entry_checks.push({
+            timestamp_iso: new Date(tickT).toISOString(),
+            quarter: g.lastEspnState.quarter,
+            clock_sec: g.lastEspnState.clockSec,
+            live_prob: midProb,
+            score_deficit,
+            momentum_3min,
+            confidence: ent.confidence ?? null,
+            decision: ent.ok ? 'entered' : 'skipped',
+            skip_reason: ent.ok ? null : (ent.skip_reason || null),
+          });
+
+          // Capture prob_timeline once per tick for favorite team market
+          const team = String(m.ticker).split('-').at(-1);
+          if (team === g.favoriteTeam && Number.isFinite(g.scheduledStartMs)) {
+            const minute = Math.max(0, Math.floor((tickT - g.scheduledStartMs) / 60000));
+            mem.prob_timeline.push({ minute, prob: midProb, quarter: g.lastEspnState.quarter, score_deficit });
+          }
+        }
+
         if (ent.ok) {
-          // v0: fixed small size; risk sizing to follow.
+          // v0: qty from scorer sizing (placeholder conversion). Default to 10.
           const qty = 10;
 
-          // Ensure only one live attempt at a time for this game.
           if (!broker.hasOpenOrderForGame(gameId) && (!pos || pos.status !== 'open')) {
             const order = broker.placeLimit({
               gameId,
@@ -297,18 +340,61 @@ async function main() {
               qty,
               goodForMs: cfg.execution.cancelUnfilledAfterMs,
             });
-            log.write({ t: tickT, type: 'entry_order_placed', gameId, ticker: m.ticker, orderId: order.id, priceC: order.priceC, qty });
+            log.write({ t: tickT, type: 'entry_order_placed', gameId, ticker: m.ticker, orderId: order.id, priceC: order.priceC, qty, confidence: ent.confidence ?? null });
+
+            // record trade open (paper) optimistically; actual fill recorded by broker
+            if (!mem.trade) {
+              mem.trade = {
+                entry_prob: midProb,
+                entry_quarter: g.lastEspnStateOk ? g.lastEspnState.quarter : null,
+                confidence: ent.confidence ?? null,
+                entry_ts: new Date(tickT).toISOString(),
+                exit_prob: null,
+                exit_reason: null,
+                pnl_cents: null,
+                hold_time_sec: null,
+              };
+            }
           }
         }
 
         // Poll open paper orders for this market (fills or expires automatically)
         for (const o of broker.orders.values()) {
-          if (o.gameId !== gameId || o.ticker !== m.ticker || o.status !== 'open') continue;
+          if (o.gameId !== gameId || o.ticker !== m.ticker || o.status === 'closed') continue;
           const fill = broker.pollFill(o.id, { tob });
           log.write({ t: tickT, type: 'entry_order_poll', gameId, ticker: m.ticker, orderId: o.id, fillStatus: fill.status });
+          if (fill.status === 'filled') {
+            // update trade on fill
+            if (mem.trade && mem.trade.entry_fill_price_c == null) {
+              mem.trade.entry_fill_price_c = fill.fill?.priceC ?? null;
+            }
+          }
           if (fill.status === 'expired') {
             log.write({ t: tickT, type: 'entry_fill_timeout', gameId, ticker: m.ticker, skip_reason: 'fill_timeout', orderId: o.id });
           }
+        }
+
+        // --- Game completion handler ---
+        if (g.lastEspnStateOk && isGameCompleted(g.lastEspnState) && !mem.review_fired) {
+          mem.review_fired = true;
+          const payload = {
+            game_id: gameId,
+            game_date: g.parsed?.date || null,
+            pregame_prob: mem.pregame_prob,
+            pregame_team: mem.pregame_team,
+            final_score: { away: g.lastEspnState.awayScore, home: g.lastEspnState.homeScore },
+            entry_checks: mem.entry_checks,
+            trade: mem.trade,
+            prob_timeline: mem.prob_timeline,
+          };
+
+          // fire-and-forget reviewer
+          reviewGame(gameId, payload).catch((e) => {
+            logReviewerError(e, payload);
+          });
+
+          // free memory
+          gameState.delete(gameId);
         }
 
         if (nowMs() - lastSummaryAt >= cfg.logging.consoleSummaryEveryMs) {
