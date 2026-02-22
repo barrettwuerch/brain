@@ -8,10 +8,22 @@ import { fetchEspnNbaScoreboard } from './espn_scoreboard.mjs';
  */
 
 function parseClockToSeconds(displayClock) {
-  if (!displayClock) return null;
-  const m = String(displayClock).match(/^(\d+):(\d{2})$/);
-  if (!m) return null;
-  return Number(m[1]) * 60 + Number(m[2]);
+  if (displayClock === null || displayClock === undefined) return null;
+  const s = String(displayClock).trim();
+  if (!s) return null;
+
+  // Common format: M:SS
+  let m = s.match(/^(\d+):(\d{2})$/);
+  if (m) return Number(m[1]) * 60 + Number(m[2]);
+
+  // Sometimes ESPN returns "0.0" at period boundaries.
+  // Treat as 0 seconds remaining.
+  if (/^\d+(?:\.\d+)?$/.test(s)) {
+    const v = Number(s);
+    if (Number.isFinite(v)) return Math.max(0, Math.trunc(v));
+  }
+
+  return null;
 }
 
 function toEspnAbbr(a) {
