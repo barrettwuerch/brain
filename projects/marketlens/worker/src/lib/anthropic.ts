@@ -17,7 +17,7 @@ export async function claudeJson({ system, user }: { system: string; user: strin
       'x-api-key': API_KEY,
     },
     body: JSON.stringify({
-      model: 'claude-3-5-sonnet-latest',
+      model: 'claude-sonnet-4-6',
       max_tokens: 900,
       temperature: 0.2,
       system,
