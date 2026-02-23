@@ -17,7 +17,7 @@ import { supabase } from './lib/supabase.js';
 type FeedSource = { source: string; url: string; category?: string };
 
 const FEEDS: FeedSource[] = [
-  { source: 'yahoo_finance', url: 'https://feeds.finance.yahoo.com/rss/2.0/headline', category: 'macro' },
+  // NOTE: Yahoo Finance RSS endpoints are inconsistent (404/429). Add back later with a working URL.
   { source: 'marketwatch', url: 'https://feeds.marketwatch.com/marketwatch/topstories', category: 'macro' },
   { source: 'reuters_business', url: 'https://feeds.reuters.com/reuters/businessNews', category: 'macro' },
   { source: 'scotusblog', url: 'https://www.scotusblog.com/feed', category: 'legal' },
@@ -51,25 +51,40 @@ async function upsertStories(rows: any[]) {
 }
 
 async function main() {
-  const parser = new Parser({ timeout: 20_000 });
+  const parser = new Parser({
+    timeout: 20_000,
+    headers: {
+      // Some RSS endpoints return 4xx to default Node user agents.
+      'User-Agent': 'MarketLens/1.0 (RSS ingest; contact: local)',
+      'Accept': 'application/rss+xml, application/xml;q=0.9, */*;q=0.8',
+    },
+  });
 
   let totalItems = 0;
   let totalUpsert = 0;
 
   for (const f of FEEDS) {
     console.log(`Fetching: ${f.source} ${f.url}`);
-    const feed = await parser.parseURL(f.url);
+
+    let feed;
+    try {
+      feed = await parser.parseURL(f.url);
+    } catch (e: any) {
+      console.error(`  feed_error source=${f.source}:`, e?.message ?? e);
+      continue;
+    }
+
     const items = feed.items ?? [];
     totalItems += items.length;
 
     const rows = items
-      .map((it) => {
-        const url = normText(it.link || (it as any).guid);
+      .map((it: any) => {
+        const url = normText(it.link || it.guid);
         const title = normText(it.title);
-        const body = normText((it as any).contentSnippet || (it as any).content || (it as any).summary);
+        const body = normText(it.contentSnippet || it.content || it.summary);
         if (!url || !title) return null;
 
-        const published_at = toIso((it as any).isoDate || (it as any).pubDate);
+        const published_at = toIso(it.isoDate || it.pubDate);
 
         const contentHash = sha256(`${title}\n${body}`);
         const urlHash = sha256(url);
@@ -83,7 +98,7 @@ async function main() {
           category: f.category ?? null,
           is_processed: false,
           url_hash: urlHash,
-          content_hash: contentHash
+          content_hash: contentHash,
         };
       })
       .filter(Boolean);
