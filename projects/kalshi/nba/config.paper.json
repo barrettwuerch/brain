@@ -65,6 +65,15 @@
     "full_size_above": 0.70
   },
 
+  "sizing": {
+    "mode": "tiered",
+    "confidence_low": { "threshold": 0.55, "dollars": 1000 },
+    "confidence_mid": { "threshold": 0.70, "dollars": 2000 },
+    "confidence_high": { "threshold": 1.00, "dollars": 3000 },
+    "fallback_flat": 2000,
+    "fallback_if_drawdown_exceeds_pct": 0.08
+  },
+
   "logging": {
     "dir": "./logs",
     "consoleSummaryEveryMs": 15000

@@ -427,10 +427,10 @@ async function main() {
         }
 
         if (ent.ok) {
-          // Position sizing
-          const maxPositionDollars = cfg.risk?.maxPositionDollars ?? 2000;
+          // Position sizing (dollars -> contracts)
+          const positionDollars = ent.positionSize ?? (cfg.risk?.maxPositionDollars ?? 2000);
           const priceDollars = (tob.midLockedC ?? 0) / 100;
-          const qty = (priceDollars > 0) ? Math.max(1, Math.floor(maxPositionDollars / priceDollars)) : 1;
+          const qty = (priceDollars > 0) ? Math.max(1, Math.floor(positionDollars / priceDollars)) : 1;
 
           if (!broker.hasOpenOrderForGame(gameId) && (!pos || pos.status !== 'open')) {
             const order = broker.placeLimit({
