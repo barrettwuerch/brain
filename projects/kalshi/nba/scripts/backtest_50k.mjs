@@ -51,7 +51,9 @@ async function main() {
   const datasetFile = args.file || loadLatestDatasetFile(dir);
 
   const startingCapital = 50000;
-  const sizingMode = String(args.sizing || 'flat'); // flat|tiered
+  const sizingMode = String(args.sizing || 'flat'); // flat|tiered|kelly
+  const kellyFraction = args['kelly-fraction'] ? Number(args['kelly-fraction']) : 0.5;
+  const kellyCap = args['kelly-cap'] ? Number(args['kelly-cap']) : 0.05;
 
   // Production exit rule params
   const TARGET_C = 68;
@@ -299,6 +301,17 @@ async function main() {
       else if (confidence <= 0.70) positionSize = 2000;
       else positionSize = 3000;
       positionSize = Math.min(positionSize, capital * 0.05);
+    } else if (sizingMode === 'kelly') {
+      // Option C — Kelly fraction with hard cap
+      // Use fixed p/b estimates from full season empirical averages.
+      // (Could be made rolling; keep fixed for now.)
+      const p = 0.603; // win rate
+      const q = 1 - p;
+      const b = 1.0126202913161058; // avgWin/|avgLoss|
+      const kellyFull = p - (q / b);
+      const kellyScaled = kellyFull * kellyFraction;
+      const kellyCapped = Math.min(kellyScaled, kellyCap);
+      positionSize = capital * Math.max(0, kellyCapped);
     } else {
       // Option A flat (current)
       const sizeMult = confidence < 0.55 ? 0.5 : 1.0;
