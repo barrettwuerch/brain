@@ -127,12 +127,14 @@ export function shouldEnter({
     const totalDrawdown = (riskState.startingCapital - riskState.currentCapital) / riskState.startingCapital;
     if (riskState.hardStopped || totalDrawdown >= cfg.risk.hardStopPct) {
       if (!riskState.hardStopped) riskState.hardStopped = true;
+      console.error(`🛑 HARD STOP TRIGGERED | Total drawdown: ${(totalDrawdown * 100).toFixed(1)}% | No new entries until manual reset`);
       return { ok: false, skip_reason: 'hard_stop_triggered', t, gameId, ticker, totalDrawdown };
     }
 
     // Weekly drawdown pause
     const weeklyDrawdown = (riskState.weekStartCapital - riskState.currentCapital) / riskState.weekStartCapital;
     if (weeklyDrawdown >= cfg.risk.weeklyDrawdownPausePct) {
+      console.warn(`⚠️ RISK GATE: weekly_drawdown_pause | capital: $${riskState.currentCapital.toFixed(0)} | deployed today: $${riskState.dailyDeployed.toFixed(0)}`);
       return { ok: false, skip_reason: 'weekly_drawdown_pause', t, gameId, ticker, weeklyDrawdown };
     }
 
@@ -142,6 +144,7 @@ export function shouldEnter({
     if (Number.isFinite(curCap) && curCap > 0 && Number.isFinite(ps) && ps > 0) {
       const dailyExposure = riskState.dailyDeployed / curCap;
       if (dailyExposure + (ps / curCap) > cfg.risk.maxDailyExposurePct) {
+        console.warn(`⚠️ RISK GATE: daily_exposure_limit | capital: $${riskState.currentCapital.toFixed(0)} | deployed today: $${riskState.dailyDeployed.toFixed(0)}`);
         return { ok: false, skip_reason: 'daily_exposure_limit', t, gameId, ticker, dailyExposure, limit: cfg.risk.maxDailyExposurePct };
       }
     }
