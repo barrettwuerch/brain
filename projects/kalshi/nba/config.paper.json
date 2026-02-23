@@ -45,12 +45,18 @@
   },
 
   "risk": {
-    "paperAccountBalanceUsd": 50000,
+    "startingCapital": 50000,
+    "maxPositionDollars": 2000,
     "maxDailyExposurePct": 0.10,
+    "weeklyDrawdownPausePct": 0.15,
+    "hardStopPct": 0.25,
+
     "month1PositionPct": 0.025,
     "month2to6PositionPct": 0.04,
     "assumedFeeRateOnWinnings": 0.01
   },
+
+  "exitRuleVersion": "68c_ruleB_q4_0m30_stopFirstBars_v1",
 
   "scorer": {
     "skip_below": 0.35,

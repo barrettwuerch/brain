@@ -23,6 +23,7 @@ import { isGameCompleted } from './game_state_utils.mjs';
 import { shouldEnter, shouldExit, computeMidProbFromTob } from './engine.mjs';
 import * as scorer from './scorer.mjs';
 import { reviewGame, logReviewerError } from './claude_reviewer.mjs';
+import { writeDailySummary } from './daily_summary.mjs';
 
 function loadConfig(p) {
   const abs = path.isAbsolute(p) ? p : path.resolve(process.cwd(), p);
@@ -83,7 +84,7 @@ async function main() {
   const log = jsonlLogger(logDir);
 
   // Attach immutable version string to every log row for hygiene.
-  const EXIT_RULE_VERSION = '68c_ruleB_q4_0m30_stopFirstBars_v1';
+  const EXIT_RULE_VERSION = cfg.exitRuleVersion || '68c_ruleB_q4_0m30_stopFirstBars_v1';
   const _write = log.write;
   log.write = (obj) => _write({ exit_rule_version: EXIT_RULE_VERSION, ...obj });
 
@@ -93,7 +94,49 @@ async function main() {
   // In-memory per-game state for reviewer payloads
   const gameState = new Map(); // gameId -> { entry_checks:[], prob_timeline:[], trade:null, pregame_prob, pregame_team }
 
-  log.write({ t: nowMs(), type: 'boot', cfgPath, mode: cfg.mode, logFile: log.file, stateFile: state.file });
+  const session = {
+    capitalStart: cfg.risk?.startingCapital ?? 50000,
+    capital: cfg.risk?.startingCapital ?? 50000,
+    tradesClosed: 0,
+    tradesTarget: 0,
+    tradesStop: 0,
+    tradesQ4: 0,
+    tradesOther: 0,
+    skipReasons: {},
+  };
+
+  const isoDate = new Date().toISOString().slice(0, 10);
+
+  function emitDailySummary() {
+    const summary = {
+      isoDate,
+      capital_start: session.capitalStart,
+      capital_end: session.capital,
+      trades_closed: session.tradesClosed,
+      trades_target: session.tradesTarget,
+      trades_stop: session.tradesStop,
+      trades_q4: session.tradesQ4,
+      trades_other: session.tradesOther,
+      skip_reasons: session.skipReasons,
+      recovery_rate_running: session.tradesClosed ? (session.tradesTarget / session.tradesClosed) : null,
+      baseline_recovery_rate: 0.694,
+      exit_rule_version: EXIT_RULE_VERSION,
+    };
+    const file = writeDailySummary({ logsDir: logDir, isoDate, summary });
+    console.log(`Wrote daily summary: ${file}`);
+  }
+
+  process.on('SIGINT', () => {
+    emitDailySummary();
+    process.exit(0);
+  });
+  process.on('SIGTERM', () => {
+    emitDailySummary();
+    process.exit(0);
+  });
+
+  log.write({ t: nowMs(), type: 'boot', cfgPath, mode: cfg.mode, logFile: log.file, stateFile: state.file, capitalStart: session.capitalStart });
+  console.log(`BeanBot PAPER MODE | Capital: $${session.capital.toLocaleString()} | Games: 0 live | Positions: 0`);
 
   const client = (keyId && privateKeyPem)
     ? new KalshiClient({ baseUrl: cfg.kalshi.baseUrl, keyId, privateKeyPem })
@@ -119,6 +162,12 @@ async function main() {
       // 1) Discover NBA markets
       const discovered = await discoverNbaMarkets({ client, seriesTicker: cfg.nba.seriesTicker });
       log.write({ t: tickT, type: 'discovery', seriesTicker: cfg.nba.seriesTicker, count: discovered.length });
+
+      const liveCount = discovered.length;
+      const openPosCount = Array.from(broker.positions.values()).filter(p => p.status === 'open').length;
+      if (nowMs() - lastSummaryAt >= cfg.logging.consoleSummaryEveryMs) {
+        console.log(`BeanBot PAPER MODE | Capital: $${session.capital.toFixed(0)} | Games: ${liveCount} live | Positions: ${openPosCount}`);
+      }
 
       // 2) Optional ticker probe
       if (tickerProbe) {
@@ -263,8 +312,28 @@ async function main() {
           const ex = shouldExit({ gameId, ticker: m.ticker, tob, gs: g.lastEspnState, cfg, position: pos, score_deficit });
           log.write({ t: tickT, type: 'exit_check', gameId, ticker: m.ticker, score_deficit, ...ex });
           if (ex.ok) {
-            broker.closePosition({ gameId, exitPriceC: tob?.midLockedC ?? null, reason: ex.reason });
+            const closed = broker.closePosition({ gameId, exitPriceC: tob?.midLockedC ?? null, reason: ex.reason });
             log.write({ t: tickT, type: 'exit', gameId, ticker: m.ticker, ok: true, reason: ex.reason, midProb: ex.midProb ?? null });
+
+            if (closed) {
+              // Update capital (paper): per-contract pnl dollars = (exit-entry)/100
+              const pnlDollars = Number.isFinite(closed.entryPriceC) && Number.isFinite(closed.exitPriceC)
+                ? ((closed.exitPriceC - closed.entryPriceC) * closed.qty / 100)
+                : 0;
+              session.capital += pnlDollars;
+              session.tradesClosed++;
+              if (ex.reason === 'target_hit') session.tradesTarget++;
+              else if (ex.reason === 'stop_loss') session.tradesStop++;
+              else if (String(ex.reason).includes('q4')) session.tradesQ4++;
+              else session.tradesOther++;
+
+              const entryC = closed.entryPriceC;
+              const exitC = closed.exitPriceC;
+              const entryQ = mem.trade?.entry_quarter ?? '?';
+              const exitQ = mem.trade?.exit_quarter ?? '?';
+              const conf = mem.trade?.confidence;
+              console.log(`[TRADE CLOSED] ${g.parsed?.away} vs ${g.parsed?.home} | Entry: ${entryC}¢ Q${entryQ} | Exit: ${exitC}¢ Q${exitQ} | PnL: $${pnlDollars.toFixed(0)} | Confidence: ${conf ?? 'n/a'} | Capital: $${session.capital.toFixed(0)}`);
+            }
 
             // Update reviewer trade
             if (mem.trade && !mem.trade.exit_reason) {
@@ -299,6 +368,10 @@ async function main() {
           momentum_3min,
         });
         log.write({ t: tickT, type: 'entry_check', gameId, ticker: m.ticker, momentum_3min, ...ent });
+        if (!ent.ok) {
+          const r = ent.skip_reason || 'unknown';
+          session.skipReasons[r] = (session.skipReasons[r] || 0) + 1;
+        }
 
         // Capture entry_checks for reviewer (only when we have ESPN state)
         if (g.lastEspnStateOk) {
@@ -328,8 +401,10 @@ async function main() {
         }
 
         if (ent.ok) {
-          // v0: qty from scorer sizing (placeholder conversion). Default to 10.
-          const qty = 10;
+          // Position sizing
+          const maxPositionDollars = cfg.risk?.maxPositionDollars ?? 2000;
+          const priceDollars = (tob.midLockedC ?? 0) / 100;
+          const qty = (priceDollars > 0) ? Math.max(1, Math.floor(maxPositionDollars / priceDollars)) : 1;
 
           if (!broker.hasOpenOrderForGame(gameId) && (!pos || pos.status !== 'open')) {
             const order = broker.placeLimit({
@@ -342,15 +417,17 @@ async function main() {
             });
             log.write({ t: tickT, type: 'entry_order_placed', gameId, ticker: m.ticker, orderId: order.id, priceC: order.priceC, qty, confidence: ent.confidence ?? null });
 
-            // record trade open (paper) optimistically; actual fill recorded by broker
+            // record trade open (paper) optimistically
             if (!mem.trade) {
               mem.trade = {
-                entry_prob: midProb,
+                entry_prob: null,
                 entry_quarter: g.lastEspnStateOk ? g.lastEspnState.quarter : null,
+                entry_clock_sec: g.lastEspnStateOk ? g.lastEspnState.clockSec : null,
                 confidence: ent.confidence ?? null,
-                entry_ts: new Date(tickT).toISOString(),
+                score_deficit_at_entry: null,
                 exit_prob: null,
                 exit_reason: null,
+                exit_quarter: null,
                 pnl_cents: null,
                 hold_time_sec: null,
               };

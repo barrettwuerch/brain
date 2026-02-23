@@ -43,7 +43,7 @@ async function main() {
   await bundleDashboard({ dashboardDir, outDir: publicDir });
 
   const cfg = fs.existsSync(cfgPath) ? JSON.parse(fs.readFileSync(cfgPath, 'utf8')) : null;
-  const startingCapitalUsd = cfg?.risk?.paperAccountBalanceUsd ?? 0;
+  const startingCapitalUsd = cfg?.risk?.startingCapital ?? cfg?.risk?.paperAccountBalanceUsd ?? 0;
   const feeRate = cfg?.risk?.assumedFeeRateOnWinnings ?? 0.01;
 
   const app = express();
