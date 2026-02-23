@@ -17,6 +17,10 @@ import path from 'node:path';
 
 import { parseArgs } from '../src/util.mjs';
 import { score as scoreFn } from '../src/scorer.mjs';
+import { KalshiClient } from '../src/kalshi_client.mjs';
+import { fetchEspnNbaScoreboard } from '../src/espn_scoreboard.mjs';
+import { fetchEspnNbaSummary, buildStateTimelineFromSummary, stateAtOrBefore } from '../src/espn_summary.mjs';
+import { parseNbaEventTicker } from '../src/nba_ticker_parse.mjs';
 
 function loadLatestDatasetFile(dir) {
   const files = fs.readdirSync(dir)
@@ -41,12 +45,32 @@ function avg(a) { return a.length ? a.reduce((s, x) => s + x, 0) / a.length : nu
 
 function pct(n, d) { return d ? (n / d) * 100 : null; }
 
-function main() {
+async function main() {
   const args = parseArgs(process.argv.slice(2));
   const dir = args.dir || './data_full';
   const datasetFile = args.file || loadLatestDatasetFile(dir);
 
   const startingCapital = 50000;
+
+  // Production exit rule params
+  const TARGET_C = 68;
+  const STOP_C = 25;
+  const Q4_CUTOFF_SEC = 30;
+  const WINDOW_HOURS = 4;
+
+  // Kalshi client + secrets via config
+  const projRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+  const cfg = JSON.parse(fs.readFileSync(path.join(projRoot, 'config.paper.json'), 'utf8'));
+  const keyId = fs.readFileSync(cfg.kalshi.keyIdPath, 'utf8').trim();
+  const privateKeyPem = fs.readFileSync(cfg.kalshi.privateKeyPemPath, 'utf8');
+  const client = new KalshiClient({ baseUrl: cfg.kalshi.baseUrl, keyId, privateKeyPem });
+  const seriesTicker = cfg.nba?.seriesTicker || 'KXNBAGAME';
+
+  // caches
+  const pnlCacheFile = path.join(dir, 'prod_pnl_cache.json');
+  const pnlCache = fs.existsSync(pnlCacheFile) ? JSON.parse(fs.readFileSync(pnlCacheFile, 'utf8')) : {};
+  const sbCache = new Map(); // isoDate -> scoreboard
+  const tlCache = new Map(); // eventId -> timeline
   let capital = startingCapital;
   let weekStartCapital = startingCapital;
   let dailyDeployed = 0;
@@ -59,6 +83,125 @@ function main() {
   const rows = fs.readFileSync(datasetFile, 'utf8').split(/\r?\n/).filter(Boolean).map(l => JSON.parse(l));
   const events = rows.filter(r => r.type === 'qualifying_event')
     .sort((a, b) => (a.game_date < b.game_date ? -1 : a.game_date > b.game_date ? 1 : (a.game_id < b.game_id ? -1 : 1)));
+
+  function parseCandles(resp) {
+    return (resp?.candlesticks || resp?.data?.candlesticks || resp?.data || []);
+  }
+
+  function candleHighLowC(c) {
+    const hi = c?.price?.high;
+    const lo = c?.price?.low;
+    return { hi: Number.isFinite(hi) ? hi : null, lo: Number.isFinite(lo) ? lo : null };
+  }
+
+  function candleCloseC(c) {
+    const cl = c?.price?.close;
+    return Number.isFinite(cl) ? cl : null;
+  }
+
+  async function getTimeline(gameId) {
+    const p = parseNbaEventTicker(gameId);
+    if (!p?.ok) return null;
+
+    let sb = sbCache.get(p.date);
+    if (!sb) {
+      sb = await fetchEspnNbaScoreboard({ isoDate: p.date });
+      sbCache.set(p.date, sb);
+    }
+
+    const toEspn = (a) => ({ GSW: 'GS', SAS: 'SA', NOP: 'NO', NYK: 'NY' }[a] || a);
+    const g = sb.games.find(x => x.awayAbbr === toEspn(p.away) && x.homeAbbr === toEspn(p.home));
+    const eventId = g?.espnEventId;
+    if (!eventId) return null;
+
+    if (tlCache.has(eventId)) return { tl: tlCache.get(eventId), parsed: p };
+    const sum = await fetchEspnNbaSummary({ eventId });
+    const tl = buildStateTimelineFromSummary(sum);
+    tlCache.set(eventId, tl);
+    return { tl, parsed: p };
+  }
+
+  function findQ4CutoffIndex(candles, tl) {
+    if (!tl) return null;
+    let lastQ4 = null;
+    for (let i = 0; i < candles.length; i++) {
+      const tSec = Number(candles[i].end_period_ts);
+      const st = stateAtOrBefore(tl, tSec);
+      if (st?.period === 4) {
+        lastQ4 = i;
+        if (Number.isFinite(st.clockSec) && st.clockSec <= Q4_CUTOFF_SEC) return i;
+      }
+    }
+    return lastQ4;
+  }
+
+  function simulateProdPnlCentsPerContract({ entryC, candles, stopDisabled, cutoffIndex }) {
+    const end = (cutoffIndex != null) ? Math.min(candles.length, cutoffIndex + 1) : candles.length;
+
+    for (let i = 1; i < end; i++) {
+      const { hi, lo } = candleHighLowC(candles[i]);
+      const hitT = (hi != null) && (hi >= TARGET_C);
+      const hitS = (!stopDisabled) && (lo != null) && (lo < STOP_C);
+
+      if (hitT && hitS) return STOP_C - entryC; // conservative stop-first
+      if (hitT) return TARGET_C - entryC;
+      if (hitS) return STOP_C - entryC;
+    }
+
+    if (cutoffIndex != null && cutoffIndex >= 0 && cutoffIndex < candles.length) {
+      const closeC = candleCloseC(candles[cutoffIndex]);
+      if (closeC != null) return closeC - entryC;
+      return 0;
+    }
+
+    // fallback: no exit
+    return 0;
+  }
+
+  async function prodPnlCentsForEvent(ev) {
+    const gameId = ev.game_id;
+    const fav = ev.favorite_team;
+    const entryTs = Number(ev.entry_ts);
+    const cacheKey = `${gameId}|${fav}|${entryTs}`;
+
+    if (cacheKey in pnlCache) return pnlCache[cacheKey];
+
+    const marketTicker = `${gameId}-${fav}`;
+    const start_ts = String(entryTs);
+    const end_ts = String(entryTs + WINDOW_HOURS * 3600);
+
+    let resp;
+    try {
+      resp = await client.getCandlesticksAuto(seriesTicker, marketTicker, { start_ts, end_ts, period_interval: '1' });
+    } catch {
+      pnlCache[cacheKey] = null;
+      return null;
+    }
+
+    const candles = parseCandles(resp).filter(c => Number(c?.end_period_ts) >= entryTs);
+    if (candles.length < 2) {
+      pnlCache[cacheKey] = null;
+      return null;
+    }
+
+    const tlInfo = await getTimeline(gameId);
+    const tl = tlInfo?.tl || null;
+    const cut = findQ4CutoffIndex(candles, tl);
+
+    // Rule B stop disabled if deficit <= 8 at entry
+    const deficit = Number(ev.score_deficit);
+    const stopDisabled = Number.isFinite(deficit) && deficit <= 8;
+
+    const entryC = Math.round(Number(ev.entry_prob) * 100);
+    const pnlC = simulateProdPnlCentsPerContract({ entryC, candles, stopDisabled, cutoffIndex: cut });
+
+    pnlCache[cacheKey] = pnlC;
+    // persist occasionally
+    if (Object.keys(pnlCache).length % 25 === 0) {
+      fs.writeFileSync(pnlCacheFile, JSON.stringify(pnlCache, null, 2));
+    }
+    return pnlC;
+  }
 
   const stats = {
     totalQualifying: events.length,
@@ -159,8 +302,8 @@ function main() {
       continue;
     }
 
-    // 5) P&L using dataset implied_pnl_cents per contract
-    const pnlCentsPerContract = Number(ev.implied_pnl_cents);
+    // 5) P&L using PRODUCTION exit rules (per-contract cents)
+    const pnlCentsPerContract = await prodPnlCentsForEvent(ev);
     if (!Number.isFinite(pnlCentsPerContract)) {
       stats.skippedRisk++;
       continue;
@@ -260,4 +403,4 @@ function main() {
   console.log(`\nWrote trade log: ${outTrades}`);
 }
 
-main();
+main().catch(e => { console.error(e); process.exit(1); });
