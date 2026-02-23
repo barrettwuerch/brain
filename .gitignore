@@ -14,6 +14,10 @@ __pycache__/
 .venv/
 venv/
 .env/
+# also ignore typical env files
+.env
+.env.*
+!**/.env.example
 
 # OpenClaw / local
 memory/heartbeat-state.json
