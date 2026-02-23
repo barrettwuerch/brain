@@ -296,7 +296,8 @@ async function main() {
 
     const entryProb = Number(ev.entry_prob);
     const entryCents = entryProb * 100;
-    const contracts = Math.floor(positionSize / entryCents);
+    // entry_prob is in dollars per contract (e.g. 0.47 = $0.47)
+    const contracts = Math.floor(positionSize / entryProb);
     if (contracts <= 0) {
       stats.skippedRisk++;
       continue;
