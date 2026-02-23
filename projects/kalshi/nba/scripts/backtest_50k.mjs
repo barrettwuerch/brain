@@ -51,7 +51,7 @@ async function main() {
   const datasetFile = args.file || loadLatestDatasetFile(dir);
 
   const startingCapital = 50000;
-  const sizingMode = String(args.sizing || 'flat'); // flat|tiered|kelly
+  const sizingMode = String(args.sizing || 'flat'); // flat|tiered|pct-tiered|kelly
   const kellyFraction = args['kelly-fraction'] ? Number(args['kelly-fraction']) : 0.5;
   const kellyCap = args['kelly-cap'] ? Number(args['kelly-cap']) : 0.05;
 
@@ -206,6 +206,9 @@ async function main() {
     return pnlC;
   }
 
+  const milestones = [10000, 25000, 50000, 91000];
+  const milestoneHit = Object.fromEntries(milestones.map(x => [x, null]));
+
   const stats = {
     totalQualifying: events.length,
     taken: 0,
@@ -296,10 +299,16 @@ async function main() {
 
     let positionSize;
     if (sizingMode === 'tiered') {
-      // Option B tiers
+      // Option B tiers (fixed dollars)
       if (confidence < 0.55) positionSize = 1000;
       else if (confidence <= 0.70) positionSize = 2000;
       else positionSize = 3000;
+      positionSize = Math.min(positionSize, capital * 0.05);
+    } else if (sizingMode === 'pct-tiered') {
+      // Percent-of-current-capital tiers (compounding)
+      const pct = (confidence < 0.55) ? 0.02 : (confidence <= 0.70) ? 0.04 : 0.06;
+      positionSize = capital * pct;
+      // safety cap: never exceed 5% of capital
       positionSize = Math.min(positionSize, capital * 0.05);
     } else if (sizingMode === 'kelly') {
       // Option C — Kelly fraction with hard cap
@@ -321,7 +330,12 @@ async function main() {
     const entryProb = Number(ev.entry_prob);
     const entryCents = entryProb * 100;
     // entry_prob is in dollars per contract (e.g. 0.47 = $0.47)
+    const minContracts = args.minContracts ? Number(args.minContracts) : 1;
     const contracts = Math.floor(positionSize / entryProb);
+    if (contracts < minContracts) {
+      stats.skippedRisk++;
+      continue;
+    }
     if (contracts <= 0) {
       stats.skippedRisk++;
       continue;
@@ -364,6 +378,11 @@ async function main() {
 
     updateDrawdown(stats.taken);
 
+    // milestones
+    for (const m of milestones) {
+      if (milestoneHit[m] == null && capital >= m) milestoneHit[m] = stats.taken;
+    }
+
     if (stats.taken % 10 === 0) {
       stats.equityEvery10.push({ trade: stats.taken, capital: capital });
     }
@@ -397,7 +416,7 @@ async function main() {
   const winRate = pct(stats.wins, stats.taken);
   const avgPerTrade = avg(stats.pnls);
 
-  console.log('BEANBOT BACKTEST — $50,000 starting capital');
+  console.log(`BEANBOT BACKTEST — $${startingCapital.toFixed(0)} starting capital | sizing=${sizingMode}`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log(`Total qualifying events: ${stats.totalQualifying}`);
   console.log(`Trades taken (after gates): ${stats.taken}`);
@@ -423,6 +442,11 @@ async function main() {
   console.log('\nEQUITY CURVE (every 10 trades):');
   for (const pt of stats.equityEvery10) {
     console.log(`Trade ${pt.trade}: $${pt.capital.toFixed(0)}`);
+  }
+
+  console.log('\nMILESTONES (trade #):');
+  for (const m of milestones) {
+    console.log(`- $${m.toLocaleString()}: ${milestoneHit[m] ?? 'N/A'}`);
   }
 
   console.log(`\nWrote trade log: ${outTrades}`);
