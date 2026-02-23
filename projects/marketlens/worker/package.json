@@ -1,0 +1,21 @@
+{
+  "name": "marketlens-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ingest": "node --enable-source-maps dist/ingest.js",
+    "analyze": "node --enable-source-maps dist/analyze.js",
+    "digest": "node --enable-source-maps dist/digest.js",
+    "build": "tsc -p tsconfig.json",
+    "dev:ingest": "tsx src/ingest.ts",
+    "dev:analyze": "tsx src/analyze.ts",
+    "dev:digest": "tsx src/digest.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.2"
+  }
+}
