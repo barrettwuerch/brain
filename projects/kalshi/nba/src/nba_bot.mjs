@@ -116,6 +116,9 @@ async function main() {
     skipReasons: {},
   };
 
+  // Local date filter (for "tonight's games")
+  const tzOff = new Date().getTimezoneOffset() * 60_000;
+  const isoDateLocal = new Date(Date.now() - tzOff).toISOString().slice(0, 10);
   const isoDate = new Date().toISOString().slice(0, 10);
 
   function emitDailySummary() {
@@ -147,7 +150,7 @@ async function main() {
   });
 
   log.write({ t: nowMs(), type: 'boot', cfgPath, mode: cfg.mode, logFile: log.file, stateFile: state.file, capitalStart: session.capitalStart });
-  console.log(`BeanBot PAPER MODE | Capital: $${session.capital.toLocaleString()} | Games: 0 live | Positions: 0`);
+  console.log(`BeanBot PAPER MODE | Capital: $${session.capital.toLocaleString()} | Date filter: ${isoDateLocal} | Only ESPN state="in" games`);
 
   const client = (keyId && privateKeyPem)
     ? new KalshiClient({ baseUrl: cfg.kalshi.baseUrl, keyId, privateKeyPem })
@@ -254,6 +257,12 @@ async function main() {
           }
           state.save();
         }
+
+        // Hard filters for *real* live paper trading
+        // 1) Today's games only (local date)
+        if (g.parsed?.date !== isoDateLocal) continue;
+        // 2) ESPN must confirm in-progress
+        if (!(g.lastEspnStateOk && g.lastEspnState?.state === 'in')) continue;
 
         // --- Baseline lock ---
         // Lock baseline at first observed Kalshi mid at/after ESPN scheduled tip-off.
