@@ -51,6 +51,7 @@ async function main() {
   const datasetFile = args.file || loadLatestDatasetFile(dir);
 
   const startingCapital = 50000;
+  const sizingMode = String(args.sizing || 'flat'); // flat|tiered
 
   // Production exit rule params
   const TARGET_C = 68;
@@ -291,8 +292,18 @@ async function main() {
       continue;
     }
 
-    const sizeMult = confidence < 0.55 ? 0.5 : 1.0;
-    const positionSize = Math.min(2000 * sizeMult, capital * 0.05);
+    let positionSize;
+    if (sizingMode === 'tiered') {
+      // Option B tiers
+      if (confidence < 0.55) positionSize = 1000;
+      else if (confidence <= 0.70) positionSize = 2000;
+      else positionSize = 3000;
+      positionSize = Math.min(positionSize, capital * 0.05);
+    } else {
+      // Option A flat (current)
+      const sizeMult = confidence < 0.55 ? 0.5 : 1.0;
+      positionSize = Math.min(2000 * sizeMult, capital * 0.05);
+    }
 
     const entryProb = Number(ev.entry_prob);
     const entryCents = entryProb * 100;
