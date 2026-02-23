@@ -24,6 +24,7 @@ import { shouldEnter, shouldExit, computeMidProbFromTob } from './engine.mjs';
 import * as scorer from './scorer.mjs';
 import { reviewGame, logReviewerError } from './claude_reviewer.mjs';
 import { writeDailySummary } from './daily_summary.mjs';
+import { RiskState } from './risk_state.mjs';
 
 function loadConfig(p) {
   const abs = path.isAbsolute(p) ? p : path.resolve(process.cwd(), p);
@@ -94,9 +95,19 @@ async function main() {
   // In-memory per-game state for reviewer payloads
   const gameState = new Map(); // gameId -> { entry_checks:[], prob_timeline:[], trade:null, pregame_prob, pregame_team }
 
+  const risk = new RiskState({
+    file: path.join(logDir, 'risk_state.json'),
+    startingCapital: cfg.risk?.startingCapital ?? 50000,
+  });
+
+  // If hard stop was previously triggered, require manual reset via config flag.
+  if (risk.hardStopped && !(cfg.risk?.allowHardStopReset === true)) {
+    console.error('🛑 HARD STOP is active in risk_state.json. Set risk.allowHardStopReset=true to override.');
+  }
+
   const session = {
-    capitalStart: cfg.risk?.startingCapital ?? 50000,
-    capital: cfg.risk?.startingCapital ?? 50000,
+    capitalStart: risk.startingCapital,
+    capital: risk.currentCapital,
     tradesClosed: 0,
     tradesTarget: 0,
     tradesStop: 0,
@@ -321,6 +332,10 @@ async function main() {
                 ? ((closed.exitPriceC - closed.entryPriceC) * closed.qty / 100)
                 : 0;
               session.capital += pnlDollars;
+              risk.currentCapital = session.capital;
+              // Decrement daily deployed on close
+              risk.dailyDeployed = Math.max(0, risk.dailyDeployed - (cfg.risk?.maxPositionDollars ?? 2000));
+              risk.save();
               session.tradesClosed++;
               if (ex.reason === 'target_hit') session.tradesTarget++;
               else if (ex.reason === 'stop_loss') session.tradesStop++;
@@ -353,7 +368,7 @@ async function main() {
         const momentum_3min = (hist.length >= 4) ? (hist[hist.length - 1] - hist[0]) : null;
         state.save();
 
-        // Entry engine (includes scorer gating)
+        // Entry engine (includes scorer gating + risk gates)
         const ent = shouldEnter({
           gameId,
           ticker: m.ticker,
@@ -366,6 +381,8 @@ async function main() {
           alreadyTraded: broker.hasTradedGame(gameId),
           scorer,
           momentum_3min,
+          riskState: risk,
+          positionSizeDollars: cfg.risk?.maxPositionDollars ?? 2000,
         });
         log.write({ t: tickT, type: 'entry_check', gameId, ticker: m.ticker, momentum_3min, ...ent });
         if (!ent.ok) {
@@ -415,6 +432,10 @@ async function main() {
               qty,
               goodForMs: cfg.execution.cancelUnfilledAfterMs,
             });
+
+            // Track daily capital deployed (increments on open)
+            risk.dailyDeployed += (cfg.risk?.maxPositionDollars ?? 2000);
+            risk.save();
             log.write({ t: tickT, type: 'entry_order_placed', gameId, ticker: m.ticker, orderId: order.id, priceC: order.priceC, qty, confidence: ent.confidence ?? null });
 
             // record trade open (paper) optimistically

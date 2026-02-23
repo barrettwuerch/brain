@@ -31,6 +31,8 @@ export function shouldEnter({
   gs,
   cfg,
   alreadyTraded,
+  riskState = null,
+  positionSizeDollars = null,
 }) {
   const t = nowMs();
 
@@ -115,6 +117,34 @@ export function shouldEnter({
 
   if (midProb < cfg.probability.entryMinProb || midProb > cfg.probability.entryMaxProb) {
     return { ok: false, skip_reason: 'prob_out_of_window', t, gameId, ticker, midProb };
+  }
+
+  // --- Risk gates (runtime) ---
+  if (riskState) {
+    riskState.tick?.();
+
+    // Hard stop gate
+    const totalDrawdown = (riskState.startingCapital - riskState.currentCapital) / riskState.startingCapital;
+    if (riskState.hardStopped || totalDrawdown >= cfg.risk.hardStopPct) {
+      if (!riskState.hardStopped) riskState.hardStopped = true;
+      return { ok: false, skip_reason: 'hard_stop_triggered', t, gameId, ticker, totalDrawdown };
+    }
+
+    // Weekly drawdown pause
+    const weeklyDrawdown = (riskState.weekStartCapital - riskState.currentCapital) / riskState.weekStartCapital;
+    if (weeklyDrawdown >= cfg.risk.weeklyDrawdownPausePct) {
+      return { ok: false, skip_reason: 'weekly_drawdown_pause', t, gameId, ticker, weeklyDrawdown };
+    }
+
+    // Daily exposure gate
+    const curCap = riskState.currentCapital;
+    const ps = Number(positionSizeDollars);
+    if (Number.isFinite(curCap) && curCap > 0 && Number.isFinite(ps) && ps > 0) {
+      const dailyExposure = riskState.dailyDeployed / curCap;
+      if (dailyExposure + (ps / curCap) > cfg.risk.maxDailyExposurePct) {
+        return { ok: false, skip_reason: 'daily_exposure_limit', t, gameId, ticker, dailyExposure, limit: cfg.risk.maxDailyExposurePct };
+      }
+    }
   }
 
   return {

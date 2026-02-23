@@ -50,6 +50,7 @@
     "maxDailyExposurePct": 0.10,
     "weeklyDrawdownPausePct": 0.15,
     "hardStopPct": 0.25,
+    "allowHardStopReset": false,
 
     "month1PositionPct": 0.025,
     "month2to6PositionPct": 0.04,
