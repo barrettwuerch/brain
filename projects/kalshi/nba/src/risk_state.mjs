@@ -20,7 +20,6 @@ function weekKeyLocal(d = new Date()) {
 export class RiskState {
   constructor({ file, startingCapital }) {
     this.file = file;
-    this.startingCapital = startingCapital;
     this.state = this._load() || {
       startingCapital,
       currentCapital: startingCapital,
