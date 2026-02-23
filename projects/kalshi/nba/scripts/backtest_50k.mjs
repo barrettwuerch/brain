@@ -55,6 +55,10 @@ async function main() {
   const kellyFraction = args['kelly-fraction'] ? Number(args['kelly-fraction']) : 0.5;
   const kellyCap = args['kelly-cap'] ? Number(args['kelly-cap']) : 0.05;
 
+  const exitMode = String(args.exit || 'baseline'); // baseline|split-exit
+  const splitPct = args['split-pct'] ? Number(args['split-pct']) : 0.5;
+  const compareSplit = String(args['compare-split'] || 'false') === 'true';
+
   // Production exit rule params
   const TARGET_C = 68;
   const STOP_C = 25;
@@ -138,7 +142,13 @@ async function main() {
     return lastQ4;
   }
 
-  function simulateProdPnlCentsPerContract({ entryC, candles, stopDisabled, cutoffIndex }) {
+  function feesOnWinningsCentsPerContract(entryC, exitC, feeRate=0.01) {
+    const gross = exitC - entryC;
+    const winnings = Math.max(0, gross);
+    return winnings * feeRate;
+  }
+
+  function simulateProdExitSingle({ entryC, candles, stopDisabled, cutoffIndex, feeRate=0.01 }) {
     const end = (cutoffIndex != null) ? Math.min(candles.length, cutoffIndex + 1) : candles.length;
 
     for (let i = 1; i < end; i++) {
@@ -146,28 +156,101 @@ async function main() {
       const hitT = (hi != null) && (hi >= TARGET_C);
       const hitS = (!stopDisabled) && (lo != null) && (lo < STOP_C);
 
-      if (hitT && hitS) return STOP_C - entryC; // conservative stop-first
-      if (hitT) return TARGET_C - entryC;
-      if (hitS) return STOP_C - entryC;
+      let exitC = null;
+      let reason = null;
+
+      if (hitT && hitS) { exitC = STOP_C; reason = 'stop_loss'; }
+      else if (hitT) { exitC = TARGET_C; reason = 'target_hit'; }
+      else if (hitS) { exitC = STOP_C; reason = 'stop_loss'; }
+
+      if (exitC != null) {
+        const feeC = feesOnWinningsCentsPerContract(entryC, exitC, feeRate);
+        return { pnlC: (exitC - entryC) - feeC, exitC, reason };
+      }
     }
 
     if (cutoffIndex != null && cutoffIndex >= 0 && cutoffIndex < candles.length) {
       const closeC = candleCloseC(candles[cutoffIndex]);
-      if (closeC != null) return closeC - entryC;
-      return 0;
+      const exitC = (closeC != null) ? closeC : entryC;
+      const feeC = feesOnWinningsCentsPerContract(entryC, exitC, feeRate);
+      return { pnlC: (exitC - entryC) - feeC, exitC, reason: 'q4_cutoff' };
     }
 
-    // fallback: no exit
-    return 0;
+    return { pnlC: 0, exitC: entryC, reason: 'no_exit' };
   }
 
-  async function prodPnlCentsForEvent(ev) {
+  function simulateProdExitSplit({ entryC, candles, stopDisabled, cutoffIndex, splitPct=0.5, feeRate=0.01 }) {
+    // Split only if 2x entry is below target ceiling (entry < 34c).
+    const splitPriceC = entryC * 2;
+    if (!(splitPriceC < TARGET_C)) {
+      const single = simulateProdExitSingle({ entryC, candles, stopDisabled, cutoffIndex, feeRate });
+      return { ...single, split_fired: false, split_price: null };
+    }
+
+    const end = (cutoffIndex != null) ? Math.min(candles.length, cutoffIndex + 1) : candles.length;
+
+    let splitFired = false;
+    let splitAtC = null;
+    let splitIndex = null;
+
+    // 1) Find split trigger time (conservative: if stop+split both hit same bar and stop enabled, assume stop first => no split)
+    for (let i = 1; i < end; i++) {
+      const { hi, lo } = candleHighLowC(candles[i]);
+      const hitSplit = (hi != null) && (hi >= splitPriceC);
+      const hitStop = (!stopDisabled) && (lo != null) && (lo < STOP_C);
+
+      if (hitStop && hitSplit) {
+        // stop-first ambiguity => treat as stop before split
+        break;
+      }
+      if (hitStop) break;
+      if (hitSplit) {
+        splitFired = true;
+        splitAtC = splitPriceC;
+        splitIndex = i;
+        break;
+      }
+    }
+
+    if (!splitFired) {
+      const single = simulateProdExitSingle({ entryC, candles, stopDisabled, cutoffIndex, feeRate });
+      return { ...single, split_fired: false, split_price: splitPriceC };
+    }
+
+    // Leg 1: partial exit
+    const fee1 = feesOnWinningsCentsPerContract(entryC, splitAtC, feeRate);
+    const leg1PnlC = (splitAtC - entryC) - fee1;
+
+    // Leg 2: continue from splitIndex
+    const remainingCandles = [{ dummy:true }, ...candles.slice(splitIndex)];
+    // For remainder, entryC remains original entryC.
+    const rem = simulateProdExitSingle({ entryC, candles: remainingCandles, stopDisabled, cutoffIndex: null, feeRate });
+
+    const totalPnlC = (leg1PnlC * splitPct) + (rem.pnlC * (1 - splitPct));
+
+    return {
+      pnlC: totalPnlC,
+      exitC: rem.exitC,
+      reason: rem.reason,
+      split_fired: true,
+      split_price: splitAtC,
+      remainder_exit_reason: rem.reason,
+      remainder_exit_price: rem.exitC,
+    };
+  }
+
+  async function prodPnlForEvent(ev) {
     const gameId = ev.game_id;
     const fav = ev.favorite_team;
     const entryTs = Number(ev.entry_ts);
     const cacheKey = `${gameId}|${fav}|${entryTs}`;
 
-    if (cacheKey in pnlCache) return pnlCache[cacheKey];
+    if (cacheKey in pnlCache) {
+      const cached = pnlCache[cacheKey];
+      // Normalize old-style number cache entries to expected object format
+      if (typeof cached === 'number') return { pnlC: cached };
+      return cached;
+    }
 
     const marketTicker = `${gameId}-${fav}`;
     const start_ts = String(entryTs);
@@ -196,14 +279,18 @@ async function main() {
     const stopDisabled = Number.isFinite(deficit) && deficit <= 8;
 
     const entryC = Math.round(Number(ev.entry_prob) * 100);
-    const pnlC = simulateProdPnlCentsPerContract({ entryC, candles, stopDisabled, cutoffIndex: cut });
+    const feeRate = 0.01;
 
-    pnlCache[cacheKey] = pnlC;
+    const out = (exitMode === 'split-exit')
+      ? simulateProdExitSplit({ entryC, candles, stopDisabled, cutoffIndex: cut, splitPct, feeRate })
+      : simulateProdExitSingle({ entryC, candles, stopDisabled, cutoffIndex: cut, feeRate });
+
+    pnlCache[cacheKey] = out;
     // persist occasionally
     if (Object.keys(pnlCache).length % 25 === 0) {
       fs.writeFileSync(pnlCacheFile, JSON.stringify(pnlCache, null, 2));
     }
-    return pnlC;
+    return out;
   }
 
   const milestones = [10000, 25000, 50000, 91000];
@@ -215,6 +302,9 @@ async function main() {
     skippedRisk: 0,
     skippedConfidence: 0,
     hardStopped: false,
+
+    skipReasons: { missingPnl: 0, dailyCap: 0, weeklyPause: 0, hardStop: 0, contractsSmall: 0 },
+
 
     wins: 0,
     losses: 0,
@@ -268,6 +358,7 @@ async function main() {
     const totalDrawdown = (startingCapital - capital) / startingCapital;
     if (totalDrawdown >= 0.25) {
       stats.hardStopped = true;
+      stats.skipReasons.hardStop++;
       break;
     }
 
@@ -275,11 +366,13 @@ async function main() {
     if (weeklyDrawdown >= 0.15) {
       weekPaused = true;
       stats.skippedRisk++;
+      stats.skipReasons.weeklyPause++;
       continue;
     }
 
     if ((dailyDeployed / capital) >= 0.10) {
       stats.skippedRisk++;
+      stats.skipReasons.dailyCap++;
       continue;
     }
 
@@ -334,17 +427,21 @@ async function main() {
     const contracts = Math.floor(positionSize / entryProb);
     if (contracts < minContracts) {
       stats.skippedRisk++;
+      stats.skipReasons.contractsSmall++;
       continue;
     }
     if (contracts <= 0) {
       stats.skippedRisk++;
+      stats.skipReasons.contractsSmall++;
       continue;
     }
 
     // 5) P&L using PRODUCTION exit rules (per-contract cents)
-    const pnlCentsPerContract = await prodPnlCentsForEvent(ev);
+    const prod = await prodPnlForEvent(ev);
+    const pnlCentsPerContract = prod?.pnlC;
     if (!Number.isFinite(pnlCentsPerContract)) {
       stats.skippedRisk++;
+      stats.skipReasons.missingPnl++;
       continue;
     }
 
@@ -402,6 +499,13 @@ async function main() {
       pnl_cents_per_contract: pnlCentsPerContract,
       pnl_dollars: pnlDollars,
       capital_after: capital,
+
+      exit_mode: exitMode,
+      split_fired: !!prod?.split_fired,
+      split_price: prod?.split_price ?? null,
+      split_contracts_sold: prod?.split_fired ? Math.floor(contracts * splitPct) : 0,
+      remainder_exit_reason: prod?.remainder_exit_reason ?? prod?.reason ?? null,
+      remainder_exit_price: prod?.remainder_exit_price ?? prod?.exitC ?? null,
     }) + '\n');
   }
 
@@ -444,12 +548,15 @@ async function main() {
     console.log(`Trade ${pt.trade}: $${pt.capital.toFixed(0)}`);
   }
 
+  console.log(`\nExit mode: ${exitMode}${exitMode==='split-exit' ? ` (splitPct=${splitPct})` : ''}`);
+
   console.log('\nMILESTONES (trade #):');
   for (const m of milestones) {
     console.log(`- $${m.toLocaleString()}: ${milestoneHit[m] ?? 'N/A'}`);
   }
 
   console.log(`\nWrote trade log: ${outTrades}`);
+  console.log('Skip reasons:', JSON.stringify(stats.skipReasons, null, 2));
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
