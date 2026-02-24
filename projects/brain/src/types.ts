@@ -243,6 +243,16 @@ export interface StrategyFormalization {
   market_scope: string;
   created_at: string;
   created_by: string; // bot_id
+
+  watch_condition?: {
+    metric: string;
+    operator: ConditionOperator;
+    value: number;
+    timeframe: string;
+    vol_regime_gate?: string;
+    cooldown_minutes: number;
+    max_triggers_per_day: number;
+  } | null;
 }
 
 // ── Risk Bot ─────────────────────────────────────────────────────
@@ -307,6 +317,37 @@ export interface ConsolidationReport {
   episodes_pruned: number;
   cross_desk_learnings: number;
   bots_evaluated: string[];
+}
+
+// Scanner Bot — watch conditions
+export type ConditionType = 'threshold' | 'crossover' | 'anomaly' | 'regime';
+export type ConditionOperator = '>' | '<' | '>=' | '<=' | '==' | 'crosses_above' | 'crosses_below';
+export type WatchConditionStatus = 'active' | 'paused' | 'expired' | 'max_reached';
+
+export interface WatchCondition {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  strategy_id: string;
+  bot_id: string;
+  market_type: 'prediction' | 'crypto' | 'equity' | 'options';
+  ticker: string;
+  condition_type: ConditionType;
+  metric: string;
+  operator: ConditionOperator;
+  value: number;
+  timeframe: string;
+  action_type: 'place_limit_order' | 'alert_only';
+  action_params: Record<string, any>;
+  max_triggers_per_day: number;
+  cooldown_minutes: number;
+  active_hours: string | null;
+  vol_regime_gate: string | null;
+  status: WatchConditionStatus;
+  last_triggered: string | null;
+  trigger_count: number;
+  expires_at: string | null;
+  registered_by: string;
 }
 
 export type PositionStatus = 'open' | 'closed' | 'partially_closed';

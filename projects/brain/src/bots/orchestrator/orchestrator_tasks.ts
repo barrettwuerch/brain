@@ -17,6 +17,7 @@ async function insertTask(task_type: string, task_input: Record<string, any> = {
 
 async function main() {
   await insertTask('route_research_findings', {});
+  await insertTask('register_watch_conditions', {});
   await insertTask('review_bot_states', {});
   await insertTask('generate_priority_map', {});
   console.log('Seeded orchestrator tasks.');

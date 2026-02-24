@@ -38,7 +38,7 @@ import { attributePerformance as intelligenceAttributePerformance } from '../bot
 import { extractAndStoreFacts, pruneExpiredMemories } from '../bots/intelligence/consolidation';
 import { generateFullDailyReport } from '../bots/intelligence/report_generator';
 import { computeDeskPriorities } from '../bots/orchestrator/orchestrator_compute';
-import { checkForCircuitBreakerEscalations, reviewAndTransitionBots, routeUnroutedFindings } from '../bots/orchestrator/routing';
+import { checkForCircuitBreakerEscalations, reviewAndTransitionBots, routeUnroutedFindings, runRegisterWatchConditions } from '../bots/orchestrator/routing';
 
 export interface ReasonInput {
   task: Task;
@@ -435,7 +435,7 @@ export class BrainLoop {
 
     const memoryContext = recentFailuresBlock + parts.map((p) => p.text).join('\n\n');
 
-    const baseSystem = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n- { \'type\': 'place_limit_order' }\n- { \'type\': 'manage_open_position' }\n- { \'type\': 'compute_position_size' }\n- { \'type\': 'handle_partial_fill' }\n- { \'type\': 'evaluate_market_conditions' }\n- { \'type\': 'consolidate_memories' }\n- { \'type\': 'attribute_performance' }\n- { \'type\': 'generate_daily_report' }\n- { \'type\': 'prune_expired_memories' }\n- { \'type\': 'route_research_findings' }\n- { \'type\': 'review_bot_states' }\n- { \'type\': 'generate_priority_map' }\n- { \'type\': 'funding_rate_scan' }\n- { \'type\': 'volatility_regime_detect' }\n- { \'type\': 'correlation_scan' }\n\nDo not include Observation; Observation is produced by ACT.`;
+    const baseSystem = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n- { \'type\': 'place_limit_order' }\n- { \'type\': 'manage_open_position' }\n- { \'type\': 'compute_position_size' }\n- { \'type\': 'handle_partial_fill' }\n- { \'type\': 'evaluate_market_conditions' }\n- { \'type\': 'consolidate_memories' }\n- { \'type\': 'attribute_performance' }\n- { \'type\': 'generate_daily_report' }\n- { \'type\': 'prune_expired_memories' }\n- { \'type\': 'route_research_findings' }\n- { \'type\': 'review_bot_states' }\n- { \'type\': 'generate_priority_map' }\n- { \'type\': 'register_watch_conditions' }\n- { \'type\': 'funding_rate_scan' }\n- { \'type\': 'volatility_regime_detect' }\n- { \'type\': 'correlation_scan' }\n\nDo not include Observation; Observation is produced by ACT.`;
 
     const roleSkill = await this.loadRoleSkill(input.task.agent_role ?? undefined);
     const system = roleSkill + '\n\n---\n\n' + baseSystem;
@@ -482,6 +482,7 @@ export class BrainLoop {
       if (input.task.task_type === 'route_research_findings') proposed_action = { type: 'route_research_findings' };
       if (input.task.task_type === 'review_bot_states') proposed_action = { type: 'review_bot_states' };
       if (input.task.task_type === 'generate_priority_map') proposed_action = { type: 'generate_priority_map' };
+      if (input.task.task_type === 'register_watch_conditions') proposed_action = { type: 'register_watch_conditions' };
       if (input.task.task_type === 'funding_rate_scan') proposed_action = { type: 'funding_rate_scan' };
       if (input.task.task_type === 'volatility_regime_detect') proposed_action = { type: 'volatility_regime_detect' };
       if (input.task.task_type === 'correlation_scan') proposed_action = { type: 'correlation_scan' };
@@ -790,6 +791,11 @@ export class BrainLoop {
       const routed = await routeUnroutedFindings();
       if (routed > 0) console.log(`[ORCHESTRATOR] Routed ${routed} findings to Strategy`);
       return { action_taken, result: { routed }, outcome_score: undefined };
+    }
+
+    if (args.task.agent_role === 'orchestrator' && args.task.task_type === 'register_watch_conditions') {
+      const registered = await runRegisterWatchConditions();
+      return { action_taken, result: { registered }, outcome_score: undefined };
     }
 
     if (args.task.agent_role === 'orchestrator' && args.task.task_type === 'review_bot_states') {

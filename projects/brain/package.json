@@ -7,6 +7,7 @@
     "dev:seed:trading": "tsx src/adapters/kalshi/curriculum.ts",
     "dev:run-once": "tsx src/scripts/run_once.ts",
     "dev:run-loop": "tsx src/scripts/run_loop.ts",
+    "dev:run-scanner": "tsx src/scripts/run_scanner.ts",
     "dev:evaluate": "tsx src/evaluation/intelligence_score.ts",
     "dev:report": "tsx src/evaluation/daily_report.ts",
     "dev:curriculum": "tsx src/evaluation/curriculum_manager.ts",

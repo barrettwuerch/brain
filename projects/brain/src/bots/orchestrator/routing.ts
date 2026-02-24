@@ -11,6 +11,70 @@ import {
   shouldAutoApproveRecovery,
 } from './orchestrator_compute';
 
+export async function registerWatchConditions(approvedFindings: ResearchFinding[]): Promise<number> {
+  let registered = 0;
+
+  for (const f of approvedFindings) {
+    // Find most recent formalize_strategy episode for this finding.
+    const { data: eps, error: epsErr } = await supabaseAdmin
+      .from('episodes')
+      .select('id,action_taken,task_input,lessons,created_at')
+      .eq('task_type', 'formalize_strategy')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (epsErr) throw epsErr;
+
+    const ep = (eps ?? []).find((e: any) => {
+      const findingId = e?.action_taken?.formalization?.finding_id ?? e?.task_input?.finding?.id;
+      return String(findingId) === String(f.id);
+    });
+
+    const formalization = ep?.action_taken?.formalization ?? null;
+    const wc = formalization?.watch_condition ?? null;
+    if (!wc) continue;
+
+    const bot_id = String((f as any).market_type) === 'crypto' ? 'crypto-execution-bot-1' : 'execution-bot-1';
+    const ticker = (f as any).market ?? (String((f as any).market_type) === 'crypto' ? 'BTC/USD' : '');
+
+    const expires_at = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    const toCreate: any = {
+      strategy_id: String(f.id),
+      bot_id,
+      market_type: (f as any).market_type ?? 'prediction',
+      ticker,
+      condition_type: 'threshold',
+      metric: wc.metric,
+      operator: wc.operator,
+      value: wc.value,
+      timeframe: wc.timeframe,
+      action_type: 'place_limit_order',
+      action_params: {
+        side: 'buy',
+        size: 10,
+        stop_level: 0.0,
+        profit_target: 0.0,
+      },
+      max_triggers_per_day: wc.max_triggers_per_day,
+      cooldown_minutes: wc.cooldown_minutes,
+      active_hours: null,
+      vol_regime_gate: wc.vol_regime_gate ?? null,
+      status: 'active',
+      last_triggered: null,
+      trigger_count: 0,
+      expires_at,
+      registered_by: 'orchestrator',
+    };
+
+    const { createWatchCondition } = await import('../../db/watch_conditions');
+    const created = await createWatchCondition(toCreate);
+    console.log(`[ORCHESTRATOR] Registered watch condition for ${ticker} metric=${wc.metric}`);
+    registered++;
+  }
+
+  return registered;
+}
+
 export async function routeUnroutedFindings(): Promise<number> {
   const findings = await getFindingsByStatus('under_investigation');
   const candidates = findings.filter((f) => Number((f as any).rqs_score ?? 0) >= 0.65);
@@ -81,6 +145,18 @@ export async function routeUnroutedFindings(): Promise<number> {
   }
 
   return routed;
+}
+
+export async function runRegisterWatchConditions(): Promise<number> {
+  const { data, error } = await supabaseAdmin
+    .from('research_findings')
+    .select('*')
+    .eq('status', 'in_backtest')
+    .eq('recommendation', 'approved_for_forward_test')
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return await registerWatchConditions((data ?? []) as any);
 }
 
 export async function reviewAndTransitionBots(): Promise<string[]> {
