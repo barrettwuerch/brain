@@ -7,7 +7,8 @@ import { supabaseAdmin } from '../lib/supabase';
 
 type CpiRow = { date: string; value: number };
 
-const DATA_URL = 'https://raw.githubusercontent.com/datasets/inflation/master/data/cpi.csv';
+// FRED CPI series (monthly). CSV download endpoint.
+const DATA_URL = 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=CPIAUCSL';
 
 async function fetchCsv(url: string): Promise<string> {
   const resp = await fetch(url);
@@ -20,7 +21,7 @@ function parseCpi(csv: string): CpiRow[] {
   const header = lines.shift();
   if (!header) throw new Error('missing header');
 
-  // Expected columns: Date,Value
+  // Expected columns from FRED: DATE,VALUE
   const out: CpiRow[] = [];
   for (const line of lines) {
     const [date, val] = line.split(',');
