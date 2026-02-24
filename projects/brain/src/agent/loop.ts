@@ -16,6 +16,14 @@ import { classifyMomentum as researchClassifyMomentum, detectVolumeAnomaly as re
 import { formalizeStrategy, detectOverfitting, computeWalkForwardWindows } from '../bots/strategy/strategy_compute';
 import { runBacktest } from '../bots/strategy/backtest_engine';
 import { updateFindingStatus } from '../db/research_findings';
+import { checkAndFireBreakers, DEFAULT_THRESHOLDS } from '../bots/risk/circuit_breakers';
+import {
+  computeDrawdownVelocity,
+  computeENP,
+  drawdownToRecoveryRequired,
+  evaluateCircuitBreakers,
+  getKellyMultiplier,
+} from '../bots/risk/risk_compute';
 
 export interface ReasonInput {
   task: Task;
@@ -174,6 +182,25 @@ export class BrainLoop {
       }
     }
 
+    // Risk Bot: after evaluating circuit breakers, pause affected bots if any breach fired.
+    if (task.agent_role === 'risk' && task.task_type === 'evaluate_circuit_breakers') {
+      try {
+        const snapshot = (task.task_input as any)?.snapshot;
+        if (snapshot) {
+          const { data, error } = await supabaseAdmin
+            .from('bot_states')
+            .select('bot_id')
+            .neq('bot_id', 'risk-bot-1');
+          if (error) throw error;
+          const botIds = (data ?? []).map((r: any) => String(r.bot_id));
+
+          await checkAndFireBreakers(snapshot, botIds);
+        }
+      } catch (e: any) {
+        console.error('[risk] checkAndFireBreakers failed:', e?.message ?? e);
+      }
+    }
+
     // Research Bot: format + store finding (needs stored episode UUID for supporting_episode_ids).
     if (task.agent_role === 'research' && storeOut.episode_id) {
       try {
@@ -280,7 +307,7 @@ export class BrainLoop {
 
     const memoryContext = parts.map((p) => p.text).join('\n\n');
 
-    const system = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n\nDo not include Observation; Observation is produced by ACT.`;
+    const system = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n\nDo not include Observation; Observation is produced by ACT.`;
 
     const user = `MEMORY CONTEXT\n${memoryContext}\n\nTASK\nTask type: ${input.task.task_type}\nTask input (JSON): ${JSON.stringify(input.task.task_input)}\n\nINSTRUCTIONS\nUse a ReAct-like structure internally: Thought -> Action (choose one).\nOutput must be JSON only.`;
 
@@ -307,6 +334,11 @@ export class BrainLoop {
       if (input.task.task_type === 'run_backtest') proposed_action = { type: 'run_backtest' };
       if (input.task.task_type === 'detect_overfitting') proposed_action = { type: 'detect_overfitting' };
       if (input.task.task_type === 'walk_forward_analysis') proposed_action = { type: 'walk_forward_analysis' };
+      if (input.task.task_type === 'monitor_positions') proposed_action = { type: 'monitor_positions' };
+      if (input.task.task_type === 'check_drawdown_limit') proposed_action = { type: 'check_drawdown_limit' };
+      if (input.task.task_type === 'detect_concentration') proposed_action = { type: 'detect_concentration' };
+      if (input.task.task_type === 'evaluate_circuit_breakers') proposed_action = { type: 'evaluate_circuit_breakers' };
+      if (input.task.task_type === 'size_position') proposed_action = { type: 'size_position' };
 
       return {
         chain_of_thought:
@@ -402,6 +434,65 @@ export class BrainLoop {
       const expected = tInput.expected_answer;
       const outcome_score = expected ? grade(expected, { rqs_score }) : undefined;
       return { action_taken, result: { rqs_score }, outcome_score };
+    }
+
+    // Risk computations
+    if (args.task.agent_role === 'risk' && args.task.task_type === 'monitor_positions') {
+      const dd = Number(tInput.drawdownPct ?? 0);
+      const tradesSincePeak = Number(tInput.tradesSincePeak ?? 1);
+      const correlationMatrix = (tInput.correlationMatrix ?? []) as number[][];
+      const enp = computeENP(correlationMatrix);
+      const drawdown_velocity = computeDrawdownVelocity(dd, tradesSincePeak);
+      const kelly_multiplier = getKellyMultiplier(dd);
+
+      const snapshot = {
+        timestamp: String(tInput.timestamp ?? new Date().toISOString()),
+        open_positions: Array.isArray(tInput.positions) ? tInput.positions.length : 0,
+        unrealized_pnl: Number(tInput.unrealizedPnlPct ?? 0),
+        drawdown_from_peak: dd,
+        drawdown_velocity,
+        kelly_multiplier,
+        enp,
+        active_breakers: [],
+        warnings: [],
+      };
+
+      return { action_taken, result: snapshot, outcome_score: undefined };
+    }
+
+    if (args.task.agent_role === 'risk' && args.task.task_type === 'check_drawdown_limit') {
+      const dd = Number(tInput.drawdownPct ?? 0);
+      const kelly_multiplier = getKellyMultiplier(dd);
+      const recovery_required = drawdownToRecoveryRequired(dd);
+      return {
+        action_taken,
+        result: { kelly_multiplier, recovery_required },
+        outcome_score: undefined,
+      };
+    }
+
+    if (args.task.agent_role === 'risk' && args.task.task_type === 'detect_concentration') {
+      const enp = computeENP((tInput.correlationMatrix ?? []) as number[][]);
+      return { action_taken, result: { enp }, outcome_score: undefined };
+    }
+
+    if (args.task.agent_role === 'risk' && args.task.task_type === 'evaluate_circuit_breakers') {
+      const snapshot = tInput.snapshot;
+      const thresholds = tInput.thresholds ?? DEFAULT_THRESHOLDS;
+      const res = evaluateCircuitBreakers(snapshot, thresholds);
+      return { action_taken, result: res, outcome_score: undefined };
+    }
+
+    if (args.task.agent_role === 'risk' && args.task.task_type === 'size_position') {
+      const dd = Number(tInput.drawdownPct ?? 0);
+      const baseKellySize = Number(tInput.baseKellySize ?? 0);
+      const k = getKellyMultiplier(dd);
+      const approved_size = k * baseKellySize;
+      return {
+        action_taken,
+        result: { approved_size, kelly_fraction: k, reason: k > 0 ? 'ok' : 'halted_by_drawdown' },
+        outcome_score: undefined,
+      };
     }
 
     // Strategy computations
