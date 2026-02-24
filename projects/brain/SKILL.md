@@ -152,11 +152,18 @@ Complete in **BRAIN_TEST_MODE=true** (no-LLM mode):
 - `dev:run-loop` accumulates episodes
 - verified `episodes.embedding` is non-null and vector search RPC works
 
-### 🔄 Phase 4 — Memory Retrieval (IN PROGRESS)
-Implement memory injection into `reason()` MEMORY CONTEXT slot:
+### ✅ Phase 4 — Memory Retrieval (COMPLETE)
+- Similar-episode retrieval wired into `BrainLoop.run()` via `readSimilarEpisodes()`
+- Semantic facts + procedures retrieval wired via `readSemanticFacts()` and `readProcedure()`
+- Memory is injected into the `reason()` MEMORY CONTEXT slot with a strict token budget (max 3,000 tokens estimated)
 - ✅ Migration 0003 complete: add `agent_role`, `desk`, `bot_id` to `episodes`, `tasks`, `procedures`
-- `readSimilarEpisodes()` should be used to pull 3–5 similar episodes
-- inject retrieved episodes + facts + procedure into the prompt with a strict token budget
+
+### 🔄 Phase 5 — Intelligence Scores (IN PROGRESS)
+Implement intelligence score tracking and reporting:
+- accuracy trend over time
+- calibration (confidence vs correctness)
+- transfer tests (Task A learning improves Task B)
+- weekly intelligence score computation stored in `intelligence_scores`
 
 ---
 

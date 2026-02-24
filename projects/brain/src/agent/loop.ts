@@ -141,11 +141,80 @@ export class BrainLoop {
     // - TASK injected
     // - INSTRUCTIONS enforce JSON-only output
 
-    const memoryContext = [
-      `EPISODIC:\n${input.memory.episodic.map(e => `- ${e.task_type}: ${e.outcome} (${e.outcome_score})`).join('\n') || '(none)'}`,
-      `SEMANTIC:\n${input.memory.semantic.map(f => `- (${f.confidence}) ${f.fact}`).join('\n') || '(none)'}`,
-      `PROCEDURE:\n${input.memory.procedure ? input.memory.procedure.approach.join('\n') : '(none)'}`,
-    ].join('\n\n');
+    // Assemble memory context with a token budget.
+    // Budgeting heuristic: words × 1.3 ≈ tokens.
+    const estimateTokens = (s: string) => Math.ceil((s.trim().split(/\s+/).filter(Boolean).length || 0) * 1.3);
+    const MAX_TOKENS = 3000;
+
+    const parts: { label: string; text: string; tokens: number }[] = [];
+
+    // Priority 1: similar episodes (up to 5)
+    const epLines = (input.memory.episodic ?? []).slice(0, 5).map((e) => {
+      const refl = String(e.reflection ?? '').slice(0, 400);
+      const reasoning = String(e.reasoning ?? '').slice(0, 400);
+      return [
+        `- id=${e.id} type=${e.task_type} outcome=${e.outcome} os=${e.outcome_score} rs=${e.reasoning_score}`,
+        `  reasoning: ${reasoning || '(empty)'}`,
+        `  reflection: ${refl || '(empty)'}`,
+      ].join('\n');
+    });
+    const episodicText = `EPISODIC:\n${epLines.length ? epLines.join('\n') : '(none)'}`;
+    parts.push({ label: 'episodic', text: episodicText, tokens: estimateTokens(episodicText) });
+
+    // Priority 2: semantic facts (confidence > 0.65)
+    const semLines = (input.memory.semantic ?? [])
+      .filter((f) => Number(f.confidence ?? 0) > 0.65)
+      .map((f) => `- (${Number(f.confidence).toFixed(2)}) ${String(f.fact)}`);
+    const semanticText = `SEMANTIC:\n${semLines.length ? semLines.join('\n') : '(none)'}`;
+    parts.push({ label: 'semantic', text: semanticText, tokens: estimateTokens(semanticText) });
+
+    // Priority 3: procedure
+    const procLines = input.memory.procedure
+      ? [
+          'APPROACH:',
+          ...(input.memory.procedure.approach ?? []).map((s) => `- ${s}`),
+          'CAUTIONS:',
+          ...(input.memory.procedure.cautions ?? []).map((s) => `- ${s}`),
+        ]
+      : ['(none)'];
+    const procedureText = `PROCEDURE:\n${procLines.join('\n')}`;
+    parts.push({ label: 'procedure', text: procedureText, tokens: estimateTokens(procedureText) });
+
+    // Enforce budget by dropping/truncating lowest priority content.
+    const total = () => parts.reduce((sum, p) => sum + p.tokens, 0);
+
+    // If over budget, first drop procedure.
+    if (total() > MAX_TOKENS) {
+      const i = parts.findIndex((p) => p.label === 'procedure');
+      if (i >= 0) parts.splice(i, 1);
+    }
+
+    // If still over budget, trim semantic facts.
+    while (total() > MAX_TOKENS) {
+      const semIdx = parts.findIndex((p) => p.label === 'semantic');
+      if (semIdx < 0) break;
+      const lines = parts[semIdx].text.split('\n');
+      // Remove one fact line at a time (keep header).
+      if (lines.length <= 2) {
+        parts.splice(semIdx, 1);
+        break;
+      }
+      lines.pop();
+      const newText = lines.join('\n');
+      parts[semIdx] = { ...parts[semIdx], text: newText, tokens: estimateTokens(newText) };
+    }
+
+    // If still over budget, trim episodic reflections/reasoning.
+    while (total() > MAX_TOKENS) {
+      const epIdx = parts.findIndex((p) => p.label === 'episodic');
+      if (epIdx < 0) break;
+      // Hard truncate the episodic block as last resort.
+      const newText = parts[epIdx].text.slice(0, Math.max(0, parts[epIdx].text.length - 500));
+      parts[epIdx] = { ...parts[epIdx], text: newText, tokens: estimateTokens(newText) };
+      if (parts[epIdx].text.length < 200) break;
+    }
+
+    const memoryContext = parts.map((p) => p.text).join('\n\n');
 
     const system = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n\nDo not include Observation; Observation is produced by ACT.`;
 
@@ -166,8 +235,8 @@ export class BrainLoop {
 
       return {
         chain_of_thought:
-          `MEMORY: (empty in Phase 3 test mode)\n` +
-          `TASK: ${input.task.task_type}\n` +
+          `MEMORY CONTEXT\n${memoryContext}\n` +
+          `\nTASK: ${input.task.task_type}\n` +
           `PLAN: Choose the simplest computation matching the question.\n` +
           `ACTION: ${JSON.stringify(proposed_action)}\n` +
           `UNCERTAINTY: Dataset format or missing values could affect parsing.`,

@@ -41,6 +41,10 @@ async function main() {
       console.log(
         `#${n} task=${task.task_type} outcome=${out.episode.outcome} outcome_score=${out.episode.outcome_score} reasoning_score=${out.episode.reasoning_score} episode_id=${out.store.episode_id}`,
       );
+      // TEMP (Phase 4 verification): show reasoning so we can confirm MEMORY CONTEXT injection.
+      if (String(process.env.BRAIN_DEBUG_REASONING || '').toLowerCase() === 'true') {
+        console.log('reasoning:', out.episode.reasoning);
+      }
     } catch (e: any) {
       console.error('Task failed:', task.id, e?.message ?? e);
       await supabaseAdmin.from('tasks').update({ status: 'failed' }).eq('id', task.id);
