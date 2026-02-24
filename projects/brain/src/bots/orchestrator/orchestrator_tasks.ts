@@ -1,0 +1,28 @@
+import 'dotenv/config';
+
+import { supabaseAdmin } from '../../lib/supabase';
+
+async function insertTask(task_type: string, task_input: Record<string, any> = {}) {
+  const { error } = await supabaseAdmin.from('tasks').insert({
+    task_type,
+    task_input,
+    status: 'queued',
+    tags: ['orchestrator'],
+    agent_role: 'orchestrator',
+    desk: 'general',
+    bot_id: 'orchestrator-1',
+  });
+  if (error) throw error;
+}
+
+async function main() {
+  await insertTask('route_research_findings', {});
+  await insertTask('review_bot_states', {});
+  await insertTask('generate_priority_map', {});
+  console.log('Seeded orchestrator tasks.');
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

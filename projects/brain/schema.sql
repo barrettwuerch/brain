@@ -358,6 +358,9 @@ create trigger positions_updated_at
   before update on public.positions
   for each row execute function public.update_positions_updated_at();
 
+-- 10) Orchestrator
+-- No dedicated tables yet. Orchestrator coordinates tasks, reads bot states, and logs escalations.
+
 -- Phase 1 RLS posture (developer-friendly): public read; writes via service role.
 -- You can tighten later with auth.
 alter table public.tasks enable row level security;

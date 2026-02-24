@@ -36,6 +36,8 @@ import { openPosition, closePosition, findOpenPositionByBotAndTicker, getOpenPos
 import { attributePerformance as intelligenceAttributePerformance } from '../bots/intelligence/attribution';
 import { extractAndStoreFacts, pruneExpiredMemories } from '../bots/intelligence/consolidation';
 import { generateFullDailyReport } from '../bots/intelligence/report_generator';
+import { computeDeskPriorities } from '../bots/orchestrator/orchestrator_compute';
+import { checkForCircuitBreakerEscalations, reviewAndTransitionBots, routeUnroutedFindings } from '../bots/orchestrator/routing';
 
 export interface ReasonInput {
   task: Task;
@@ -431,7 +433,7 @@ export class BrainLoop {
 
     const memoryContext = recentFailuresBlock + parts.map((p) => p.text).join('\n\n');
 
-    const baseSystem = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n- { \'type\': 'place_limit_order' }\n- { \'type\': 'manage_open_position' }\n- { \'type\': 'compute_position_size' }\n- { \'type\': 'handle_partial_fill' }\n- { \'type\': 'evaluate_market_conditions' }\n- { \'type\': 'consolidate_memories' }\n- { \'type\': 'attribute_performance' }\n- { \'type\': 'generate_daily_report' }\n- { \'type\': 'prune_expired_memories' }\n\nDo not include Observation; Observation is produced by ACT.`;
+    const baseSystem = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n- { \'type\': 'place_limit_order' }\n- { \'type\': 'manage_open_position' }\n- { \'type\': 'compute_position_size' }\n- { \'type\': 'handle_partial_fill' }\n- { \'type\': 'evaluate_market_conditions' }\n- { \'type\': 'consolidate_memories' }\n- { \'type\': 'attribute_performance' }\n- { \'type\': 'generate_daily_report' }\n- { \'type\': 'prune_expired_memories' }\n- { \'type\': 'route_research_findings' }\n- { \'type\': 'review_bot_states' }\n- { \'type\': 'generate_priority_map' }\n\nDo not include Observation; Observation is produced by ACT.`;
 
     const roleSkill = await this.loadRoleSkill(input.task.agent_role ?? undefined);
     const system = roleSkill + '\n\n---\n\n' + baseSystem;
@@ -475,6 +477,9 @@ export class BrainLoop {
       if (input.task.task_type === 'attribute_performance') proposed_action = { type: 'attribute_performance' };
       if (input.task.task_type === 'generate_daily_report') proposed_action = { type: 'generate_daily_report' };
       if (input.task.task_type === 'prune_expired_memories') proposed_action = { type: 'prune_expired_memories' };
+      if (input.task.task_type === 'route_research_findings') proposed_action = { type: 'route_research_findings' };
+      if (input.task.task_type === 'review_bot_states') proposed_action = { type: 'review_bot_states' };
+      if (input.task.task_type === 'generate_priority_map') proposed_action = { type: 'generate_priority_map' };
 
       const skillPreview = roleSkill.split(/\r?\n/).slice(0, 5).join('\n');
       return {
@@ -750,6 +755,39 @@ export class BrainLoop {
     if (args.task.agent_role === 'intelligence' && args.task.task_type === 'prune_expired_memories') {
       const out = await pruneExpiredMemories();
       return { action_taken, result: out, outcome_score: undefined };
+    }
+
+    // Orchestrator computations
+    if (args.task.agent_role === 'orchestrator' && args.task.task_type === 'route_research_findings') {
+      const routed = await routeUnroutedFindings();
+      if (routed > 0) console.log(`[ORCHESTRATOR] Routed ${routed} findings to Strategy`);
+      return { action_taken, result: { routed }, outcome_score: undefined };
+    }
+
+    if (args.task.agent_role === 'orchestrator' && args.task.task_type === 'review_bot_states') {
+      const actions = await reviewAndTransitionBots();
+      const escalations = await checkForCircuitBreakerEscalations();
+      return { action_taken, result: { actions, escalations }, outcome_score: undefined };
+    }
+
+    if (args.task.agent_role === 'orchestrator' && args.task.task_type === 'generate_priority_map') {
+      const { data: botStates, error: bsErr } = await supabaseAdmin.from('bot_states').select('*');
+      if (bsErr) throw bsErr;
+
+      // Placeholder IS per bot: use latest IS overall for now.
+      const { data: isRow } = await supabaseAdmin
+        .from('intelligence_scores')
+        .select('value')
+        .eq('metric', 'intelligence_score')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      const latestIs = isRow ? Number((isRow as any).value ?? 0) : 0;
+      const isScores: Record<string, number> = {};
+      for (const b of botStates ?? []) isScores[String((b as any).bot_id)] = latestIs;
+
+      const priorities = computeDeskPriorities((botStates ?? []) as any, isScores);
+      return { action_taken, result: priorities as any, outcome_score: undefined };
     }
 
     // Strategy computations
