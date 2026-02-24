@@ -143,13 +143,16 @@ Schema live in Supabase, TypeScript types defined, all stubs created, env templa
 `reason()` implemented with ReAct-style prompt and structured JSON output.
 `act()` implemented for Level 1 CPI tasks.
 
-### 🔄 Phase 3 — Memory Writes
-Blocked on LLM/embeddings credentials/credits. Once available:
+### ✅ Phase 3 — Memory Writes
+Complete in **BRAIN_TEST_MODE=true** (no-LLM mode):
 - observe/reflect/store run end-to-end
 - `dev:run-loop` accumulates episodes
+- verified `episodes.embedding` is non-null and vector search RPC works
 
-### ⬜ Phase 4 — Memory Retrieval
-Implement memory injection into `reason()`.
+### 🔄 Phase 4 — Memory Retrieval (IN PROGRESS)
+Implement memory injection into `reason()` MEMORY CONTEXT slot:
+- `readSimilarEpisodes()` should be used to pull 3–5 similar episodes
+- inject retrieved episodes + facts + procedure into the prompt with a strict token budget
 
 ---
 
