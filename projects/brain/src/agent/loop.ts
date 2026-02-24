@@ -3,7 +3,7 @@
 
 import type { Episode, EpisodeOutcome, Task } from '../types';
 import { grade, maxMoM, maxRow, parseCpi, trendLastN } from './level1_compute';
-import { classifyMomentum, trendFromYesPrices, volumeAnomaly } from './trading_compute';
+import { classifyMomentum, trendFromYesPrices, volumeAnomaly } from '../adapters/kalshi/compute';
 
 import fs from 'node:fs/promises';
 import { embed } from '../lib/embeddings';
@@ -216,6 +216,7 @@ export class BrainLoop {
             const pos = await openPosition({
               bot_id: String(task.bot_id),
               desk: String(task.desk),
+              market_type: 'prediction',
               strategy_id: (task.task_input as any)?.strategy_id ?? null,
               market_ticker: String((task.task_input as any)?.ticker),
               status: 'open',

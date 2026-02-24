@@ -29,3 +29,11 @@ All bot_ids, task types, and semantic facts carry wing prefix:
 - Front Office: 'front.' prefix (e.g., 'front.research-bot-1')
 - Back Office: 'back.' prefix (when built)
 - Shared infra: no prefix
+
+## Market Expansion Rules
+- New market adapter requires before paper trading begins: tasks.ts, compute.ts, data_feed.ts, SKILL addendum, market-specific Risk Bot circuit breakers
+- Build order: crypto → equities → options
+- No new market paper trading until prior market has 30+ verified paper trades
+- No two new adapters built simultaneously
+- Brain loop, memory layer, state machine: never forked per market
+- Alpaca is the execution layer for crypto + equities + options

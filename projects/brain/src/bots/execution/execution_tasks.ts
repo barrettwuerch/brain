@@ -56,6 +56,7 @@ async function main() {
       order_id: 'ord_demo',
       bot_id: 'execution-bot-1',
       market_ticker: ticker,
+      market_type: 'prediction',
       order_type: 'limit',
       side: 'yes',
       size: 60,

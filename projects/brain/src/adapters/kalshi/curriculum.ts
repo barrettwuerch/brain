@@ -3,7 +3,7 @@
 
 import 'dotenv/config';
 
-import { supabaseAdmin } from '../lib/supabase';
+import { supabaseAdmin } from '../../lib/supabase';
 
 const KALSHI_BASE = 'https://api.elections.kalshi.com/trade-api/v2';
 

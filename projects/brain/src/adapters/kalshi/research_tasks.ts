@@ -60,7 +60,7 @@ function volumeRatio(trades: Trade[]): { currentVol: number; avgVol: number; rat
 }
 
 // Ground truth uses the same pure functions the bot uses in ACT.
-import { classifyMomentum, detectVolumeAnomaly, scanMarketTrend } from './research_compute';
+import { classifyMomentum, detectVolumeAnomaly, scanMarketTrend } from '../../bots/research/research_compute';
 
 async function insertTask(task_type: string, task_input: Record<string, any>) {
   const { error } = await supabaseAdmin.from('tasks').insert({

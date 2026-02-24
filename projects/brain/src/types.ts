@@ -255,6 +255,10 @@ export interface RiskSnapshot {
   enp: number;
   active_breakers: string[];
   warnings: string[];
+
+  // Crypto-specific (optional)
+  vol_regime?: 'low' | 'normal' | 'elevated' | 'extreme' | null;
+  btc_dominance?: number | null;
 }
 
 export interface CircuitBreakerEvent {
@@ -273,8 +277,9 @@ export interface OrderRecord {
   order_id: string;
   bot_id: string;
   market_ticker: string;
+  market_type: 'prediction' | 'crypto' | 'equity' | 'options';
   order_type: OrderType;
-  side: 'yes' | 'no';
+  side: 'yes' | 'no' | 'buy' | 'sell';
   size: number;
   limit_price: number | null;
   fill_price: number | null;
@@ -284,6 +289,11 @@ export interface OrderRecord {
   attempt_count: number;
   created_at: string;
   filled_at: string | null;
+
+  // Options only
+  option_type?: 'call' | 'put' | null;
+  strike?: number | null;
+  expiry?: string | null;
 }
 
 // ── Intelligence Bot ─────────────────────────────────────────────
@@ -309,6 +319,7 @@ export interface Position {
 
   bot_id: string;
   desk: string;
+  market_type: 'prediction' | 'crypto' | 'equity' | 'options';
   strategy_id: string | null;
 
   market_ticker: string;

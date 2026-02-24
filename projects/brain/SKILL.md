@@ -173,8 +173,8 @@ Complete in **BRAIN_TEST_MODE=true** (no-LLM mode):
 - Daily report generator + file output (`src/evaluation/daily_report.ts` → `reports/YYYY-MM-DD.txt`)
 
 ### ✅ Phase 6 — Trading Task Curriculum + Curriculum Manager (COMPLETE)
-- Trading Level 1 task generator (`src/tasks/trading_level1.ts`) seeds Kalshi-based, gradeable prediction-market research tasks
-- `act()` supports trading task actions via pure compute functions (`src/agent/trading_compute.ts`)
+- Trading Level 1 task generator (`src/adapters/kalshi/curriculum.ts`) seeds Kalshi-based, gradeable prediction-market research tasks
+- `act()` supports trading task actions via pure compute functions (`src/adapters/kalshi/compute.ts`)
 - Curriculum manager monitor implemented (`src/evaluation/curriculum_manager.ts`)
 - Bot warm-up counter decrements per-episode in `bot_states` (via state_manager only)
 

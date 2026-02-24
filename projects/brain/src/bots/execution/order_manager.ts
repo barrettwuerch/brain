@@ -25,6 +25,7 @@ export async function placeOrder(order: Partial<OrderRecord> & { openInterest: n
     order_id: String(order.order_id),
     bot_id: String(order.bot_id ?? 'execution-bot-1'),
     market_ticker: String(order.market_ticker ?? ''),
+    market_type: (order.market_type ?? 'prediction') as any,
     order_type: (order.order_type ?? 'limit') as any,
     side,
     size,

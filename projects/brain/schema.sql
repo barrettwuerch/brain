@@ -312,6 +312,7 @@ create table if not exists public.positions (
 
   bot_id text not null,
   desk text not null,
+  market_type text not null default 'prediction' check (market_type in ('prediction','crypto','equity','options')),
   strategy_id text,
 
   market_ticker text not null,
@@ -345,6 +346,7 @@ create index if not exists positions_status_idx on public.positions (status);
 create index if not exists positions_desk_idx on public.positions (desk);
 create index if not exists positions_ticker_idx on public.positions (market_ticker);
 create index if not exists positions_strategy_idx on public.positions (strategy_id);
+create index if not exists positions_market_type_idx on public.positions (market_type);
 
 create or replace function public.update_positions_updated_at() returns trigger as $$
 begin
