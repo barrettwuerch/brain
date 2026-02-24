@@ -180,6 +180,15 @@ Complete in **BRAIN_TEST_MODE=true** (no-LLM mode):
 
 Note: Brain is now trained on prediction market tasks. Ready for real API keys and live market data.
 
+### ✅ Intelligence Bot phase (COMPLETE)
+- Nightly consolidation writes semantic facts from repeated lessons (`src/bots/intelligence/consolidation.ts`)
+- Attribution across bots with calibration/luck warnings (`src/bots/intelligence/attribution.ts`)
+- Full daily report saved to `reports/YYYY-MM-DD-full.txt` (`src/bots/intelligence/report_generator.ts`)
+- Nightly runner script (`src/scripts/nightly_intelligence.ts`, `npm run dev:nightly`)
+
+### 🔄 Orchestrator (IN PROGRESS)
+Build last: routes findings/tasks across desks, approves state transitions, and escalates.
+
 ---
 
 ## What NOT to Do

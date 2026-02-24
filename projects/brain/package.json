@@ -15,7 +15,9 @@
     "dev:check-findings": "tsx src/scripts/check_findings.ts",
     "dev:seed:strategy": "tsx src/bots/strategy/strategy_tasks.ts",
     "dev:seed:risk": "tsx src/bots/risk/risk_tasks.ts",
-    "dev:seed:execution": "tsx src/bots/execution/execution_tasks.ts"
+    "dev:seed:execution": "tsx src/bots/execution/execution_tasks.ts",
+    "dev:nightly": "tsx src/scripts/nightly_intelligence.ts",
+    "dev:prune": "tsx -e \"import('./src/bots/intelligence/consolidation.ts').then(m => m.pruneExpiredEpisodes()).then(n => console.log('pruned:', n))\""
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.0",
