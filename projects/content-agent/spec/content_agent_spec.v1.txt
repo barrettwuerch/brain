@@ -1,0 +1,867 @@
+
+CONTENT AGENT
+Technical Specification & Reasoning Architecture
+v1.0  ·  Agent MVP  ·  YouTube Income Module
+
+PHILOSOPHY
+Create. Fail. Learn. Try again.
+APPROACH
+Research-first reasoning system
+CONSTRAINT
+YouTube-safe, monetization-grade
+
+
+01
+Philosophy: This Agent Thinks Before It Creates
+
+PHILOSOPHY
+The Content Agent is not a production pipeline with a research step bolted on. It is a reasoning system that happens to produce videos. The distinction matters: a pipeline executes a fixed sequence. A reasoning system develops a point of view, then decides what to make and how to make it. YouTube can detect pipelines. It cannot easily detect genuine editorial judgment.
+
+Every video this agent produces must be the result of a genuine decision-making process: what is worth saying about this topic that has not already been said, who is the right audience for this specific angle, what format serves this argument best, and what evidence makes it credible. These are not questions a template answers. They are questions a reasoner answers.
+
+This also means the agent will fail. Some videos will have poor retention. Some angles will miss. Some formats will underperform. That is not a bug — it is the mechanism by which the agent learns. The failure must be logged with enough fidelity that the next attempt is genuinely informed by the last. The goal is not zero failures. The goal is that each failure makes the next attempt meaningfully better.
+
+
+02
+What YouTube Actually Detects
+
+This section documents the specific signals YouTube's detection systems look for, based on post-July 2025 policy enforcement data. The Content Agent must be designed to be genuinely different from these patterns — not to evade detection, but because content that triggers these signals is genuinely low quality.
+
+Detection Signal Cluster
+
+Signal Type
+What YouTube Measures
+Risk Level
+Visual fingerprinting
+Keyframe similarity across videos on same channel. Thumbnail color palette, font, layout repetition.
+HIGH — channels flagged at >47% similarity score
+Audio fingerprinting
+Synthetic voice pattern consistency. Flat emotional cadence, robotic pacing, identical TTS artifacts across videos.
+HIGH — voice pattern detection active
+Script uniqueness
+Text similarity analysis across video transcripts. Template phrases, repeated structures, recycled facts.
+HIGH — transcript comparison cross-channel
+Upload pattern
+Frequency, timing regularity, file naming conventions. Rigid schedules and sequential file names signal automation.
+MEDIUM — combined with other signals
+Engagement quality
+Watch time, retention curve shape, CTR. Low retention + high upload volume = automated content signal.
+HIGH — primary monetization gate
+Metadata repetition
+Title formulas, description templates, tag reuse across videos.
+MEDIUM — flags channel for manual review
+Stock footage ratio
+Proportion of footage matching known stock libraries vs. original visuals. >25% stock is elevated risk.
+MEDIUM — threshold not published, ~25% cited
+
+WARNING
+YouTube does not review every video. It reviews channels. A channel with 10 videos showing consistent automation signals will be flagged holistically, even if individual videos pass review in isolation. The agent must maintain variation at the channel level, not just the video level.
+
+
+03
+The Four Hard Constraints
+
+These constraints are non-negotiable. Every component of the Content Agent must be designed to satisfy all four. They are not guidelines — they are architectural requirements.
+
+Constraint 1 — Structural Variation
+
+CRITICAL
+Every video must have a structurally different format from the previous video on the same channel. Not just a different topic — a different architecture.
+
+The agent maintains a Format Registry — a library of distinct video structures. Before scripting, it selects a format that has not been used recently and that is appropriate for the topic and research findings. Format selection is itself a reasoning step, not a random assignment.
+
+// Format Registry — minimum viable set for launch
+type VideoFormat = {
+  id: string
+  name: string
+  structure: SegmentDefinition[]
+  bestFor: string[]          // topic types this format suits
+  avoidAfter: string[]       // formats not to follow with this one
+  avgLength: [number, number] // min/max seconds
+}
+
+const FORMAT_REGISTRY: VideoFormat[] = [
+  {
+    id: 'case_study',
+    name: 'Single Case Study',
+    structure: ['hook_question', 'context', 'case_narrative',
+                'what_went_wrong_or_right', 'extracted_principle', 'cta'],
+    bestFor: ['business', 'finance', 'psychology', 'history'],
+    avoidAfter: ['case_study', 'story_driven'],
+    avgLength: [480, 720]
+  },
+  {
+    id: 'data_investigation',
+    name: 'Data Deep Dive',
+    structure: ['surprising_stat_hook', 'why_this_matters', 'data_walkthrough',
+                'what_data_reveals', 'counterintuitive_finding', 'implication', 'cta'],
+    bestFor: ['finance', 'economics', 'health', 'technology'],
+    avoidAfter: ['data_investigation'],
+    avgLength: [540, 840]
+  },
+  {
+    id: 'common_belief_challenged',
+    name: 'Myth vs. Reality',
+    structure: ['state_common_belief', 'why_people_believe_it',
+                'evidence_against', 'nuanced_truth', 'practical_implication', 'cta'],
+    bestFor: ['health', 'finance', 'productivity', 'science'],
+    avoidAfter: ['debate_format'],
+    avgLength: [420, 660]
+  },
+  {
+    id: 'explainer_with_stakes',
+    name: 'Explainer With Real Stakes',
+    structure: ['why_you_should_care_hook', 'background', 'mechanics_explained',
+                'real_world_consequence', 'what_to_do_with_this', 'cta'],
+    bestFor: ['economics', 'policy', 'technology', 'finance'],
+    avoidAfter: ['explainer_with_stakes'],
+    avgLength: [480, 780]
+  },
+  {
+    id: 'story_driven',
+    name: 'Narrative Story',
+    structure: ['scene_hook', 'character_and_stakes', 'rising_tension',
+                'turning_point', 'resolution', 'lesson_extracted', 'cta'],
+    bestFor: ['business', 'history', 'biography', 'psychology'],
+    avoidAfter: ['case_study', 'story_driven'],
+    avgLength: [540, 900]
+  },
+  {
+    id: 'framework_teach',
+    name: 'Framework / Mental Model',
+    structure: ['problem_hook', 'why_existing_thinking_fails', 'framework_intro',
+                'framework_components', 'applied_examples', 'summary', 'cta'],
+    bestFor: ['productivity', 'business', 'investing', 'psychology'],
+    avoidAfter: ['framework_teach'],
+    avgLength: [600, 900]
+  },
+  {
+    id: 'debate_format',
+    name: 'Two Sides of the Argument',
+    structure: ['controversy_hook', 'side_a_strongest_case',
+                'side_b_strongest_case', 'evidence_weighing', 'verdict', 'cta'],
+    bestFor: ['finance', 'policy', 'technology', 'business'],
+    avoidAfter: ['common_belief_challenged', 'debate_format'],
+    avgLength: [480, 720]
+  },
+]
+
+Constraint 2 — Visual Originality
+
+Stock footage is supplementary, not primary. The dominant visual layer must be original — generated specifically for this video's content. The agent builds a visual plan during the research phase and executes it during production.
+
+Visual Layer
+Implementation
+Data visualizations (PRIMARY)
+Agent generates chart specs as JSON. Rendered via D3.js or Chart.js in a headless browser (Puppeteer). Exported as PNG sequences for video assembly. Every data video gets original charts.
+Custom graphics (PRIMARY)
+Conceptual diagrams, timelines, comparison tables. Agent describes the graphic in structured JSON. Rendered via custom Puppeteer templates. Never stock infographics.
+AI-generated scene images (PRIMARY)
+For narrative/story content. Agent writes scene descriptions grounded in research. Generated via Ideogram or FLUX. Not generic — tied to specific content.
+Screen recordings (PRIMARY)
+For explainer content. Agent identifies specific websites, tools, or data sources to screen-record as evidence. Adds direct credibility.
+Stock footage (SUPPLEMENTARY)
+Maximum 20% of total footage. Used only for establishing shots and transitions. Never as the main visual for a claim or argument.
+Text overlays
+Key statistics and quotes rendered as styled text overlays. Agent generates the text. Never used as the sole visual — always layered over other content.
+
+// Visual plan — generated during Research phase, before scripting
+type VisualPlan = {
+  dominant_strategy: 'data_viz' | 'custom_graphics' | 'ai_scenes' | 'screen_record'
+  segments: VisualSegment[]
+  stock_footage_budget_percent: number  // enforced max: 20
+}
+
+type VisualSegment = {
+  segment_id: string           // maps to script segment
+  visual_type: string
+  description: string          // what the visual shows
+  data_source?: string         // for charts — where data comes from
+  generation_prompt?: string   // for AI images
+  url_to_record?: string       // for screen recordings
+}
+
+Constraint 3 — Voice With Emotional Direction
+
+A flat AI voiceover is detectable and unwatchable. The agent must treat the voice performance as a directorial decision, not a text dump. ElevenLabs supports emotion tags and pacing control. The agent must use them deliberately, segment by segment.
+
+// Voice direction — attached to each script segment
+type VoiceDirection = {
+  emotion: 'neutral' | 'curious' | 'serious' | 'excited' |
+           'concerned' | 'satisfied' | 'conspiratorial'
+  pace: 'slow' | 'normal' | 'fast'
+  pause_before_ms: number   // deliberate pause before this segment
+  emphasis_words: string[]  // specific words to stress
+}
+
+// Example script segment with direction
+{
+  segment: 'hook',
+  text: 'In 2023, a single decision by one analyst at a ratings agency',
+  voice: {
+    emotion: 'conspiratorial',
+    pace: 'slow',
+    pause_before_ms: 0,
+    emphasis_words: ['single', 'one']
+  }
+},
+{
+  segment: 'hook_continuation',
+  text: 'wiped $2.3 trillion from global markets in four days.',
+  voice: {
+    emotion: 'serious',
+    pace: 'slow',
+    pause_before_ms: 800,  // long pause for impact
+    emphasis_words: ['2.3 trillion', 'four days']
+  }
+},
+
+// Converted to ElevenLabs SSML
+function toSSML(segment: ScriptSegment): string {
+  return `<speak>
+    <break time='${segment.voice.pause_before_ms}ms'/>
+    <prosody rate='${paceMap[segment.voice.pace]}'>
+      ${injectEmphasis(segment.text, segment.voice.emphasis_words)}
+    </prosody>
+  </speak>`
+}
+
+Constraint 4 — Publishing Cadence & Variation
+
+WARNING
+3-4 videos per week maximum. Varied upload times within a window. Randomized file naming. Non-uniform spacing between uploads. These are not nice-to-haves — rigid cadence is an automation signal.
+
+// Cadence manager — controls when and how videos publish
+const CADENCE_CONFIG = {
+  videos_per_week: { min: 3, max: 4 },
+
+  // Upload window: 9am-3pm in channel's primary audience timezone
+  upload_window: { start_hour: 9, end_hour: 15 },
+
+  // Randomize exact minute within window
+  time_variance_minutes: 45,
+
+  // Enforce minimum gap between uploads
+  min_hours_between_uploads: 28,
+
+  // Never upload on same day twice
+  allow_same_day: false,
+}
+
+function generateUploadSlot(channelId: string): Date {
+  const lastUpload = getLastUploadTime(channelId)
+  const minNext = addHours(lastUpload, CADENCE_CONFIG.min_hours_between_uploads)
+
+  // Pick a day in the upload window with natural variation
+  const targetDay = pickNextUploadDay(minNext)
+  const hour = CADENCE_CONFIG.upload_window.start_hour +
+    Math.floor(Math.random() *
+      (CADENCE_CONFIG.upload_window.end_hour - CADENCE_CONFIG.upload_window.start_hour))
+  const minute = Math.floor(Math.random() * CADENCE_CONFIG.time_variance_minutes)
+
+  return setDateTime(targetDay, hour, minute)
+}
+
+function generateFileName(): string {
+  // Never sequential. Never templated. Human-looking.
+  const rand = Math.random().toString(36).substring(2, 10)
+  return `export_${rand}.mp4`
+}
+
+
+04
+The Production Pipeline
+
+The pipeline has five stages. Each stage is a distinct reasoning step, not a transformation step. The output of each stage is a structured decision, not just processed data.
+
+STAGE 1   RESEARCH        Understand the topic deeply. Find the gap.
+   ↓
+STAGE 2   EDITORIAL       Decide what angle to take. Choose the format.
+   ↓
+STAGE 3   SCRIPT          Write the video. Direct the voice. Plan visuals.
+   ↓
+STAGE 4   PRODUCTION      Generate all assets. Assemble the video.
+   ↓
+STAGE 5   QUALITY GATE    Does this meet the standard? Pass or rework.
+
+PHILOSOPHY
+Stage 5 is real. The agent evaluates its own output against a quality rubric before the video enters the publish queue. A video that fails the quality gate gets reworked — a new angle is tried, or the format is changed. This is the learning loop in action before a single view is earned.
+
+Stage 1 — Research
+The Research stage answers one question: what is genuinely worth saying about this topic? This is not keyword research or trend analysis — it is active inquiry. The agent uses Claude with web search enabled, treats the topic as a genuine investigative question, and does not begin scripting until it has found something specific and defensible to say.
+
+// Research Agent prompt — the agent's instructions for this stage
+const RESEARCH_SYSTEM_PROMPT = `
+You are a researcher preparing a YouTube video on: {topic}
+Channel niche: {niche}
+Target audience: {audience_description}
+
+Your job is NOT to summarize what everyone already knows about this topic.
+Your job is to find the angle that is:
+  1. True and defensible with evidence
+  2. Not the first result that comes up when you search this topic
+  3. Genuinely useful or surprising to someone who thinks they know this area
+
+RESEARCH PROCESS:
+  - Search the topic broadly first
+  - Identify what the mainstream takes are
+  - Search specifically for what contradicts, complicates, or extends those takes
+  - Find at least 2 specific data points, studies, or cases that support your angle
+  - Identify the single most counterintuitive thing you found
+
+OUTPUT — return structured JSON:
+{
+  'mainstream_take': string,           // what everyone already says
+  'our_angle': string,                 // what we are saying instead
+  'angle_justification': string,       // why this angle is correct
+  'key_evidence': Evidence[],          // specific data points, sources
+  'counterintuitive_finding': string,  // the most surprising thing
+  'audience_relevance': string,        // why this matters to our audience
+  'risks': string[],                   // where our angle could be wrong
+  'confidence': number                 // 0-1, how confident are we
+}
+`
+
+// Research is async — uses web_search tool iteratively
+// Minimum 4 search calls before forming an angle
+// If confidence < 0.6 after 8 searches, escalate topic to Strategy Agent
+
+Research Outputs
+
+Output Field
+How It's Used
+mainstream_take
+Defines what the video must NOT just repeat. Sets the bar.
+our_angle
+Becomes the thesis statement in the script hook and description.
+key_evidence
+Sourced facts that drive the data visualization plan and script claims.
+counterintuitive_finding
+Becomes the primary hook — the thing that makes viewers stop scrolling.
+audience_relevance
+Drives the CTA framing — why should they care beyond curiosity.
+risks
+Logged in the video record. If a risk materializes in comments, the agent learns.
+confidence
+Below 0.6 → topic is replaced. Below 0.8 → format is constrained to lower-claim structures.
+
+Stage 2 — Editorial
+The Editorial stage makes two decisions: what angle to take (informed by Research) and what format serves that angle best. These are not separate decisions — the angle and format are chosen together because some angles only work in certain formats.
+
+// Editorial decision — Claude prompt
+const EDITORIAL_SYSTEM_PROMPT = `
+You have completed research on: {topic}
+Research findings: {research_output}
+
+Recent channel formats used (do not repeat): {recent_formats}
+Channel learnings: {learnings_summary}
+
+Make two decisions:
+
+1. ANGLE SELECTION
+   Given the research, what is the sharpest version of our angle?
+   A sharp angle can be stated in one sentence.
+   It should be falsifiable — someone should be able to disagree with it.
+   Weak: 'The economy is complicated'
+   Strong: 'The Fed's 2022 rate hikes caused more harm than the inflation they cured'
+
+2. FORMAT SELECTION
+   Available formats: {format_registry}
+   Select the format that best serves this angle.
+   Explain why this format serves this argument.
+   Do not select any format in recent_formats.
+
+OUTPUT:
+{
+  'sharpened_angle': string,
+  'hook_premise': string,       // the single sentence that opens the video
+  'selected_format': string,    // format id
+  'format_rationale': string,   // why this format serves this angle
+  'visual_strategy': string,    // dominant visual approach for this video
+  'target_length_seconds': number
+}
+`
+
+Stage 3 — Script
+The Script stage produces the complete video script with three co-equal outputs: the words, the voice direction per segment, and the visual plan. These are written simultaneously because they must be coherent — the voice direction must match the emotional register of the words, and the visuals must illustrate the specific claims being made.
+
+type Script = {
+  metadata: {
+    topic: string
+    angle: string
+    format: string
+    total_duration_seconds: number
+  }
+  segments: ScriptSegment[]
+  visual_plan: VisualPlan
+  title_variants: string[]       // 3 title options, A/B test
+  description: string
+  tags: string[]
+  thumbnail_concept: string      // description for generation
+}
+
+type ScriptSegment = {
+  id: string
+  label: string                  // hook | context | body_1 | ... | cta
+  text: string                   // spoken words
+  duration_seconds: number
+  voice: VoiceDirection
+  visual_ref: string             // points to visual_plan segment
+  on_screen_text?: string        // text overlay if applicable
+}
+
+// Script generation prompt
+const SCRIPT_SYSTEM_PROMPT = `
+You are writing a YouTube script.
+Topic: {topic}
+Angle: {sharpened_angle}
+Format: {format_name} with structure: {format_structure}
+Target length: {target_length_seconds} seconds
+Key evidence to incorporate: {key_evidence}
+Audience: {audience_description}
+
+SCRIPT RULES:
+- Hook must be the first 30 seconds. It must give the viewer a reason to stay.
+  Do not introduce yourself. Do not say what the video is about.
+  Start mid-thought, mid-story, or with a sharp claim.
+- Every claim must be traceable to the research evidence.
+- Vary sentence length. Mix short punchy sentences with longer ones.
+- The CTA must feel earned, not bolted on. Connect it to the argument.
+
+VOICE DIRECTION RULES:
+- Assign an emotion and pace to every segment.
+- Mark at least 3 segments as 'slow' for impact.
+- Mark pause_before_ms > 500 at least twice — silence is emphasis.
+- Emphasis_words should be specific. Not just 'important words' — the exact words.
+
+VISUAL PLAN RULES:
+- Specify the dominant visual type for each segment.
+- For any claim backed by data: visual_type must be 'data_viz'.
+- Stock footage percentage across all segments must not exceed 20%.
+- Each segment's visual must specifically illustrate that segment's claim.
+
+Return the complete Script JSON object.
+`
+
+Stage 4 — Production
+Production executes the script. Every asset in the visual plan is generated. The voiceover is synthesized with directions applied. Everything is assembled into a final video file. This is the most operationally complex stage — it chains external services and must handle partial failure at every step.
+
+// Production execution order
+async function runProduction(script: Script, videoId: string): Promise<ProductionResult> {
+
+  // Step 1: Generate all visual assets in parallel
+  const visualAssets = await Promise.allSettled([
+    generateDataViz(script.visual_plan.data_viz_specs),
+    generateCustomGraphics(script.visual_plan.custom_graphic_specs),
+    generateAIImages(script.visual_plan.ai_image_specs),
+    fetchStockFootage(script.visual_plan.stock_specs),   // max 20%
+  ])
+
+  // Step 2: Synthesize voiceover with SSML directions
+  const voiceover = await synthesizeVoiceover({
+    segments: script.segments.map(s => ({
+      text: s.text,
+      ssml: toSSML(s.voice),
+      segment_id: s.id
+    })),
+    voice_id: channel.voice_id
+  })
+  // Returns: MP3 + word-level timestamps per segment
+
+  // Step 3: Generate captions from voiceover
+  const captions = await transcribeToVTT(voiceover.audio_url)
+
+  // Step 4: Generate thumbnail
+  const thumbnail = await generateThumbnail({
+    concept: script.thumbnail_concept,
+    title_variant: script.title_variants[0],
+    niche: channel.niche
+  })
+
+  // Step 5: Assemble video
+  const video = await assembleVideo({
+    segments: script.segments,
+    visual_assets: visualAssets,
+    voiceover,
+    captions,
+    output_resolution: '1920x1080',
+    output_filename: generateFileName()  // randomized, never sequential
+  })
+
+  return { video_path: video.path, thumbnail_path: thumbnail.path, captions }
+}
+
+Asset Generation Details
+
+Asset Type
+Implementation
+Data visualizations
+Chart spec JSON → Puppeteer renders D3/Chart.js in headless browser → PNG frame sequence at 30fps → exported as video clip. Chart data sourced from research evidence, not fabricated.
+Custom graphics
+Agent writes graphic description as structured JSON (type, elements, layout, colors). Puppeteer renders via HTML/CSS template library. Exported as PNG or video clip with entrance animation.
+AI scene images
+Agent writes scene prompt grounded in specific research content. Generated via Ideogram API or FLUX. Multiple variants generated, agent selects most relevant via vision evaluation.
+Stock footage
+Keywords extracted from stock-eligible segments. Pexels API query. Filtered for: not-in-use-in-recent-5-videos, matches segment theme, licensed correctly. Hard cap: 20% of total timeline.
+Voiceover
+ElevenLabs v1/text-to-speech with SSML. Returns MP3 + word timestamps JSON. Timestamps used for precise visual sync in assembly. Voice cloning used for channel consistency.
+Captions
+Whisper API on final voiceover. Returns VTT with word-level timing. Styled captions burned into video. Improves watch time and accessibility.
+Thumbnail
+Ideogram API with concept from script stage. Channel-consistent style applied via system prompt. A/B variant generated for first 48h test.
+Video assembly
+FFmpeg command chain: per-segment clip assembly → voiceover sync using timestamps → caption overlay → color grade → final render to 1080p H.264. Output filename randomized.
+
+Stage 5 — Quality Gate
+The quality gate is the agent's self-evaluation before any video enters the publish queue. It is a genuine assessment, not a rubber stamp. A video that fails is sent back to Stage 2 with the failure reason logged. The agent tries a different angle or format.
+
+// Quality gate rubric
+type QualityGateResult = {
+  passed: boolean
+  scores: QualityScore[]
+  failure_reasons: string[]
+  rework_instruction?: string  // if failed: what to try differently
+}
+
+const QUALITY_GATE_PROMPT = `
+Evaluate this video script and production plan against the following rubric.
+Be honest. A false pass is worse than a true fail.
+
+Script: {script}
+Visual plan: {visual_plan}
+
+RUBRIC (score each 1-5):
+
+1. HOOK STRENGTH (weight: 25%)
+   Does the first 30 seconds give a specific reason to keep watching?
+   1 = generic intro  5 = specific, surprising, immediately engaging
+
+2. ANGLE ORIGINALITY (weight: 25%)
+   Is this saying something the viewer probably hasn't heard before?
+   1 = repeats common knowledge  5 = genuinely novel perspective
+
+3. EVIDENCE QUALITY (weight: 20%)
+   Are claims backed by specific, verifiable data?
+   1 = vague assertions  5 = specific data with traceable sources
+
+4. VISUAL PLAN QUALITY (weight: 15%)
+   Does the visual plan specifically illustrate the argument?
+   1 = generic stock footage  5 = original visuals tied to specific claims
+
+5. RETENTION DESIGN (weight: 15%)
+   Is the structure designed to keep people watching to the end?
+   1 = front-loaded, falls off  5 = progressive reveals, payoff at end
+
+PASS THRESHOLD: Weighted score >= 3.5 on all dimensions
+FAIL: Any single dimension scoring 1 → automatic fail
+
+Return QualityGateResult JSON.
+`
+
+// If failed — rework loop
+if (!qualityResult.passed) {
+  await logQualityFailure(videoId, qualityResult)
+  // Try new angle with same research — max 2 rework attempts
+  // If still failing: replace topic entirely, log as difficult topic
+}
+
+
+05
+Failure Logging — The Memory That Makes It Learn
+
+PHILOSOPHY
+A failure logged poorly is a failure wasted. The agent's ability to improve depends entirely on the fidelity of its failure records. Every failure must capture not just what failed, but enough context to reason about why.
+
+There are three types of failure the Content Agent will encounter. Each must be logged differently because the corrective action is different.
+
+Type 1 — Pre-Publish Failures (Quality Gate)
+
+// Logged when a video fails the quality gate
+type PrePublishFailure = {
+  video_id: string
+  topic: string
+  angle_attempted: string
+  format_attempted: string
+  quality_scores: QualityScore[]
+  failure_reasons: string[]
+  research_confidence: number
+  rework_instruction: string
+  rework_count: number          // how many times reworked
+  resolution: 'reworked' | 'topic_replaced'
+  created_at: timestamp
+}
+
+// How this feeds learning:
+// Strategy Agent reads pre-publish failures to avoid topic types
+// that consistently fail quality gate
+// Example learning: 'Finance policy topics fail hook strength 70% of the time
+// — lead with personal financial impact, not policy mechanics'
+
+Type 2 — Post-Publish Performance Failures
+
+// Logged at T+24h, T+7d, T+30d after publish
+type PerformanceFailure = {
+  video_id: string
+  topic: string
+  angle: string
+  format: string
+  visual_strategy: string
+  voice_primary_emotion: string
+
+  // Performance metrics
+  views_24h: number
+  ctr: number
+  avg_view_duration_seconds: number
+  hook_retention_30s: number    // % still watching at 30s
+  hook_retention_60s: number
+  retention_curve: number[]     // % at each 10% mark of video
+
+  // Classification
+  failure_type: 'thumbnail_ctr' | 'hook_drop' | 'mid_video_drop' | 'niche_miss'
+  // thumbnail_ctr: CTR < 2% — title/thumbnail didn't attract clicks
+  // hook_drop: <50% watching at 30s — hook didn't hold
+  // mid_video_drop: sharp drop at a specific timestamp
+  // niche_miss: views but wrong audience (wrong comments, bad RPM)
+
+  agent_diagnosis: string       // Claude's interpretation of why
+  corrective_hypothesis: string // what to try differently next time
+}
+
+Type 3 — Production Failures
+
+// Logged when a production step fails
+type ProductionFailure = {
+  video_id: string
+  stage: 'visual_generation' | 'voiceover' | 'assembly' | 'thumbnail'
+  asset_type: string
+  error_code: string
+  error_message: string
+  retry_count: number
+  resolution: 'retried_success' | 'fallback_used' | 'video_failed'
+  fallback_detail?: string  // what fallback was used
+}
+
+// Fallback hierarchy for each asset type:
+//
+// Data viz fails → simplified chart version → text overlay with stat
+// AI image fails → different generation service → described stock footage
+// Voiceover fails → retry with shorter segment chunks → queue for manual
+// Assembly fails → retry with reduced resolution → alert orchestrator
+
+
+06
+How the Agent Uses What It Learns
+
+Learnings are only valuable if they change behavior. This section defines exactly how each type of failure learning flows back into future Content Agent runs. The agent does not just accumulate data — it updates its behavior based on what the data says.
+
+// Learning injection — added to every Research and Editorial prompt
+async function buildLearningContext(channelId: string): Promise<LearningContext> {
+  const recent = await supabase
+    .from('learnings')
+    .select('*')
+    .eq('channel_id', channelId)
+    .gte('created_at', daysAgo(30))
+    .order('confidence', { ascending: false })
+    .limit(20)
+
+  const failures = await supabase
+    .from('performance_failures')
+    .select('*')
+    .eq('channel_id', channelId)
+    .gte('created_at', daysAgo(30))
+
+  return {
+    // What has worked
+    high_performing_formats: getTopFormats(recent),
+    high_performing_angles: getTopAngleTypes(recent),
+    best_hook_patterns: extractHookPatterns(recent, 'success'),
+
+    // What has failed
+    avoid_formats: getFailedFormats(failures),
+    avoid_topic_patterns: getFailedTopicPatterns(failures),
+    hook_patterns_that_failed: extractHookPatterns(failures, 'failure'),
+
+    // Channel-specific signals
+    avg_ctr: channelStats.avg_ctr,
+    avg_hook_retention: channelStats.avg_hook_retention_30s,
+    best_performing_day: channelStats.best_day,
+    audience_tenure: channelStats.avg_subscriber_days  // how long-tenured is audience
+  }
+}
+
+// This context is injected into the Research system prompt as:
+// 'WHAT HAS WORKED ON THIS CHANNEL:'
+// 'WHAT HAS NOT WORKED:'
+// 'WHAT YOUR AUDIENCE RESPONDS TO:'
+// The agent reasons from this, not just reads it.
+
+Learning → Behavior Change Map
+
+Learning Signal
+Behavior Change
+Trigger Threshold
+CTR consistently below 2%
+Thumbnail concept generation gets new style constraints. A/B testing window extended to 72h before choosing winner.
+3 consecutive videos below threshold
+Hook retention below 50% at 30s
+Hook generation prompt adds constraint: 'The first sentence must contain the payoff, not tease it.' Format selection avoids slow-build formats.
+2 consecutive videos below threshold
+Mid-video drop at same relative point
+Script generation prompt adds constraint at that relative timestamp: 'Insert a pattern interrupt here — new visual, new voice emotion, new claim.'
+Detected in 3 videos at same ±10% window
+Topic type consistently failing quality gate
+Strategy Agent is notified. Topic type added to 'avoid list' for 14 days. Research prompt updated to note difficulty.
+2 quality gate fails on same topic type
+Format overperforming
+Format moved to 'priority' tier in editorial selection. Used more frequently until it saturates (diminishing CTR signal).
+Format CTR 40% above channel average
+Niche miss (views but wrong audience)
+Strategy Agent re-evaluates niche positioning. Channel description updated. Tag strategy revised.
+2 consecutive videos with wrong-audience signal
+Production failure on asset type
+Fallback promoted to primary for 7 days. Root cause logged. Alternative service evaluated.
+3 failures on same asset type in one week
+
+
+07
+Data Model — Content Agent Tables
+
+These tables extend the base schema from the MVP Build Plan. They capture the additional state the Content Agent needs to reason, learn, and vary its behavior.
+
+-- Editorial decisions — what the agent decided and why
+CREATE TABLE editorial_decisions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  video_id UUID REFERENCES videos(id),
+  channel_id UUID REFERENCES channels(id),
+  research_output JSONB,          -- full Research stage output
+  angle_selected TEXT,
+  format_selected TEXT,
+  format_rationale TEXT,
+  visual_strategy TEXT,
+  quality_gate_result JSONB,
+  quality_gate_passed BOOLEAN,
+  rework_count INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Script records — full script with voice directions
+CREATE TABLE scripts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  video_id UUID REFERENCES videos(id),
+  segments JSONB,                 -- ScriptSegment[]
+  visual_plan JSONB,              -- VisualPlan
+  title_variants TEXT[],          -- 3 options
+  active_title_index INT DEFAULT 0,
+  thumbnail_concept TEXT,
+  target_duration_seconds INT,
+  actual_duration_seconds INT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Production assets — every generated asset
+CREATE TABLE production_assets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  video_id UUID REFERENCES videos(id),
+  segment_id TEXT,
+  asset_type TEXT,  -- 'data_viz' | 'custom_graphic' | 'ai_image' | 'stock' | 'voiceover' | 'thumbnail'
+  storage_url TEXT,
+  generation_prompt TEXT,
+  service_used TEXT,             -- which API generated this
+  generation_cost_usd FLOAT,
+  fallback_used BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Format registry — living record of format performance
+CREATE TABLE format_performance (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  channel_id UUID REFERENCES channels(id),
+  format_id TEXT,
+  uses_count INT DEFAULT 0,
+  avg_ctr FLOAT,
+  avg_hook_retention FLOAT,
+  avg_view_duration FLOAT,
+  last_used_at TIMESTAMPTZ,
+  status TEXT DEFAULT 'available',  -- 'available' | 'cooling_down' | 'retired'
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Performance failures — classified post-publish failures
+CREATE TABLE performance_failures (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  video_id UUID REFERENCES videos(id),
+  channel_id UUID REFERENCES channels(id),
+  failure_type TEXT,
+  metrics_snapshot JSONB,
+  agent_diagnosis TEXT,
+  corrective_hypothesis TEXT,
+  applied_to_learning BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+
+08
+Build Order for the Content Agent
+
+Build the reasoning components before the production components. A sophisticated reasoner with basic production is better than a sophisticated production system with shallow reasoning. The quality gate is built before the full pipeline — it defines what 'good' means before anything is produced.
+
+Step 1 — Research Stage
+	•	Claude API wrapper with web_search tool enabled
+	•	Research prompt template with niche, audience, and learnings injection
+	•	Structured JSON output parser and validator
+	•	Confidence threshold gate — below 0.6 escalates to topic replacement
+	•	Research output persisted to editorial_decisions table
+	•	Test: given 5 different topics, research stage produces distinct, non-generic angles for each
+
+Step 2 — Quality Gate (build before scripting)
+	•	Quality gate prompt and rubric
+	•	Score parser and weighted calculation
+	•	Pass/fail threshold logic
+	•	Failure logging to performance_failures table
+	•	Rework instruction generation
+	•	Test: feed the quality gate 3 clearly bad scripts and 3 clearly good ones — confirm it correctly classifies all 6
+
+Step 3 — Editorial Stage
+	•	Format registry data structure and seed data with 7 formats
+	•	Format selection logic with recent-use exclusion
+	•	Editorial prompt with angle sharpening
+	•	format_performance table — seed with zeros for all formats
+	•	Test: given same research output, editorial stage selects different formats across 7 consecutive calls
+
+Step 4 — Script Stage
+	•	Script generation prompt with format structure injection
+	•	Voice direction generation per segment
+	•	Visual plan generation co-written with script
+	•	Title variant generation (3 options)
+	•	Script → SSML converter for ElevenLabs
+	•	Full script persisted to scripts table
+	•	Test: script stage produces voice directions with variation — at least 3 different emotions and 2 pause marks per video
+
+Step 5 — Visual Asset Generation
+	•	Puppeteer setup for headless rendering
+	•	Data viz: D3.js chart renderer — bar, line, scatter as minimum set
+	•	Custom graphics: HTML/CSS template renderer for diagrams and comparisons
+	•	AI image: Ideogram API integration with prompt construction
+	•	Stock footage: Pexels API with usage-tracking and 20% cap enforcement
+	•	All assets logged to production_assets table with cost tracking
+	•	Test: given a visual plan with all 4 asset types, production stage generates each successfully and logs costs
+
+Step 6 — Voiceover & Assembly
+	•	ElevenLabs API with SSML support
+	•	Word-timestamp extraction and segment mapping
+	•	Whisper API for caption generation
+	•	FFmpeg assembly pipeline: segments → sync → captions → render
+	•	Thumbnail generation via Ideogram
+	•	File naming randomization
+	•	Cadence manager with upload slot calculation
+	•	Test: full end-to-end run on single topic produces a valid 1080p MP4 with captions and thumbnail
+
+Step 7 — Learning Loop Wiring
+	•	Analyst Agent writes performance_failures entries after T+24h pull
+	•	Learning context builder query — aggregates failures into prompt-ready format
+	•	Inject learning context into Research and Editorial prompts
+	•	Format performance updater — updates format_performance after each video's T+7d data
+	•	Test: after 5 videos, learning context is non-empty and Research prompt contains channel-specific guidance
+
+The agent creates. It fails. It learns. It tries again.
+That is the spec.
