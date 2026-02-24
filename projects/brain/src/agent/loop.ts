@@ -274,6 +274,39 @@ export class BrainLoop {
             const r = String(evalRes.reason ?? 'manual');
             const exitReason = r === 'profit_target_hit' ? 'profit_target' : r === 'stop_hit' ? 'stop_loss' : 'manual';
             await closePosition(pos.id, Number(t.current_price), exitReason as any, storeOut.episode_id);
+
+            // Feedback loop: forward-test outcomes → strategy_outcomes → research_findings status.
+            try {
+              if (pos.strategy_id) {
+                const strategyId = String(pos.strategy_id);
+                const pnl = (Number(t.current_price) - Number(pos.entry_price)) * Number(pos.remaining_size) * (String(pos.side) === 'yes' ? 1 : -1);
+                const won = pnl > 0;
+                const domain = String(pos.market_type) === 'crypto' ? 'crypto' : 'prediction_markets';
+
+                const { data: sf } = await supabaseAdmin
+                  .from('semantic_facts')
+                  .select('fact,last_updated')
+                  .eq('domain', domain)
+                  .order('last_updated', { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+
+                const regime = sf ? String((sf as any).fact ?? '').slice(0, 32) : 'unknown';
+
+                const { upsertStrategyOutcome } = await import('../db/strategy_outcomes');
+                await upsertStrategyOutcome(strategyId, {
+                  pnl,
+                  won,
+                  regime,
+                  market_type: pos.market_type as any,
+                  desk: String(pos.desk),
+                });
+                console.log(`[FEEDBACK] Trade closed for strategy ${strategyId}: pnl=${pnl.toFixed(4)} won=${won}`);
+              }
+            } catch (e: any) {
+              console.error('[FEEDBACK] failed to upsert strategy_outcome:', e?.message ?? e);
+            }
+
             const lessons = Array.isArray(storedEpisode.lessons) ? [...storedEpisode.lessons] : [];
             lessons.push(`position_closed:${pos.id}`);
             await supabaseAdmin.from('episodes').update({ lessons }).eq('id', storeOut.episode_id);
@@ -324,6 +357,12 @@ export class BrainLoop {
         console.error('[research_output] failed to store finding:', e?.message ?? e);
       }
     }
+
+    // Background reconciliation: if any strategy_outcomes reached 'sufficient', evaluate & propagate to findings.
+    try {
+      const { reconcileSufficientOutcomes } = await import('../db/strategy_outcomes');
+      await reconcileSufficientOutcomes(10);
+    } catch {}
 
     return { episode: storedEpisode, store: storeOut };
   }

@@ -65,6 +65,23 @@ export function computeRealizedVol(closes: number[]): number {
   return sd * Math.sqrt(365);
 }
 
+export function scanMarketTrend(prices: number[]): { trend: 'up' | 'down' | 'flat'; changePct: number } {
+  const xs = prices.map(Number).filter((n) => Number.isFinite(n));
+  if (xs.length < 2) return { trend: 'flat', changePct: 0 };
+  const first = xs[0];
+  const last = xs[xs.length - 1];
+  const changePct = first === 0 ? 0 : (last - first) / Math.abs(first);
+  const trend: 'up' | 'down' | 'flat' = Math.abs(changePct) < 0.002 ? 'flat' : changePct > 0 ? 'up' : 'down';
+  return { trend, changePct };
+}
+
+export function detectVolumeAnomaly(currentVol: number, avgVol: number): { anomaly: boolean; ratio: number } {
+  const cur = Number(currentVol);
+  const avg = Math.max(Number(avgVol), 1e-9);
+  const ratio = cur / avg;
+  return { anomaly: ratio >= 2, ratio };
+}
+
 export function isCryptoTradeable(
   symbol: string,
   volRegime: string,

@@ -80,9 +80,16 @@ export function runBacktest(
     late: mean(late),
   };
 
+  const wins = outcomes.reduce((s, v) => s + (Number(v) > 0 ? 1 : 0), 0);
+  const losses = n - wins;
+
   const report: BacktestReport = {
     strategy_id: `strategy_${formalization.finding_id}`,
     finding_id: formalization.finding_id,
+
+    win_rate: wins / Math.max(n, 1),
+    total_pnl: wins - losses,
+
     in_sample_sharpe,
     out_sample_sharpe,
     in_sample_trades: in_sample.length,

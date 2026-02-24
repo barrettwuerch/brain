@@ -1,8 +1,7 @@
 import 'dotenv/config';
 
 import { supabaseAdmin } from '../../lib/supabase';
-import { scanMarketTrend, detectVolumeAnomaly } from '../kalshi/compute';
-import { classifyFundingRate, classifyVolatilityRegime, computeRealizedVol, computeRollingCorrelation } from './compute';
+import { classifyFundingRate, classifyVolatilityRegime, computeRealizedVol, computeRollingCorrelation, detectVolumeAnomaly, scanMarketTrend } from './compute';
 import { getBTCDominanceProxy, getCryptoOHLCV, getCryptoQuote, getFundingRate } from './data_feed';
 
 async function insertTask(task_type: string, task_input: Record<string, any>) {

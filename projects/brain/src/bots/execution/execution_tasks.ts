@@ -36,6 +36,14 @@ async function main() {
     openInterest: 5000,
   });
 
+  const { data: f } = await supabaseAdmin
+    .from('research_findings')
+    .select('id')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const strategy_id = f ? String((f as any).id) : null;
+
   await insertTask('place_limit_order', {
     ticker,
     side: 'yes',
@@ -48,7 +56,7 @@ async function main() {
     riskApprovedSize: 60,
     stop_level: 0.45,
     profit_target: 0.60,
-    strategy_id: null,
+    strategy_id,
   });
 
   await insertTask('manage_open_position', {

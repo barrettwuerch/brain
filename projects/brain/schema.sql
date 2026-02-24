@@ -274,7 +274,7 @@ create table if not exists public.research_findings (
   out_of_sample boolean default false,
 
   status text not null default 'under_investigation'
-    check (status in ('under_investigation','passed_to_backtest','in_backtest','archived','deployed')),
+    check (status in ('preliminary','under_investigation','passed_to_backtest','in_backtest','approved_for_live','archived')),
   recommendation text
     check (recommendation in ('pass_to_backtest','investigate_further','archive') or recommendation is null),
   backtest_result text,
@@ -412,7 +412,50 @@ create trigger watch_conditions_updated_at
   before update on public.watch_conditions
   for each row execute function public.update_watch_conditions_updated_at();
 
--- 11) Orchestrator
+-- 11) Strategy outcomes (forward-test feedback loop)
+create table if not exists public.strategy_outcomes (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+
+  -- Identity
+  strategy_id text not null,
+  market_type text not null check (market_type in ('prediction','crypto','equity','options')),
+  desk text not null,
+
+  -- Trade summary
+  total_trades int not null default 0,
+  winning_trades int not null default 0,
+  losing_trades int not null default 0,
+  win_rate float,
+  avg_win float,
+  avg_loss float,
+  profit_factor float,
+  total_pnl float not null default 0,
+  max_drawdown float,
+
+  -- Backtest comparison
+  backtest_win_rate float,
+  backtest_pnl float,
+  matches_backtest boolean,
+  divergence_pct float,
+
+  -- Regime context
+  dominant_regime text,
+  regime_breakdown jsonb,
+
+  status text not null default 'accumulating'
+    check (status in ('accumulating','sufficient','approved','underperforming','retired')),
+
+  watch_condition_id text,
+  last_trade_at timestamptz,
+  evaluated_at timestamptz
+);
+
+create index if not exists so_strategy_idx on public.strategy_outcomes (strategy_id);
+create index if not exists so_status_idx on public.strategy_outcomes (status);
+create index if not exists so_market_type_idx on public.strategy_outcomes (market_type);
+
+-- 12) Orchestrator
 -- No dedicated tables yet. Orchestrator coordinates tasks, reads bot states, and logs escalations.
 
 -- Phase 1 RLS posture (developer-friendly): public read; writes via service role.

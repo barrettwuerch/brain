@@ -172,11 +172,12 @@ export type EdgeType =
 export type FindingType = 'live_edge' | 'dead_end' | 'preliminary' | 'under_investigation';
 
 export type FindingStatus =
+  | 'preliminary'
   | 'under_investigation'
   | 'passed_to_backtest'
   | 'in_backtest'
-  | 'archived'
-  | 'deployed';
+  | 'approved_for_live'
+  | 'archived';
 
 export type FindingRecommendation = 'pass_to_backtest' | 'investigate_further' | 'archive';
 
@@ -219,6 +220,11 @@ export interface ResearchFinding {
 export interface BacktestReport {
   strategy_id: string;
   finding_id: string;
+
+  // Forward/backtest comparisons (proxies)
+  win_rate: number; // mean of outcomes (assumes outcomes are 0/1)
+  total_pnl: number; // proxy: wins - losses
+
   in_sample_sharpe: number;
   out_sample_sharpe: number;
   in_sample_trades: number;
@@ -348,6 +354,41 @@ export interface WatchCondition {
   trigger_count: number;
   expires_at: string | null;
   registered_by: string;
+}
+
+// Feedback loop — forward-test strategy outcomes
+export type StrategyOutcomeStatus = 'accumulating' | 'sufficient' | 'approved' | 'underperforming' | 'retired';
+
+export interface StrategyOutcome {
+  id: string;
+  created_at: string;
+
+  strategy_id: string; // research_findings.id
+  market_type: 'prediction' | 'crypto' | 'equity' | 'options';
+  desk: string;
+
+  total_trades: number;
+  winning_trades: number;
+  losing_trades: number;
+  win_rate: number | null;
+  avg_win: number | null;
+  avg_loss: number | null;
+  profit_factor: number | null;
+  total_pnl: number;
+  max_drawdown: number | null;
+
+  backtest_win_rate: number | null;
+  backtest_pnl: number | null;
+  matches_backtest: boolean | null;
+  divergence_pct: number | null;
+
+  dominant_regime: string | null;
+  regime_breakdown: Record<string, number> | null;
+
+  status: StrategyOutcomeStatus;
+  watch_condition_id: string | null;
+  last_trade_at: string | null;
+  evaluated_at: string | null;
 }
 
 export type PositionStatus = 'open' | 'closed' | 'partially_closed';

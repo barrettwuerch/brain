@@ -97,6 +97,21 @@ export async function generateFullDailyReport(): Promise<string> {
   else lines.push('(none)');
   lines.push('');
 
+  lines.push('STRATEGIES');
+  lines.push(`Approved for live: ${attribution.strategySummary.approved}`);
+  lines.push(`Accumulating data: ${attribution.strategySummary.accumulating}`);
+  lines.push(`Underperforming: ${attribution.strategySummary.underperforming}`);
+  lines.push(`Ready for backtest comparison: ${attribution.strategySummary.sufficientNotEvaluated}`);
+  if (attribution.strategyHighlights.length) {
+    lines.push('');
+    for (const h of attribution.strategyHighlights) lines.push(h);
+  }
+  if (attribution.strategyWarnings.length) {
+    lines.push('');
+    for (const w of attribution.strategyWarnings) lines.push(w);
+  }
+  lines.push('');
+
   lines.push('NEEDS ATTENTION');
   if (attribution.warnings.length) {
     for (const w of attribution.warnings) lines.push(w);

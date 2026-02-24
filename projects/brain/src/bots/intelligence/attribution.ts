@@ -3,13 +3,17 @@ import 'dotenv/config';
 import { supabaseAdmin } from '../../lib/supabase';
 import { spearman } from '../../evaluation/calibration';
 
-export async function attributePerformance(): Promise<{ byBot: Record<string, string>; highlights: string[]; warnings: string[] }> {
+export async function attributePerformance(): Promise<{ byBot: Record<string, string>; highlights: string[]; warnings: string[]; strategyHighlights: string[]; strategyWarnings: string[]; strategySummary: { approved: number; accumulating: number; underperforming: number; sufficientNotEvaluated: number } }> {
   const { data: bots, error: botsErr } = await supabaseAdmin.from('bot_states').select('*');
   if (botsErr) throw botsErr;
 
   const byBot: Record<string, string> = {};
   const highlights: string[] = [];
   const warnings: string[] = [];
+
+  const strategyHighlights: string[] = [];
+  const strategyWarnings: string[] = [];
+  const strategySummary = { approved: 0, accumulating: 0, underperforming: 0, sufficientNotEvaluated: 0 };
 
   for (const b of bots ?? []) {
     const bot_id = String((b as any).bot_id);
@@ -46,7 +50,34 @@ export async function attributePerformance(): Promise<{ byBot: Record<string, st
     if (warm && rem < 5) warnings.push(`${bot_id}: warm_up nearly done (${rem} remaining) but IS may still be insufficient`);
   }
 
-  return { byBot, highlights, warnings };
+  // Strategy outcomes
+  try {
+    const { data: outs } = await supabaseAdmin
+      .from('strategy_outcomes')
+      .select('strategy_id,total_trades,win_rate,status,matches_backtest,divergence_pct')
+      .in('status', ['sufficient', 'approved', 'underperforming', 'accumulating']);
+
+    for (const o of outs ?? []) {
+      const row: any = o;
+      const id = String(row.strategy_id);
+      const status = String(row.status);
+
+      if (status === 'approved') {
+        strategySummary.approved += 1;
+        strategyHighlights.push(`Strategy ${id} approved — ${row.total_trades} trades, win_rate=${row.win_rate ?? 'n/a'}, matches backtest`);
+      } else if (status === 'underperforming') {
+        strategySummary.underperforming += 1;
+        strategyWarnings.push(`Strategy ${id} underperforming — divergence=${row.divergence_pct ?? 'n/a'}`);
+      } else if (status === 'sufficient') {
+        strategySummary.sufficientNotEvaluated += 1;
+        strategyWarnings.push(`Strategy ${id} ready for backtest comparison (30+ trades)`);
+      } else {
+        strategySummary.accumulating += 1;
+      }
+    }
+  } catch {}
+
+  return { byBot, highlights, warnings, strategyHighlights, strategyWarnings, strategySummary };
 }
 
 export async function detectCalibrationWarnings(): Promise<string[]> {
