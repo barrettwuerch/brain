@@ -16,7 +16,7 @@ export async function placeOrder(order: Partial<OrderRecord> & { openInterest: n
   if (!order.order_id) order.order_id = cryptoRandomId();
 
   const limitPrice = Number(order.limit_price ?? 0);
-  const side = order.side as 'yes' | 'no';
+  const side = order.side as any;
   const size = Number(order.size ?? 0);
 
   const sim = simulateFill(limitPrice, side, order.openInterest);
@@ -55,15 +55,17 @@ export function evaluateExit(
   currentPrice: number,
   stopLevel: number,
   profitTarget: number,
-  side: 'yes' | 'no',
+  side: 'yes' | 'no' | 'buy' | 'sell',
 ): { action: 'hold' | 'exit'; reason: string } {
-  if (side === 'yes') {
+  const isLong = side === 'yes' || side === 'buy';
+
+  if (isLong) {
     if (Number(currentPrice) >= Number(profitTarget)) return { action: 'exit', reason: 'profit_target_hit' };
     if (Number(currentPrice) <= Number(stopLevel)) return { action: 'exit', reason: 'stop_hit' };
     return { action: 'hold', reason: 'within_bands' };
   }
 
-  // side === 'no'
+  // short
   if (Number(currentPrice) <= Number(profitTarget)) return { action: 'exit', reason: 'profit_target_hit' };
   if (Number(currentPrice) >= Number(stopLevel)) return { action: 'exit', reason: 'stop_hit' };
   return { action: 'hold', reason: 'within_bands' };

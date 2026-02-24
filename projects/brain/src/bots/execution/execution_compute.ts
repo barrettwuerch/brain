@@ -40,11 +40,12 @@ export function computePositionSize(
 
 export function simulateFill(
   limitPrice: number,
-  side: 'yes' | 'no',
+  side: 'yes' | 'no' | 'buy' | 'sell',
   openInterest: number,
 ): { fillPrice: number; slippage: number; status: 'filled' | 'partial' } {
   const slippage = estimateSlippage(openInterest);
-  const fillPrice = side === 'yes' ? Number(limitPrice) + slippage : Number(limitPrice) - slippage;
+  const isBuy = side === 'yes' || side === 'buy';
+  const fillPrice = isBuy ? Number(limitPrice) + slippage : Number(limitPrice) - slippage;
   const status: 'filled' | 'partial' = Number(openInterest) > 500 ? 'filled' : 'partial';
   return { fillPrice, slippage, status };
 }

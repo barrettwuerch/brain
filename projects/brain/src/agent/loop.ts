@@ -189,7 +189,7 @@ export class BrainLoop {
     const storedEpisode = { ...episode, id: storeOut.episode_id ?? episode.id };
 
     // Strategy Bot: after run_backtest, update the linked research_finding status.
-    if (task.agent_role === 'strategy' && task.task_type === 'run_backtest') {
+    if (task.agent_role === 'strategy' && (task.task_type === 'run_backtest' || task.task_type === 'run_crypto_backtest')) {
       try {
         const rep: any = actOut.result;
         const findingId = String(rep?.finding_id ?? '');
@@ -197,6 +197,14 @@ export class BrainLoop {
         if (findingId) {
           if (rec === 'approved_for_forward_test') {
             await updateFindingStatus(findingId, 'in_backtest');
+            // For crypto, approved backtests should register watch conditions.
+            try {
+              const { data: frow } = await supabaseAdmin.from('research_findings').select('*').eq('id', findingId).maybeSingle();
+              if (frow && String((frow as any).market_type ?? 'prediction') === 'crypto') {
+                const { registerWatchConditions } = await import('../bots/orchestrator/routing');
+                await registerWatchConditions([frow as any]);
+              }
+            } catch {}
           } else if (rec === 'archived') {
             await updateFindingStatus(findingId, 'archived');
           } else if (rec === 'return_to_research') {
@@ -211,17 +219,22 @@ export class BrainLoop {
     // Execution Bot: open/close real positions after episode UUID exists.
     if (task.agent_role === 'execution' && storeOut.episode_id) {
       try {
-        if (task.task_type === 'place_limit_order') {
+        if (task.task_type === 'place_limit_order' || task.task_type === 'place_crypto_limit_order') {
           const order = (actOut.result as any);
           if (order?.status === 'filled' || order?.status === 'partial') {
+            const mt = String((task.task_input as any)?.market_type ?? (task.task_type === 'place_crypto_limit_order' ? 'crypto' : 'prediction')) as any;
+            const sideRaw = String((task.task_input as any)?.side);
+            // positions table currently uses yes/no; map crypto buy/sell into yes/no for storage
+            const posSide = mt === 'crypto' ? (sideRaw === 'sell' ? 'no' : 'yes') : (sideRaw as any);
+
             const pos = await openPosition({
               bot_id: String(task.bot_id),
               desk: String(task.desk),
-              market_type: 'prediction',
+              market_type: mt,
               strategy_id: (task.task_input as any)?.strategy_id ?? null,
               market_ticker: String((task.task_input as any)?.ticker),
               status: 'open',
-              side: String((task.task_input as any)?.side) as any,
+              side: posSide as any,
               entry_price: Number(order.fill_price),
               current_price: Number(order.fill_price),
               size: Number(order.fill_size),
@@ -246,14 +259,11 @@ export class BrainLoop {
           }
         }
 
-        if (task.task_type === 'manage_open_position') {
+        if (task.task_type === 'manage_open_position' || task.task_type === 'manage_crypto_position') {
           const t: any = task.task_input;
           const order = t.order;
           const evalRes = actOut.result as any;
           const ticker = String(order?.market_ticker ?? '');
-          if (!ticker) {
-            // nothing to do
-          }
 
           const pos = await findOpenPositionByBotAndTicker(String(task.bot_id), ticker);
           if (pos) {
@@ -463,6 +473,8 @@ export class BrainLoop {
       if (input.task.task_type === 'price_momentum_classify') proposed_action = { type: 'classify_price_momentum' };
       if (input.task.task_type === 'formalize_strategy') proposed_action = { type: 'formalize_strategy' };
       if (input.task.task_type === 'run_backtest') proposed_action = { type: 'run_backtest' };
+      if (input.task.task_type === 'formalize_crypto_strategy') proposed_action = { type: 'formalize_strategy' };
+      if (input.task.task_type === 'run_crypto_backtest') proposed_action = { type: 'run_backtest' };
       if (input.task.task_type === 'detect_overfitting') proposed_action = { type: 'detect_overfitting' };
       if (input.task.task_type === 'walk_forward_analysis') proposed_action = { type: 'walk_forward_analysis' };
       if (input.task.task_type === 'monitor_positions') proposed_action = { type: 'monitor_positions' };
@@ -719,10 +731,25 @@ export class BrainLoop {
       return { action_taken, result: res, outcome_score: undefined };
     }
 
+    if (args.task.agent_role === 'execution' && args.task.task_type === 'evaluate_crypto_market_conditions') {
+      const { isCryptoTradeable } = await import('../adapters/alpaca/compute');
+      const res = isCryptoTradeable(String(tInput.ticker), String(tInput.volRegime ?? 'normal'), Number(tInput.spreadPct ?? 0));
+      return { action_taken, result: res, outcome_score: undefined };
+    }
+
     if (args.task.agent_role === 'execution' && args.task.task_type === 'compute_position_size') {
       const slippage = execEstimateSlippage(tInput.openInterest);
       const res = execComputePositionSize(tInput.edgeEstimate, tInput.kelly_fraction, tInput.account_equity, slippage);
       return { action_taken, result: res, outcome_score: undefined };
+    }
+
+    if (args.task.agent_role === 'execution' && args.task.task_type === 'compute_crypto_position_size') {
+      const slippage = 0.001;
+      const base = execComputePositionSize(tInput.edgeEstimate, tInput.kellyFraction, tInput.accountEquity, slippage);
+      const vol = String(tInput.volRegime ?? 'normal');
+      if (vol === 'extreme') return { action_taken, result: { ...base, size: 0 }, outcome_score: undefined };
+      if (vol === 'elevated') return { action_taken, result: { ...base, size: Math.floor(base.size * 0.75) }, outcome_score: undefined };
+      return { action_taken, result: base, outcome_score: undefined };
     }
 
     if (args.task.agent_role === 'execution' && args.task.task_type === 'place_limit_order') {
@@ -752,6 +779,12 @@ export class BrainLoop {
     }
 
     if (args.task.agent_role === 'execution' && args.task.task_type === 'manage_open_position') {
+      const o = tInput.order;
+      const res = evaluateExit(o.fill_price, tInput.current_price, tInput.stop_level, tInput.profit_target, o.side);
+      return { action_taken, result: res, outcome_score: undefined };
+    }
+
+    if (args.task.agent_role === 'execution' && args.task.task_type === 'manage_crypto_position') {
       const o = tInput.order;
       const res = evaluateExit(o.fill_price, tInput.current_price, tInput.stop_level, tInput.profit_target, o.side);
       return { action_taken, result: res, outcome_score: undefined };
