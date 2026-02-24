@@ -9,6 +9,7 @@ Build a self-improving trading firm that compounds capital across two horizons: 
 - No single market category > 40% of deployed capital.
 - Minimum cash reserve: 20% of capital, never deployed.
 - No live trading without 30+ forward test trades matching backtest within 30%.
+- Crypto: BTC drop ≥10% in 60 minutes → halt all crypto new entries immediately.
 
 ## Compounding Rules
 - Profits above initial capital: 70% reinvested, 30% reserved.

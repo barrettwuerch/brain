@@ -21,6 +21,7 @@
     "dev:prune": "tsx -e \"import('./src/bots/intelligence/consolidation.ts').then(m => m.pruneExpiredMemories()).then(r => console.log('pruned:', r))\"",
     "dev:seed:intelligence": "tsx src/bots/intelligence/intelligence_tasks.ts",
     "dev:seed:orchestrator": "tsx src/bots/orchestrator/orchestrator_tasks.ts",
+    "dev:seed:crypto-research": "tsx src/adapters/alpaca/research_tasks.ts"
     "dev:report": "tsx src/bots/intelligence/report_generator.ts"
   },
   "dependencies": {

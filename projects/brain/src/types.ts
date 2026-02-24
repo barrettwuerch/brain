@@ -192,6 +192,7 @@ export interface ResearchFinding {
   created_at: string;
   bot_id: string;
   desk: string;
+  market_type: 'prediction' | 'crypto' | 'equity' | 'options';
   agent_role: string;
   finding_type: FindingType;
   edge_type: EdgeType;

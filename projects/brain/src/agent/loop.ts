@@ -16,6 +16,7 @@ import { checkStateBeforeRun } from '../behavioral/state_manager';
 import { formatAndStoreFinding } from '../bots/research/research_output';
 import { classifyMomentum as researchClassifyMomentum, detectVolumeAnomaly as researchDetectVolumeAnomaly, scanMarketTrend as researchScanMarketTrend, scoreRQS as researchScoreRQS } from '../bots/research/research_compute';
 import { formalizeStrategy, detectOverfitting, computeWalkForwardWindows } from '../bots/strategy/strategy_compute';
+import { classifyFundingRate as cryptoClassifyFundingRate, classifyVolatilityRegime as cryptoClassifyVolatilityRegime, computeRollingCorrelation as cryptoComputeRollingCorrelation } from '../adapters/alpaca/compute';
 import { runBacktest } from '../bots/strategy/backtest_engine';
 import { updateFindingStatus } from '../db/research_findings';
 import { checkAndFireBreakers, DEFAULT_THRESHOLDS } from '../bots/risk/circuit_breakers';
@@ -434,7 +435,7 @@ export class BrainLoop {
 
     const memoryContext = recentFailuresBlock + parts.map((p) => p.text).join('\n\n');
 
-    const baseSystem = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n- { \'type\': 'place_limit_order' }\n- { \'type\': 'manage_open_position' }\n- { \'type\': 'compute_position_size' }\n- { \'type\': 'handle_partial_fill' }\n- { \'type\': 'evaluate_market_conditions' }\n- { \'type\': 'consolidate_memories' }\n- { \'type\': 'attribute_performance' }\n- { \'type\': 'generate_daily_report' }\n- { \'type\': 'prune_expired_memories' }\n- { \'type\': 'route_research_findings' }\n- { \'type\': 'review_bot_states' }\n- { \'type\': 'generate_priority_map' }\n\nDo not include Observation; Observation is produced by ACT.`;
+    const baseSystem = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n- { \'type\': 'place_limit_order' }\n- { \'type\': 'manage_open_position' }\n- { \'type\': 'compute_position_size' }\n- { \'type\': 'handle_partial_fill' }\n- { \'type\': 'evaluate_market_conditions' }\n- { \'type\': 'consolidate_memories' }\n- { \'type\': 'attribute_performance' }\n- { \'type\': 'generate_daily_report' }\n- { \'type\': 'prune_expired_memories' }\n- { \'type\': 'route_research_findings' }\n- { \'type\': 'review_bot_states' }\n- { \'type\': 'generate_priority_map' }\n- { \'type\': 'funding_rate_scan' }\n- { \'type\': 'volatility_regime_detect' }\n- { \'type\': 'correlation_scan' }\n\nDo not include Observation; Observation is produced by ACT.`;
 
     const roleSkill = await this.loadRoleSkill(input.task.agent_role ?? undefined);
     const system = roleSkill + '\n\n---\n\n' + baseSystem;
@@ -481,6 +482,9 @@ export class BrainLoop {
       if (input.task.task_type === 'route_research_findings') proposed_action = { type: 'route_research_findings' };
       if (input.task.task_type === 'review_bot_states') proposed_action = { type: 'review_bot_states' };
       if (input.task.task_type === 'generate_priority_map') proposed_action = { type: 'generate_priority_map' };
+      if (input.task.task_type === 'funding_rate_scan') proposed_action = { type: 'funding_rate_scan' };
+      if (input.task.task_type === 'volatility_regime_detect') proposed_action = { type: 'volatility_regime_detect' };
+      if (input.task.task_type === 'correlation_scan') proposed_action = { type: 'correlation_scan' };
 
       const skillPreview = roleSkill.split(/\r?\n/).slice(0, 5).join('\n');
       return {
@@ -519,7 +523,7 @@ export class BrainLoop {
     // Research computations (use frozen snapshot in task_input; no API calls here).
     // Note: Research task snapshots use `prices`, `currentVol`, `avgVol`.
     if (a.type === 'scan_market_trend') {
-      const isResearch = args.task.agent_role === 'research' || ['market_trend_scan'].includes(args.task.task_type);
+      const isResearch = args.task.agent_role === 'research' || ['market_trend_scan', 'crypto_trend_scan'].includes(args.task.task_type);
       if (isResearch) {
         const prices: number[] = Array.isArray(tInput.prices) ? tInput.prices.map(Number) : [];
         const res = researchScanMarketTrend(prices);
@@ -537,7 +541,7 @@ export class BrainLoop {
     }
 
     if (a.type === 'detect_volume_anomaly') {
-      const isResearch = args.task.agent_role === 'research' || ['volume_anomaly_detect'].includes(args.task.task_type);
+      const isResearch = args.task.agent_role === 'research' || ['volume_anomaly_detect', 'crypto_volume_profile'].includes(args.task.task_type);
       if (isResearch) {
         const currentVol = Number(tInput.currentVol ?? 0);
         const avgVol = Number(tInput.avgVol ?? 0);
@@ -570,6 +574,29 @@ export class BrainLoop {
       const expected = tInput.expected_answer;
       const outcome_score = expected ? grade(expected, { momentum }) : undefined;
       return { action_taken, result: { momentum }, outcome_score };
+    }
+
+    // Crypto research tasks
+    if (args.task.agent_role === 'research' && args.task.task_type === 'funding_rate_scan') {
+      const res = cryptoClassifyFundingRate(Number(tInput.rate ?? 0), Number(tInput.historical_avg ?? 0.0001));
+      const expected = tInput.expected_answer;
+      const outcome_score = expected ? grade(expected, res) : undefined;
+      return { action_taken, result: res, outcome_score };
+    }
+
+    if (args.task.agent_role === 'research' && args.task.task_type === 'volatility_regime_detect') {
+      const regime = cryptoClassifyVolatilityRegime(Number(tInput.realized_vol ?? 0));
+      const expected = tInput.expected_answer;
+      const outcome_score = expected ? grade(expected, regime) : undefined;
+      return { action_taken, result: regime as any, outcome_score };
+    }
+
+    if (args.task.agent_role === 'research' && args.task.task_type === 'correlation_scan') {
+      const corr = cryptoComputeRollingCorrelation((tInput.btc_prices ?? []).map(Number), (tInput.eth_prices ?? []).map(Number));
+      const res = { correlation: corr, divergence: corr < 0.5 };
+      const expected = tInput.expected_answer;
+      const outcome_score = expected ? grade(expected, res) : undefined;
+      return { action_taken, result: res, outcome_score };
     }
 
     if (a.type === 'score_rqs') {

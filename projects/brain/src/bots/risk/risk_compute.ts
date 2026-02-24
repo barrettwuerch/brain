@@ -47,14 +47,22 @@ export function computeDrawdownVelocity(drawdownPct: number, tradesSincePeak: nu
 
 export function evaluateCircuitBreakers(
   snapshot: RiskSnapshot,
-  thresholds: {
+  thresholds?: {
     dailyLossLimit: number;
     weeklyDrawdownLimit: number;
     maxDrawdownFromPeak: number;
     velocityLimit: number;
     enpMinimum: number;
   },
+  _marketType?: 'prediction' | 'crypto',
 ): { breacheds: string[]; actions: string[] } {
+  const t = thresholds ?? {
+    dailyLossLimit: 0.03,
+    weeklyDrawdownLimit: 0.07,
+    maxDrawdownFromPeak: 0.15,
+    velocityLimit: 0.08,
+    enpMinimum: 2,
+  };
   const breacheds: string[] = [];
   const actions: string[] = [];
 
@@ -66,27 +74,27 @@ export function evaluateCircuitBreakers(
   // For mocked tasks we treat unrealized_pnl as a daily loss percent if it is negative.
   const pnl = Number(snapshot.unrealized_pnl ?? 0);
 
-  if (pnl <= -Math.abs(thresholds.dailyLossLimit)) {
+  if (pnl <= -Math.abs(t.dailyLossLimit)) {
     breacheds.push('daily_loss_limit');
     actions.push('halt_new_entries_today');
   }
 
-  if (dd >= Math.abs(thresholds.weeklyDrawdownLimit)) {
+  if (dd >= Math.abs(t.weeklyDrawdownLimit)) {
     breacheds.push('weekly_drawdown_limit');
     actions.push('halt_new_entries_this_week');
   }
 
-  if (dd >= Math.abs(thresholds.maxDrawdownFromPeak)) {
+  if (dd >= Math.abs(t.maxDrawdownFromPeak)) {
     breacheds.push('max_drawdown_from_peak');
     actions.push('halt_all_trading');
   }
 
-  if (vel >= Math.abs(thresholds.velocityLimit)) {
+  if (vel >= Math.abs(t.velocityLimit)) {
     breacheds.push('drawdown_velocity');
     actions.push('halt_new_entries_immediately');
   }
 
-  if (enp > 0 && enp < thresholds.enpMinimum) {
+  if (enp > 0 && enp < t.enpMinimum) {
     breacheds.push('concentration_enp');
     actions.push('halt_new_entries_on_correlated_instruments');
   }

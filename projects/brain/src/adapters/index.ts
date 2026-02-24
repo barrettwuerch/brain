@@ -9,7 +9,7 @@ export const ADAPTERS = {
     marketType: 'crypto' as const,
     name: 'Alpaca Crypto',
     desk: 'crypto_markets',
-    active: false, // activated when adapter is built
+    active: true,
   },
 } as const;
 

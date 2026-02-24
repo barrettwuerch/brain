@@ -31,6 +31,7 @@ export async function formatAndStoreFinding(
   const draft: Partial<ResearchFinding> = {
     bot_id: String(episode.bot_id ?? 'research-bot-1'),
     desk: String(episode.desk ?? 'prediction_markets'),
+    market_type: (String(ti.market_type ?? 'prediction') as any),
     agent_role: String(episode.agent_role ?? 'research'),
 
     finding_type: 'under_investigation' as any,
@@ -89,6 +90,7 @@ export async function formatAndStoreFinding(
   const toWrite: Omit<ResearchFinding, 'id' | 'created_at'> = {
     bot_id: draft.bot_id as string,
     desk: draft.desk as string,
+    market_type: (draft as any).market_type ?? 'prediction',
     agent_role: draft.agent_role as string,
 
     finding_type,

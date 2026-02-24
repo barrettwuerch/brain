@@ -242,6 +242,7 @@ create table if not exists public.research_findings (
   created_at timestamptz not null default now(),
   bot_id text not null,
   desk text not null default 'prediction_markets',
+  market_type text not null default 'prediction' check (market_type in ('prediction','crypto','equity','options')),
   agent_role text not null default 'research',
 
   finding_type text not null
@@ -283,6 +284,7 @@ create table if not exists public.research_findings (
 );
 
 create index if not exists rf_bot_id_idx on public.research_findings (bot_id);
+create index if not exists rf_market_type_idx on public.research_findings (market_type);
 create index if not exists rf_status_idx on public.research_findings (status);
 create index if not exists rf_finding_type_idx on public.research_findings (finding_type);
 create index if not exists rf_edge_type_idx on public.research_findings (edge_type);
