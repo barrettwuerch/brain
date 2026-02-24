@@ -297,3 +297,44 @@ export interface ConsolidationReport {
   cross_desk_learnings: number;
   bots_evaluated: string[];
 }
+
+export type PositionStatus = 'open' | 'closed' | 'partially_closed';
+
+export type ExitReason = 'profit_target' | 'stop_loss' | 'time_exit' | 'circuit_breaker' | 'manual';
+
+export interface Position {
+  id: string;
+  created_at: string;
+  updated_at: string;
+
+  bot_id: string;
+  desk: string;
+  strategy_id: string | null;
+
+  market_ticker: string;
+
+  status: PositionStatus;
+  side: 'yes' | 'no';
+
+  entry_price: number;
+  current_price: number | null;
+
+  size: number;
+  remaining_size: number;
+
+  unrealized_pnl: number;
+  realized_pnl: number;
+
+  peak_price: number | null;
+
+  stop_level: number;
+  profit_target: number;
+  slippage_assumed: number;
+
+  closed_at: string | null;
+  exit_price: number | null;
+  exit_reason: ExitReason | null;
+
+  entry_episode_id: string | null;
+  exit_episode_id: string | null;
+}

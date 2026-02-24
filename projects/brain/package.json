@@ -16,6 +16,7 @@
     "dev:seed:strategy": "tsx src/bots/strategy/strategy_tasks.ts",
     "dev:seed:risk": "tsx src/bots/risk/risk_tasks.ts",
     "dev:seed:execution": "tsx src/bots/execution/execution_tasks.ts",
+    "dev:check-positions": "tsx src/scripts/check_positions.ts",
     "dev:nightly": "tsx src/scripts/nightly_intelligence.ts",
     "dev:prune": "tsx -e \"import('./src/bots/intelligence/consolidation.ts').then(m => m.pruneExpiredMemories()).then(r => console.log('pruned:', r))\"",
     "dev:seed:intelligence": "tsx src/bots/intelligence/intelligence_tasks.ts",

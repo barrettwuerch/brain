@@ -32,6 +32,7 @@ import {
   isTradeableMarket as execIsTradeableMarket,
 } from '../bots/execution/execution_compute';
 import { evaluateExit, handlePartialFill, placeOrder } from '../bots/execution/order_manager';
+import { openPosition, closePosition, findOpenPositionByBotAndTicker, getOpenPositions, updatePositionPrice } from '../db/positions';
 import { attributePerformance as intelligenceAttributePerformance } from '../bots/intelligence/attribution';
 import { extractAndStoreFacts, pruneExpiredMemories } from '../bots/intelligence/consolidation';
 import { generateFullDailyReport } from '../bots/intelligence/report_generator';
@@ -201,6 +202,72 @@ export class BrainLoop {
         }
       } catch (e: any) {
         console.error('[strategy] failed to update finding status:', e?.message ?? e);
+      }
+    }
+
+    // Execution Bot: open/close real positions after episode UUID exists.
+    if (task.agent_role === 'execution' && storeOut.episode_id) {
+      try {
+        if (task.task_type === 'place_limit_order') {
+          const order = (actOut.result as any);
+          if (order?.status === 'filled' || order?.status === 'partial') {
+            const pos = await openPosition({
+              bot_id: String(task.bot_id),
+              desk: String(task.desk),
+              strategy_id: (task.task_input as any)?.strategy_id ?? null,
+              market_ticker: String((task.task_input as any)?.ticker),
+              status: 'open',
+              side: String((task.task_input as any)?.side) as any,
+              entry_price: Number(order.fill_price),
+              current_price: Number(order.fill_price),
+              size: Number(order.fill_size),
+              remaining_size: Number(order.fill_size),
+              unrealized_pnl: 0,
+              realized_pnl: 0,
+              peak_price: Number(order.fill_price),
+              stop_level: Number((task.task_input as any)?.stop_level),
+              profit_target: Number((task.task_input as any)?.profit_target),
+              slippage_assumed: Number(order.slippage ?? 0),
+              closed_at: null,
+              exit_price: null,
+              exit_reason: null,
+              entry_episode_id: storeOut.episode_id,
+              exit_episode_id: null,
+            });
+
+            const lessons = Array.isArray(storedEpisode.lessons) ? [...storedEpisode.lessons] : [];
+            lessons.push(`position_id:${pos.id}`);
+            await supabaseAdmin.from('episodes').update({ lessons }).eq('id', storeOut.episode_id);
+            storedEpisode.lessons = lessons;
+          }
+        }
+
+        if (task.task_type === 'manage_open_position') {
+          const t: any = task.task_input;
+          const order = t.order;
+          const evalRes = actOut.result as any;
+          const ticker = String(order?.market_ticker ?? '');
+          if (!ticker) {
+            // nothing to do
+          }
+
+          const pos = await findOpenPositionByBotAndTicker(String(task.bot_id), ticker);
+          if (pos) {
+            await updatePositionPrice(pos.id, Number(t.current_price));
+          }
+
+          if (evalRes?.action === 'exit' && pos) {
+            const r = String(evalRes.reason ?? 'manual');
+            const exitReason = r === 'profit_target_hit' ? 'profit_target' : r === 'stop_hit' ? 'stop_loss' : 'manual';
+            await closePosition(pos.id, Number(t.current_price), exitReason as any, storeOut.episode_id);
+            const lessons = Array.isArray(storedEpisode.lessons) ? [...storedEpisode.lessons] : [];
+            lessons.push(`position_closed:${pos.id}`);
+            await supabaseAdmin.from('episodes').update({ lessons }).eq('id', storeOut.episode_id);
+            storedEpisode.lessons = lessons;
+          }
+        }
+      } catch (e: any) {
+        console.error('[execution] position linkage failed:', e?.message ?? e);
       }
     }
 
@@ -509,19 +576,56 @@ export class BrainLoop {
 
     // Risk computations
     if (args.task.agent_role === 'risk' && args.task.task_type === 'monitor_positions') {
-      const dd = Number(tInput.drawdownPct ?? 0);
-      const tradesSincePeak = Number(tInput.tradesSincePeak ?? 1);
-      const correlationMatrix = (tInput.correlationMatrix ?? []) as number[][];
-      const enp = computeENP(correlationMatrix);
-      const drawdown_velocity = computeDrawdownVelocity(dd, tradesSincePeak);
-      const kelly_multiplier = getKellyMultiplier(dd);
+      const desk = String(args.task.desk ?? 'prediction_markets');
+      const positions = await getOpenPositions(desk);
+
+      if (!positions.length) {
+        const snapshot = {
+          timestamp: new Date().toISOString(),
+          open_positions: 0,
+          unrealized_pnl: 0,
+          drawdown_from_peak: 0,
+          drawdown_velocity: 0,
+          kelly_multiplier: 1.0,
+          enp: 0,
+          active_breakers: [],
+          warnings: [],
+        };
+        return { action_taken, result: snapshot, outcome_score: undefined };
+      }
+
+      // Ensure current_price is set (fallback to entry_price)
+      const totalPeak = positions.reduce(
+        (s, p) => s + Number((p.peak_price ?? p.entry_price)) * Number(p.remaining_size),
+        0,
+      );
+      const totalCurrent = positions.reduce(
+        (s, p) => s + Number((p.current_price ?? p.entry_price)) * Number(p.remaining_size),
+        0,
+      );
+      const drawdownFromPeak = (totalPeak - totalCurrent) / Math.max(totalPeak, 1);
+
+      // Correlation proxy: same ticker => 0.7, different => 0.2
+      const n = positions.length;
+      const corr: number[][] = [];
+      for (let i = 0; i < n; i++) {
+        const row: number[] = [];
+        for (let j = 0; j < n; j++) {
+          if (i === j) row.push(1);
+          else row.push(positions[i].market_ticker === positions[j].market_ticker ? 0.7 : 0.2);
+        }
+        corr.push(row);
+      }
+
+      const enp = computeENP(corr);
+      const kelly_multiplier = getKellyMultiplier(drawdownFromPeak);
 
       const snapshot = {
-        timestamp: String(tInput.timestamp ?? new Date().toISOString()),
-        open_positions: Array.isArray(tInput.positions) ? tInput.positions.length : 0,
-        unrealized_pnl: Number(tInput.unrealizedPnlPct ?? 0),
-        drawdown_from_peak: dd,
-        drawdown_velocity,
+        timestamp: new Date().toISOString(),
+        open_positions: positions.length,
+        unrealized_pnl: positions.reduce((s, p) => s + Number(p.unrealized_pnl ?? 0), 0),
+        drawdown_from_peak: drawdownFromPeak,
+        drawdown_velocity: 0,
         kelly_multiplier,
         enp,
         active_breakers: [],
@@ -532,14 +636,23 @@ export class BrainLoop {
     }
 
     if (args.task.agent_role === 'risk' && args.task.task_type === 'check_drawdown_limit') {
-      const dd = Number(tInput.drawdownPct ?? 0);
-      const kelly_multiplier = getKellyMultiplier(dd);
-      const recovery_required = drawdownToRecoveryRequired(dd);
-      return {
-        action_taken,
-        result: { kelly_multiplier, recovery_required },
-        outcome_score: undefined,
-      };
+      const desk = String(args.task.desk ?? 'prediction_markets');
+      const positions = await getOpenPositions(desk);
+
+      if (!positions.length) {
+        return { action_taken, result: { breached: false, current_pct: 0, threshold_pct: 0.15, action: 'none' }, outcome_score: undefined };
+      }
+
+      const totalPeak = positions.reduce(
+        (s, p) => s + Number((p.peak_price ?? p.entry_price)) * Number(p.remaining_size),
+        0,
+      );
+      const totalCurrent = positions.reduce(
+        (s, p) => s + Number((p.current_price ?? p.entry_price)) * Number(p.remaining_size),
+        0,
+      );
+      const dd = (totalPeak - totalCurrent) / Math.max(totalPeak, 1);
+      return { action_taken, result: { breached: dd >= 0.15, current_pct: dd, threshold_pct: 0.15, action: dd >= 0.15 ? 'halt_all_trading' : 'none' }, outcome_score: undefined };
     }
 
     if (args.task.agent_role === 'risk' && args.task.task_type === 'detect_concentration') {
@@ -600,6 +713,7 @@ export class BrainLoop {
         openInterest: tInput.openInterest,
       });
 
+      // NOTE: Positions are opened AFTER the episode is stored (so we can link entry_episode_id to the episode UUID).
       return { action_taken: { ...action_taken, order }, result: order as any, outcome_score: undefined };
     }
 

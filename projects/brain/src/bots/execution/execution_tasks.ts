@@ -46,6 +46,9 @@ async function main() {
     spread: 0.01,
     avg_spread: 0.01,
     riskApprovedSize: 60,
+    stop_level: 0.45,
+    profit_target: 0.60,
+    strategy_id: null,
   });
 
   await insertTask('manage_open_position', {
