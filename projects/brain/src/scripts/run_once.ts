@@ -33,29 +33,15 @@ async function main() {
   console.log('=== TASK ===');
   console.log({ id: task.id, task_type: task.task_type, task_input: task.task_input });
 
-  const reasonOut = await loop.reason({ task, memory: { episodic: [], semantic: [], procedure: null } });
-  console.log('\n=== REASON ===');
-  console.log('confidence:', reasonOut.confidence);
-  console.log('uncertainty_flags:', reasonOut.uncertainty_flags);
-  console.log('chain_of_thought:', reasonOut.chain_of_thought);
-  console.log('proposed_action:', reasonOut.proposed_action);
+  const out = await loop.run(task);
 
-  const actOut = await loop.act({ task, reasonOut });
-  console.log('\n=== ACT ===');
-  console.log('result:', actOut.result);
-  console.log('outcome_score:', actOut.outcome_score);
-
-  const expected = (task.task_input as any)?.expected_answer;
-  const ok = expected ? JSON.stringify(expected) === JSON.stringify(actOut.result) : null;
-
-  console.log('\n=== GRADE ===');
-  console.log('expected:', expected);
-  console.log('correct:', ok);
-
-  await supabaseAdmin
-    .from('tasks')
-    .update({ status: 'completed' })
-    .eq('id', task.id);
+  console.log('\n=== SUMMARY ===');
+  console.log({
+    outcome: out.episode.outcome,
+    outcome_score: out.episode.outcome_score,
+    reasoning_score: out.episode.reasoning_score,
+    episode_id: out.store.episode_id,
+  });
 }
 
 main().catch(async (e) => {

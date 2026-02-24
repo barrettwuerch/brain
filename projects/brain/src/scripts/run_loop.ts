@@ -1,0 +1,56 @@
+// Phase 3 runner: pull tasks until queue empty, run full loop, sleep between.
+
+import 'dotenv/config';
+
+import { supabaseAdmin } from '../lib/supabase';
+import { BrainLoop } from '../agent/loop';
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function fetchNextQueued() {
+  const { data, error } = await supabaseAdmin
+    .from('tasks')
+    .select('*')
+    .eq('status', 'queued')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data as any;
+}
+
+async function main() {
+  const loop = new BrainLoop();
+  let n = 0;
+
+  while (true) {
+    const task = await fetchNextQueued();
+    if (!task) {
+      console.log('Queue empty. Done.');
+      break;
+    }
+
+    // claim task
+    await supabaseAdmin.from('tasks').update({ status: 'running' }).eq('id', task.id);
+
+    try {
+      const out = await loop.run(task);
+      n++;
+      console.log(
+        `#${n} task=${task.task_type} outcome=${out.episode.outcome} outcome_score=${out.episode.outcome_score} reasoning_score=${out.episode.reasoning_score} episode_id=${out.store.episode_id}`,
+      );
+    } catch (e: any) {
+      console.error('Task failed:', task.id, e?.message ?? e);
+      await supabaseAdmin.from('tasks').update({ status: 'failed' }).eq('id', task.id);
+    }
+
+    await sleep(2000);
+  }
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

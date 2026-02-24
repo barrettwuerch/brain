@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev:seed:level1": "tsx src/tasks/level1.ts",
-    "dev:run-once": "tsx src/scripts/run_once.ts"
+    "dev:run-once": "tsx src/scripts/run_once.ts",
+    "dev:run-loop": "tsx src/scripts/run_loop.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.0",

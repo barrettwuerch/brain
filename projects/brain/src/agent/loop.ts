@@ -3,6 +3,8 @@
 
 import type { Episode, EpisodeOutcome, Task } from '../types';
 import { grade, maxMoM, maxRow, parseCpi, trendLastN } from './level1_compute';
+import { embed } from '../lib/embeddings';
+import { supabaseAdmin } from '../lib/supabase';
 
 export interface ReasonInput {
   task: Task;
@@ -27,18 +29,21 @@ export interface ActOutput {
 }
 
 export interface ObserveOutput {
-  observation: Record<string, any>;    // Exact outcome from tools/world
+  actual: Record<string, any>;
+  expected: Record<string, any> | null;
+  outcome_score: number;               // 0..1
+  outcome: EpisodeOutcome;
+  error_type?: string;
 }
 
 export interface ReflectOutput {
   reflection_text: string;
-  outcome: EpisodeOutcome;
-  outcome_score: number;               // 0..1
-  reasoning_score: number;             // 0..1 (self-evaluated calibration target)
-  error_type?: string;
+  reasoning_score: number;             // 0..1
+  lessons: string[];
 }
 
 export interface StoreOutput {
+  episode_id?: string;
   episode_written: boolean;
   semantic_updates: number;
   procedure_updates: number;
@@ -56,22 +61,38 @@ export class BrainLoop {
    *  - store episode + (optionally) semantic/procedural updates
    */
   async run(task: Task): Promise<{ episode: Episode; store: StoreOutput }> {
-    // 1) REASON
-    const reasonOut = await this.reason({
-      task,
-      memory: { episodic: [], semantic: [], procedure: null },
-    });
+    // Phase 3: full loop with observe/reflect/store.
+    let reasonOut: ReasonOutput;
+    let actOut: ActOutput;
+    let obsOut: ObserveOutput;
+    let refOut: ReflectOutput;
 
-    // 2) ACT
-    const actOut = await this.act({ task, reasonOut });
+    try {
+      reasonOut = await this.reason({ task, memory: { episodic: [], semantic: [], procedure: null } });
+    } catch (e) {
+      // Mark task failed and bail.
+      await supabaseAdmin.from('tasks').update({ status: 'failed' }).eq('id', task.id);
+      throw e;
+    }
 
-    // 3) OBSERVE
-    const obsOut = await this.observe(actOut);
+    try {
+      actOut = await this.act({ task, reasonOut });
+    } catch (e) {
+      await supabaseAdmin.from('tasks').update({ status: 'failed' }).eq('id', task.id);
+      throw e;
+    }
 
-    // 4) REFLECT
-    const refOut = await this.reflect({ task, reasonOut, actOut, obsOut });
+    obsOut = await this.observe({ task, reasonOut, actOut });
 
-    // 5) STORE
+    try {
+      refOut = await this.reflect({ task, reasonOut, obsOut });
+    } catch (e) {
+      // Reflection failure should not lose the episode; we can store a minimal reflection.
+      refOut = { reflection_text: 'Reflection failed to run.', reasoning_score: 0.3, lessons: ['Fix reflection pipeline / prompt.'] };
+    }
+
+    const ttl_days = obsOut.outcome === 'incorrect' ? 60 : 30;
+
     const episode: Episode = {
       id: 'stub',
       created_at: new Date().toISOString(),
@@ -80,19 +101,21 @@ export class BrainLoop {
       task_input: task.task_input,
       reasoning: reasonOut.chain_of_thought,
       action_taken: actOut.action_taken,
-      observation: obsOut.observation,
+      observation: { actual: obsOut.actual, expected: obsOut.expected },
       reflection: refOut.reflection_text,
-      outcome: refOut.outcome,
-      outcome_score: refOut.outcome_score,
+      outcome: obsOut.outcome,
+      outcome_score: obsOut.outcome_score,
       reasoning_score: refOut.reasoning_score,
-      error_type: refOut.error_type ?? null,
-      ttl_days: 30,
+      error_type: obsOut.error_type ?? null,
+      ttl_days,
       embedding: null,
     };
 
-    const storeOut = await this.store({ task, episode, refOut });
+    const storeOut = await this.store({ task, episode, reasonOut, refOut });
+    // On success, mark task completed.
+    await supabaseAdmin.from('tasks').update({ status: 'completed' }).eq('id', task.id);
 
-    return { episode, store: storeOut };
+    return { episode: { ...episode, id: storeOut.episode_id ?? episode.id }, store: storeOut };
   }
 
   /** REASON: decide what to do given task + retrieved memory. */
@@ -163,41 +186,97 @@ export class BrainLoop {
   }
 
   /** OBSERVE: capture the full-fidelity outcome from the world/tools. */
-  async observe(act: ActOutput): Promise<ObserveOutput> {
-    // TODO: gather tool outputs, errors, timing, context.
-    return { observation: { ok: true, action: act.action_taken } };
+  async observe(args: { task: Task; reasonOut: ReasonOutput; actOut: ActOutput }): Promise<ObserveOutput> {
+    const expected = (args.task.task_input as any)?.expected_answer ?? null;
+    const actual = args.actOut.result;
+
+    // Binary grading for Level 1.
+    const outcome_score = expected ? grade(expected, actual) : 0;
+    const outcome: EpisodeOutcome = outcome_score === 1 ? 'correct' : 'incorrect';
+
+    // Lightweight error typing.
+    let error_type: string | undefined;
+    if (outcome === 'incorrect') {
+      const actionType = String(args.reasonOut.proposed_action?.type ?? 'unknown');
+      if (actionType === 'unknown' || actionType === 'noop') error_type = 'reasoning_error';
+      else if (String(actual?.error || '').includes('dataset')) error_type = 'data_error';
+      else error_type = 'computation_error';
+    }
+
+    return { actual, expected, outcome_score, outcome, error_type };
   }
 
   /** REFLECT: evaluate performance and score reasoning quality vs outcome. */
   async reflect(args: {
     task: Task;
     reasonOut: ReasonOutput;
-    actOut: ActOutput;
     obsOut: ObserveOutput;
   }): Promise<ReflectOutput> {
-    // TODO: Reflexion-style prompt:
-    // - was the reasoning correct?
-    // - did it predict the outcome?
-    // - what went wrong/right?
-    // - rate reasoning quality 1-5 → map to 0..1
+    const system = `You are THE BRAIN's REFLECT step. Be brutally honest.
+Return ONLY valid JSON with keys: reflection_text, reasoning_score, lessons.
+- reasoning_score is 0..1.
+- lessons is an array of concrete, actionable adjustments.
+Scoring rubric:
+- Correct but shallow/fragile reasoning => <=0.6
+- Incorrect but flagged uncertainty appropriately => 0.4-0.6
+- Incorrect and overconfident / missed obvious uncertainty => <=0.3
+`;
+
+    const user = `TASK\n${JSON.stringify(args.task.task_input)}\n\nCHAIN_OF_THOUGHT\n${args.reasonOut.chain_of_thought}\n\nPROPOSED_ACTION\n${JSON.stringify(args.reasonOut.proposed_action)}\n\nUNCERTAINTY_FLAGS\n${JSON.stringify(args.reasonOut.uncertainty_flags)}\n\nEXPECTED\n${JSON.stringify(args.obsOut.expected)}\n\nACTUAL\n${JSON.stringify(args.obsOut.actual)}\n\nOUTCOME\n${args.obsOut.outcome} score=${args.obsOut.outcome_score}`;
+
+    const { claudeText, extractFirstJsonObject } = await import('../lib/anthropic.js');
+    const raw = await claudeText({ system, user, maxTokens: 600, temperature: 0.2 });
+    const parsed = extractFirstJsonObject(raw);
+
     return {
-      reflection_text: 'TODO(reflect): reflection + guidance',
-      outcome: 'partial',
-      outcome_score: 0.5,
-      reasoning_score: 0.5,
+      reflection_text: String(parsed.reflection_text ?? ''),
+      reasoning_score: Number(parsed.reasoning_score ?? 0.5),
+      lessons: Array.isArray(parsed.lessons) ? parsed.lessons.map(String) : [],
     };
   }
 
-  /** STORE: write episode; optionally consolidate semantic/procedural memory. */
+  /** STORE: write complete episode with embedding to Supabase. */
   async store(args: {
     task: Task;
     episode: Episode;
+    reasonOut: ReasonOutput;
     refOut: ReflectOutput;
   }): Promise<StoreOutput> {
-    // TODO:
-    // - persist episode immediately
-    // - decide whether to update semantic facts / procedures
-    // - enforce pruning / TTL policies in background
-    return { episode_written: false, semantic_updates: 0, procedure_updates: 0 };
+    const textToEmbed = `${args.reasonOut.chain_of_thought}\n\nREFLECTION:\n${args.refOut.reflection_text}`;
+    const vec = await embed(textToEmbed);
+
+    // PostgREST + pgvector: represent vector as string like '[1,2,3]'
+    const embedding = `[${vec.join(',')}]`;
+
+    const row: any = {
+      task_id: args.task.id,
+      task_type: args.task.task_type,
+      task_input: args.task.task_input,
+      reasoning: args.episode.reasoning,
+      action_taken: args.episode.action_taken,
+      observation: args.episode.observation,
+      reflection: args.episode.reflection,
+      outcome: args.episode.outcome,
+      outcome_score: args.episode.outcome_score,
+      reasoning_score: args.episode.reasoning_score,
+      error_type: args.episode.error_type,
+      ttl_days: args.episode.ttl_days,
+      embedding,
+    };
+
+    const { data, error } = await supabaseAdmin
+      .from('episodes')
+      .insert(row)
+      .select('id')
+      .single();
+
+    if (error) throw error;
+
+    return {
+      episode_id: (data as any)?.id,
+      episode_written: true,
+      semantic_updates: 0,
+      procedure_updates: 0,
+    };
   }
 }
