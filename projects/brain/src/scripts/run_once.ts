@@ -35,6 +35,12 @@ async function main() {
 
   const out = await loop.run(task);
 
+  if ('aborted' in out) {
+    console.log('\n=== ABORTED ===');
+    console.log(out);
+    return;
+  }
+
   console.log('\n=== SUMMARY ===');
   console.log({
     outcome: out.episode.outcome,

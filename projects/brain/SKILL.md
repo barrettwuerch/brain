@@ -31,6 +31,9 @@ REASON → ACT → OBSERVE → REFLECT → STORE
 
 The loop lives in: `projects/brain/src/agent/loop.ts`
 
+**Loop order (must match code):**
+`STATE_CHECK → REASON → ACT → OBSERVE → REFLECT → STORE`
+
 ---
 
 ## Memory Architecture — Three Layers
@@ -110,13 +113,16 @@ projects/brain/
 │   │   ├── episodic.ts
 │   │   ├── semantic.ts
 │   │   └── procedural.ts
+│   ├── behavioral/
+│   │   └── state_manager.ts
 │   └── tasks/
 │       └── level1.ts
 ├── scripts/
 │   ├── schema_push.md
 │   ├── run_once.ts
 │   ├── run_loop.ts
-│   └── check_episodes.ts
+│   ├── check_episodes.ts
+│   └── check_states.ts
 └── examples/
     └── episode_example.json
 ```

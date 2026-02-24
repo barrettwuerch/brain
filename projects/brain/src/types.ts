@@ -4,6 +4,13 @@ export type TaskStatus = 'queued' | 'running' | 'completed' | 'failed';
 export type EpisodeOutcome = 'correct' | 'incorrect' | 'partial';
 export type MemoryStatus = 'active' | 'flagged' | 'retired';
 
+export type BotBehavioralState =
+  | 'exploiting'
+  | 'cautious'
+  | 'paused'
+  | 'diagnostic'
+  | 'recovering';
+
 export interface Task {
   id: string;
   created_at: string;
@@ -101,4 +108,45 @@ export interface IntelligenceScore {
   notes?: string | null;
 
   supporting_episode_ids: string[];
+}
+
+export interface BotState {
+  bot_id: string;
+  agent_role: string;
+  desk: string;
+  current_state: BotBehavioralState;
+  state_since: string;
+  reason: string | null;
+  requires_manual_review: boolean;
+  warm_up: boolean;
+  warm_up_episodes_remaining: number;
+  is_at_entry: number | null;
+  consecutive_wins: number;
+  consecutive_losses: number;
+  trades_in_state: number;
+  good_is_windows: number;
+  peak_outcome_score: number | null;
+  current_drawdown: number | null;
+  drawdown_velocity: number | null;
+  profit_factor: number | null;
+  diagnostic_attempts: number;
+  diagnostic_max: number;
+  last_root_cause: string | null;
+  updated_at: string;
+}
+
+export interface StateTransition {
+  id: string;
+  created_at: string;
+  bot_id: string;
+  from_state: BotBehavioralState;
+  to_state: BotBehavioralState;
+  reason: string | null;
+  metric_snapshot: Record<string, any> | null;
+}
+
+export interface StateCheckResult {
+  shouldAbort: boolean;
+  reason: string;
+  state: BotBehavioralState;
 }

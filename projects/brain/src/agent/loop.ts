@@ -1,5 +1,5 @@
 // THE BRAIN — Core loop skeleton (Phase 1 scaffold)
-// REASON → ACT → OBSERVE → REFLECT → STORE
+// STATE_CHECK → REASON → ACT → OBSERVE → REFLECT → STORE
 
 import type { Episode, EpisodeOutcome, Task } from '../types';
 import { grade, maxMoM, maxRow, parseCpi, trendLastN } from './level1_compute';
@@ -9,6 +9,7 @@ import { readSimilarEpisodes } from '../memory/episodic';
 import { readSemanticFacts } from '../memory/semantic';
 import { readProcedure } from '../memory/procedural';
 import { writeEpisode } from '../memory/episodic';
+import { checkStateBeforeRun } from '../behavioral/state_manager';
 
 export interface ReasonInput {
   task: Task;
@@ -64,7 +65,15 @@ export class BrainLoop {
    *  - reflect and score reasoning/outcome
    *  - store episode + (optionally) semantic/procedural updates
    */
-  async run(task: Task): Promise<{ episode: Episode; store: StoreOutput }> {
+  async run(task: Task): Promise<{ episode: Episode; store: StoreOutput } | { aborted: true; reason: string }> {
+    // STATE_CHECK: behavioral state gate before anything else.
+    const stateCheck = await checkStateBeforeRun(task);
+    if (stateCheck.shouldAbort) {
+      // Requeue task and abort without writing an episode.
+      await supabaseAdmin.from('tasks').update({ status: 'queued' }).eq('id', task.id);
+      return { aborted: true, reason: stateCheck.reason };
+    }
+
     // Phase 3: full loop with observe/reflect/store.
     let reasonOut: ReasonOutput;
     let actOut: ActOutput;
