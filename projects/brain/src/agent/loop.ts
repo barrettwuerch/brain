@@ -11,6 +11,8 @@ import { readSemanticFacts } from '../memory/semantic';
 import { readProcedure } from '../memory/procedural';
 import { writeEpisode } from '../memory/episodic';
 import { checkStateBeforeRun } from '../behavioral/state_manager';
+import { formatAndStoreFinding } from '../bots/research/research_output';
+import { classifyMomentum as researchClassifyMomentum, detectVolumeAnomaly as researchDetectVolumeAnomaly, scanMarketTrend as researchScanMarketTrend, scoreRQS as researchScoreRQS } from '../bots/research/research_compute';
 
 export interface ReasonInput {
   task: Task;
@@ -147,7 +149,30 @@ export class BrainLoop {
     // On success, mark task completed.
     await supabaseAdmin.from('tasks').update({ status: 'completed' }).eq('id', task.id);
 
-    return { episode: { ...episode, id: storeOut.episode_id ?? episode.id }, store: storeOut };
+    const storedEpisode = { ...episode, id: storeOut.episode_id ?? episode.id };
+
+    // Research Bot: format + store finding (needs stored episode UUID for supporting_episode_ids).
+    if (task.agent_role === 'research' && storeOut.episode_id) {
+      try {
+        const finding = await formatAndStoreFinding(storedEpisode, actOut.result);
+        if (finding) {
+          // Attach finding_id to lessons on the episode row.
+          const lessons = Array.isArray(storedEpisode.lessons) ? [...storedEpisode.lessons] : [];
+          lessons.push(`finding_id:${finding.id}`);
+
+          await supabaseAdmin
+            .from('episodes')
+            .update({ lessons })
+            .eq('id', storeOut.episode_id);
+
+          storedEpisode.lessons = lessons;
+        }
+      } catch (e: any) {
+        console.error('[research_output] failed to store finding:', e?.message ?? e);
+      }
+    }
+
+    return { episode: storedEpisode, store: storeOut };
   }
 
   /** REASON: decide what to do given task + retrieved memory. */
@@ -232,7 +257,7 @@ export class BrainLoop {
 
     const memoryContext = parts.map((p) => p.text).join('\n\n');
 
-    const system = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n\nDo not include Observation; Observation is produced by ACT.`;
+    const system = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n\nDo not include Observation; Observation is produced by ACT.`;
 
     const user = `MEMORY CONTEXT\n${memoryContext}\n\nTASK\nTask type: ${input.task.task_type}\nTask input (JSON): ${JSON.stringify(input.task.task_input)}\n\nINSTRUCTIONS\nUse a ReAct-like structure internally: Thought -> Action (choose one).\nOutput must be JSON only.`;
 
@@ -288,8 +313,19 @@ export class BrainLoop {
     const tInput: any = args.task.task_input || {};
     const action_taken = a;
 
-    // Trading computations (use frozen snapshot in task_input; no API calls here).
+    // Research computations (use frozen snapshot in task_input; no API calls here).
+    // Note: Research task snapshots use `prices`, `currentVol`, `avgVol`.
     if (a.type === 'scan_market_trend') {
+      const isResearch = args.task.agent_role === 'research' || ['market_trend_scan'].includes(args.task.task_type);
+      if (isResearch) {
+        const prices: number[] = Array.isArray(tInput.prices) ? tInput.prices.map(Number) : [];
+        const res = researchScanMarketTrend(prices);
+        const expected = tInput.expected_answer;
+        const outcome_score = expected ? grade(expected, res) : undefined;
+        return { action_taken, result: res, outcome_score };
+      }
+
+      // Trading curriculum tasks snapshot uses `price_points_yes`.
       const prices: number[] = Array.isArray(tInput.price_points_yes) ? tInput.price_points_yes.map(Number) : [];
       const trend = trendFromYesPrices(prices);
       const expected = tInput.expected_answer;
@@ -298,6 +334,16 @@ export class BrainLoop {
     }
 
     if (a.type === 'detect_volume_anomaly') {
+      const isResearch = args.task.agent_role === 'research' || ['volume_anomaly_detect'].includes(args.task.task_type);
+      if (isResearch) {
+        const currentVol = Number(tInput.currentVol ?? 0);
+        const avgVol = Number(tInput.avgVol ?? 0);
+        const res = researchDetectVolumeAnomaly(currentVol, avgVol);
+        const expected = tInput.expected_answer;
+        const outcome_score = expected ? grade(expected, res) : undefined;
+        return { action_taken, result: res, outcome_score };
+      }
+
       const current_volume = Number(tInput.current_volume ?? 0);
       const avg_volume = Number(tInput.avg_volume ?? 0);
       const res = volumeAnomaly(current_volume, avg_volume);
@@ -307,11 +353,28 @@ export class BrainLoop {
     }
 
     if (a.type === 'classify_price_momentum') {
+      const isResearch = args.task.agent_role === 'research' || ['price_momentum_classify'].includes(args.task.task_type);
+      if (isResearch) {
+        const prices: number[] = Array.isArray(tInput.prices) ? tInput.prices.map(Number) : [];
+        const res = researchClassifyMomentum(prices);
+        const expected = tInput.expected_answer;
+        const outcome_score = expected ? grade(expected, res) : undefined;
+        return { action_taken, result: res, outcome_score };
+      }
+
       const prices: number[] = Array.isArray(tInput.price_points_yes) ? tInput.price_points_yes.map(Number) : [];
       const momentum = classifyMomentum(prices);
       const expected = tInput.expected_answer;
       const outcome_score = expected ? grade(expected, { momentum }) : undefined;
       return { action_taken, result: { momentum }, outcome_score };
+    }
+
+    if (a.type === 'score_rqs') {
+      const components = tInput.components ?? tInput.rqs_components;
+      const rqs_score = components ? researchScoreRQS(components) : 0;
+      const expected = tInput.expected_answer;
+      const outcome_score = expected ? grade(expected, { rqs_score }) : undefined;
+      return { action_taken, result: { rqs_score }, outcome_score };
     }
 
     // CPI computations (Level 1)

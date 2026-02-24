@@ -10,7 +10,9 @@
     "dev:evaluate": "tsx src/evaluation/intelligence_score.ts",
     "dev:report": "tsx src/evaluation/daily_report.ts",
     "dev:curriculum": "tsx src/evaluation/curriculum_manager.ts",
-    "dev:check-states": "tsx src/scripts/check_states.ts"
+    "dev:check-states": "tsx src/scripts/check_states.ts",
+    "dev:seed:research": "tsx src/bots/research/research_tasks.ts",
+    "dev:check-findings": "tsx src/scripts/check_findings.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.0",
