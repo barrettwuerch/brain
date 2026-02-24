@@ -150,3 +150,144 @@ export interface StateCheckResult {
   reason: string;
   state: BotBehavioralState;
 }
+
+// ── Trading Desk Interfaces ──────────────────
+
+// ── Research Bot ─────────────────────────────────────────────────
+export type EdgeType =
+  | 'behavioral'
+  | 'structural_flow'
+  | 'liquidity'
+  | 'microstructure'
+  | 'correlated_arbitrage'
+  | 'late_resolution'
+  | 'information_asymmetry';
+
+export type FindingType = 'live_edge' | 'dead_end' | 'preliminary' | 'under_investigation';
+
+export type FindingStatus =
+  | 'under_investigation'
+  | 'passed_to_backtest'
+  | 'in_backtest'
+  | 'archived'
+  | 'deployed';
+
+export type FindingRecommendation = 'pass_to_backtest' | 'investigate_further' | 'archive';
+
+export interface RQSComponents {
+  statistical_rigor: number; // 0-1
+  mechanism_clarity: number; // 0-1
+  novelty: number; // 0-1
+  cost_adjusted_edge: number; // 0-1
+}
+
+export interface ResearchFinding {
+  id: string;
+  created_at: string;
+  bot_id: string;
+  desk: string;
+  agent_role: string;
+  finding_type: FindingType;
+  edge_type: EdgeType;
+  description: string;
+  mechanism: string | null;
+  failure_conditions: string | null;
+  market: string | null;
+  regime_notes: string | null;
+  rqs_score: number | null;
+  rqs_components: RQSComponents | null;
+  sample_size: number | null;
+  observed_rate: number | null;
+  base_rate: number | null;
+  lift: number | null;
+  out_of_sample: boolean;
+  status: FindingStatus;
+  recommendation: FindingRecommendation | null;
+  backtest_result: string | null;
+  supporting_episode_ids: string[];
+  notes: string | null;
+}
+
+// ── Strategy Bot ─────────────────────────────────────────────────
+export interface BacktestReport {
+  strategy_id: string;
+  finding_id: string;
+  in_sample_sharpe: number;
+  out_sample_sharpe: number;
+  in_sample_trades: number;
+  out_sample_trades: number;
+  max_drawdown: number;
+  recovery_periods: number | null;
+  profit_factor: number;
+  regime_results: Record<string, number>;
+  overfitting_flags: string[];
+  slippage_assumed: number;
+  recommendation: 'approved_for_forward_test' | 'return_to_research' | 'archived';
+  reason: string;
+}
+
+// Implied by spec (not listed in Section 03): formal strategy rules derived from a finding.
+export interface StrategyFormalization {
+  finding_id: string;
+  entry_conditions: string;
+  exit_conditions: string;
+  position_sizing_rule: string;
+  invalidation_criteria: string;
+  market_scope: string;
+  created_at: string;
+  created_by: string; // bot_id
+}
+
+// ── Risk Bot ─────────────────────────────────────────────────────
+export interface RiskSnapshot {
+  timestamp: string;
+  open_positions: number;
+  unrealized_pnl: number;
+  drawdown_from_peak: number;
+  drawdown_velocity: number;
+  kelly_multiplier: number;
+  enp: number;
+  active_breakers: string[];
+  warnings: string[];
+}
+
+export interface CircuitBreakerEvent {
+  breaker_type: string;
+  triggered_at: string;
+  trigger_value: number;
+  threshold: number;
+  action_taken: string;
+}
+
+// ── Execution Bot ─────────────────────────────────────────────────
+export type OrderType = 'market' | 'limit' | 'stop';
+export type OrderStatus = 'pending' | 'filled' | 'partial' | 'rejected' | 'cancelled';
+
+export interface OrderRecord {
+  order_id: string;
+  bot_id: string;
+  market_ticker: string;
+  order_type: OrderType;
+  side: 'yes' | 'no';
+  size: number;
+  limit_price: number | null;
+  fill_price: number | null;
+  fill_size: number;
+  status: OrderStatus;
+  slippage: number | null;
+  attempt_count: number;
+  created_at: string;
+  filled_at: string | null;
+}
+
+// ── Intelligence Bot ─────────────────────────────────────────────
+export interface ConsolidationReport {
+  date: string;
+  episodes_read: number;
+  facts_extracted: number;
+  facts_updated: number;
+  facts_retired: number;
+  episodes_pruned: number;
+  cross_desk_learnings: number;
+  bots_evaluated: string[];
+}
