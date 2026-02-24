@@ -1,0 +1,17 @@
+{
+  "name": "brain",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:seed:level1": "tsx src/tasks/level1.ts",
+    "dev:run-once": "tsx src/scripts/run_once.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.0",
+    "dotenv": "^17.3.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.8.2"
+  }
+}

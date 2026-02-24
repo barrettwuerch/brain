@@ -2,6 +2,7 @@
 // REASON → ACT → OBSERVE → REFLECT → STORE
 
 import type { Episode, EpisodeOutcome, Task } from '../types';
+import { grade, maxMoM, maxRow, parseCpi, trendLastN } from './level1_compute';
 
 export interface ReasonInput {
   task: Task;
@@ -13,12 +14,16 @@ export interface ReasonInput {
 }
 
 export interface ReasonOutput {
-  reasoning_text: string;
-  planned_action: Record<string, any>; // Task-specific action payload
+  chain_of_thought: string;
+  proposed_action: Record<string, any>; // Task-specific action payload
+  confidence: number;                  // 0..1
+  uncertainty_flags: string[];
 }
 
 export interface ActOutput {
   action_taken: Record<string, any>;   // Exact action executed
+  result: Record<string, any>;         // Raw result (before grading)
+  outcome_score?: number;              // 0..1 when ground truth available
 }
 
 export interface ObserveOutput {
@@ -58,7 +63,7 @@ export class BrainLoop {
     });
 
     // 2) ACT
-    const actOut = await this.act(reasonOut);
+    const actOut = await this.act({ task, reasonOut });
 
     // 3) OBSERVE
     const obsOut = await this.observe(actOut);
@@ -73,7 +78,7 @@ export class BrainLoop {
       task_id: task.id,
       task_type: task.task_type,
       task_input: task.task_input,
-      reasoning: reasonOut.reasoning_text,
+      reasoning: reasonOut.chain_of_thought,
       action_taken: actOut.action_taken,
       observation: obsOut.observation,
       reflection: refOut.reflection_text,
@@ -92,18 +97,69 @@ export class BrainLoop {
 
   /** REASON: decide what to do given task + retrieved memory. */
   async reason(input: ReasonInput): Promise<ReasonOutput> {
-    // TODO: implement ReAct-style reasoning prompt injection.
-    // Must externalize reasoning as text, plus a single next action.
+    // Phase 2: ReAct-style reasoner.
+    // - MEMORY CONTEXT slot exists (empty for now)
+    // - TASK injected
+    // - INSTRUCTIONS enforce JSON-only output
+
+    const memoryContext = [
+      `EPISODIC:\n${input.memory.episodic.map(e => `- ${e.task_type}: ${e.outcome} (${e.outcome_score})`).join('\n') || '(none)'}`,
+      `SEMANTIC:\n${input.memory.semantic.map(f => `- (${f.confidence}) ${f.fact}`).join('\n') || '(none)'}`,
+      `PROCEDURE:\n${input.memory.procedure ? input.memory.procedure.approach.join('\n') : '(none)'}`,
+    ].join('\n\n');
+
+    const system = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n\nDo not include Observation; Observation is produced by ACT.`;
+
+    const user = `MEMORY CONTEXT\n${memoryContext}\n\nTASK\nTask type: ${input.task.task_type}\nTask input (JSON): ${JSON.stringify(input.task.task_input)}\n\nINSTRUCTIONS\nUse a ReAct-like structure internally: Thought -> Action (choose one).\nOutput must be JSON only.`;
+
+    const { claudeText, extractFirstJsonObject } = await import('../lib/anthropic.js');
+    const raw = await claudeText({ system, user, maxTokens: 700, temperature: 0.2 });
+    const parsed = extractFirstJsonObject(raw);
+
     return {
-      reasoning_text: 'TODO(reason): externalized reasoning',
-      planned_action: { type: 'noop' },
+      chain_of_thought: String(parsed.chain_of_thought ?? ''),
+      proposed_action: (parsed.proposed_action ?? { type: 'noop' }) as Record<string, any>,
+      confidence: Number(parsed.confidence ?? 0.5),
+      uncertainty_flags: Array.isArray(parsed.uncertainty_flags) ? parsed.uncertainty_flags.map(String) : [],
     };
   }
 
   /** ACT: execute the planned action (single step). */
-  async act(reason: ReasonOutput): Promise<ActOutput> {
-    // TODO: route to task-specific executor / tool calls.
-    return { action_taken: reason.planned_action };
+  async act(args: { task: Task; reasonOut: ReasonOutput }): Promise<ActOutput> {
+    const a = args.reasonOut.proposed_action || { type: 'noop' };
+
+    // Level-1 computation executors.
+    const tInput: any = args.task.task_input || {};
+    const url: string | undefined = a.dataset_url || tInput?.dataset?.url;
+
+    const action_taken = a;
+
+    if (!url || typeof url !== 'string') {
+      return { action_taken, result: { ok: false, error: 'missing_dataset_url' }, outcome_score: 0 };
+    }
+
+    const csv = await (await fetch(url)).text();
+    const rows = parseCpi(csv);
+
+    let result: Record<string, any> = { ok: true };
+
+    if (a.type === 'compute_max') {
+      const m = maxRow(rows);
+      result = { date: m.date, value: m.value };
+    } else if (a.type === 'compute_max_mom_delta') {
+      const m = maxMoM(rows);
+      result = { date: m.date, delta: m.delta };
+    } else if (a.type === 'compute_trend_last_n') {
+      const n = Number(a.n ?? 6);
+      result = { trend: trendLastN(rows, n) };
+    } else {
+      result = { ok: false, error: `unknown_action_type:${String(a.type)}` };
+    }
+
+    const expected = tInput.expected_answer;
+    const outcome_score = expected ? grade(expected, result) : undefined;
+
+    return { action_taken, result, outcome_score };
   }
 
   /** OBSERVE: capture the full-fidelity outcome from the world/tools. */
