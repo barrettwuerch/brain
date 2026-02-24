@@ -119,6 +119,7 @@ export class BrainLoop {
       action_taken: actOut.action_taken,
       observation: { actual: obsOut.actual, expected: obsOut.expected },
       reflection: refOut.reflection_text,
+      lessons: refOut.lessons,
       outcome: obsOut.outcome,
       outcome_score: obsOut.outcome_score,
       reasoning_score: refOut.reasoning_score,

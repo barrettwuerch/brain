@@ -44,5 +44,8 @@ projects/kalshi/news/rss_baseline.jsonl
 projects/kalshi/news/*launchd*.log
 projects/kalshi/market_snapshots/
 
+# reports / artifacts
+projects/brain/reports/
+
 # temp
 /tmp/

@@ -158,12 +158,14 @@ Complete in **BRAIN_TEST_MODE=true** (no-LLM mode):
 - Memory is injected into the `reason()` MEMORY CONTEXT slot with a strict token budget (max 3,000 tokens estimated)
 - ✅ Migration 0003 complete: add `agent_role`, `desk`, `bot_id` to `episodes`, `tasks`, `procedures`
 
-### 🔄 Phase 5 — Intelligence Scores (IN PROGRESS)
-Implement intelligence score tracking and reporting:
-- accuracy trend over time
-- calibration (confidence vs correctness)
-- transfer tests (Task A learning improves Task B)
-- weekly intelligence score computation stored in `intelligence_scores`
+### ✅ Phase 5 — Intelligence Scores (COMPLETE)
+- Accuracy trend calculator (`src/evaluation/accuracy_trend.ts`)
+- Calibration scorer via Spearman correlation (`src/evaluation/calibration.ts`)
+- Intelligence score computation + write to `intelligence_scores` (`src/evaluation/intelligence_score.ts`)
+- Daily report generator + file output (`src/evaluation/daily_report.ts` → `reports/YYYY-MM-DD.txt`)
+
+### 🔄 Phase 6 — Curriculum Manager (IN PROGRESS)
+Promote the brain from CPI tasks → trading tasks when IS > 0.15 sustained for 5 days.
 
 ---
 

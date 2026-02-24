@@ -47,6 +47,7 @@ create table if not exists public.episodes (
   action_taken jsonb not null,        -- exact action(s) performed
   observation jsonb not null,         -- exact result from the world
   reflection text not null,           -- Reflexion-style reflection
+  lessons text[] not null default '{}',
 
   outcome text not null check (outcome in ('correct','incorrect','partial')),
   outcome_score double precision not null check (outcome_score >= 0 and outcome_score <= 1),
@@ -65,6 +66,7 @@ create index if not exists episodes_outcome_idx on public.episodes (outcome);
 create index if not exists episodes_agent_role_idx on public.episodes (agent_role);
 create index if not exists episodes_desk_idx on public.episodes (desk);
 create index if not exists episodes_bot_id_idx on public.episodes (bot_id);
+create index if not exists episodes_lessons_gin_idx on public.episodes using gin (lessons);
 
 -- Vector index for similarity search (requires enough rows to be effective)
 create index if not exists episodes_embedding_ivfflat_idx

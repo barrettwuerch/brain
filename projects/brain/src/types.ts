@@ -37,6 +37,7 @@ export interface Episode {
   action_taken: Record<string, any>;
   observation: Record<string, any>;
   reflection: string;
+  lessons?: string[] | null;
 
   outcome: EpisodeOutcome;
   outcome_score: number;      // 0..1

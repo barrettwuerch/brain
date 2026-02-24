@@ -34,6 +34,7 @@ export async function writeEpisode(input: EpisodicWriteInput): Promise<{ id: str
     action_taken: input.episode.action_taken,
     observation: input.episode.observation,
     reflection: input.episode.reflection,
+    lessons: input.episode.lessons ?? [],
     outcome: input.episode.outcome,
     outcome_score: input.episode.outcome_score,
     reasoning_score: input.episode.reasoning_score,
