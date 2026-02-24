@@ -151,6 +151,7 @@ Complete in **BRAIN_TEST_MODE=true** (no-LLM mode):
 
 ### 🔄 Phase 4 — Memory Retrieval (IN PROGRESS)
 Implement memory injection into `reason()` MEMORY CONTEXT slot:
+- ✅ Migration 0003 complete: add `agent_role`, `desk`, `bot_id` to `episodes`, `tasks`, `procedures`
 - `readSimilarEpisodes()` should be used to pull 3–5 similar episodes
 - inject retrieved episodes + facts + procedure into the prompt with a strict token budget
 

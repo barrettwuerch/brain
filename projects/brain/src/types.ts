@@ -11,6 +11,11 @@ export interface Task {
   task_type: string;
   task_input: Record<string, any>;
 
+  // Trading desk scoping (nullable for generic brain tasks)
+  agent_role?: string | null;
+  desk?: string | null;
+  bot_id?: string | null;
+
   status: TaskStatus;
   tags: string[];
 }
@@ -22,6 +27,11 @@ export interface Episode {
   task_id?: string | null;
   task_type: string;
   task_input: Record<string, any>;
+
+  // Trading desk scoping (nullable for generic brain episodes)
+  agent_role?: string | null;
+  desk?: string | null;
+  bot_id?: string | null;
 
   reasoning: string;
   action_taken: Record<string, any>;
@@ -62,6 +72,11 @@ export interface Procedure {
   last_updated: string;
 
   task_type: string;
+
+  // Trading desk scoping (nullable for generic brain procedures)
+  agent_role?: string | null;
+  desk?: string | null;
+  bot_id?: string | null;
 
   approach: string[];
   cautions: string[];
