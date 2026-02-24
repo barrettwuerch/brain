@@ -233,6 +233,74 @@ create table if not exists public.bot_state_transitions (
 create index if not exists bst_bot_id_idx on public.bot_state_transitions (bot_id);
 create index if not exists bst_created_at_idx on public.bot_state_transitions (created_at desc);
 
+-- 7) Research desk findings
+create table if not exists public.research_findings (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  bot_id text not null,
+  desk text not null default 'prediction_markets',
+  agent_role text not null default 'research',
+
+  finding_type text not null
+    check (finding_type in ('live_edge','dead_end','preliminary','under_investigation')),
+  edge_type text not null
+    check (edge_type in (
+      'behavioral',
+      'structural_flow',
+      'liquidity',
+      'microstructure',
+      'correlated_arbitrage',
+      'late_resolution',
+      'information_asymmetry'
+    )),
+
+  description text not null,
+  mechanism text,
+  failure_conditions text,
+  market text,
+  regime_notes text,
+
+  rqs_score float,
+  rqs_components jsonb,
+
+  sample_size int,
+  observed_rate float,
+  base_rate float,
+  lift float,
+  out_of_sample boolean default false,
+
+  status text not null default 'under_investigation'
+    check (status in ('under_investigation','passed_to_backtest','in_backtest','archived','deployed')),
+  recommendation text
+    check (recommendation in ('pass_to_backtest','investigate_further','archive') or recommendation is null),
+  backtest_result text,
+
+  supporting_episode_ids uuid[] default '{}',
+  notes text
+);
+
+create index if not exists rf_bot_id_idx on public.research_findings (bot_id);
+create index if not exists rf_status_idx on public.research_findings (status);
+create index if not exists rf_finding_type_idx on public.research_findings (finding_type);
+create index if not exists rf_edge_type_idx on public.research_findings (edge_type);
+create index if not exists rf_rqs_idx on public.research_findings (rqs_score desc);
+
+-- 8) Knowledge library (stub)
+create table if not exists public.knowledge_library (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  title text not null,
+  source text not null,
+  domain text not null,
+  agent_role text,
+  content text not null,
+  embedding vector(1536),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists kl_domain_idx on public.knowledge_library (domain);
+create index if not exists kl_agent_role_idx on public.knowledge_library (agent_role);
+
 -- Phase 1 RLS posture (developer-friendly): public read; writes via service role.
 -- You can tighten later with auth.
 alter table public.tasks enable row level security;
