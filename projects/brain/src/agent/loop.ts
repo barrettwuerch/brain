@@ -24,6 +24,12 @@ import {
   evaluateCircuitBreakers,
   getKellyMultiplier,
 } from '../bots/risk/risk_compute';
+import {
+  computePositionSize as execComputePositionSize,
+  estimateSlippage as execEstimateSlippage,
+  isTradeableMarket as execIsTradeableMarket,
+} from '../bots/execution/execution_compute';
+import { evaluateExit, handlePartialFill, placeOrder } from '../bots/execution/order_manager';
 
 export interface ReasonInput {
   task: Task;
@@ -307,7 +313,7 @@ export class BrainLoop {
 
     const memoryContext = parts.map((p) => p.text).join('\n\n');
 
-    const system = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n\nDo not include Observation; Observation is produced by ACT.`;
+    const system = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n- { \'type\': 'place_limit_order' }\n- { \'type\': 'manage_open_position' }\n- { \'type\': 'compute_position_size' }\n- { \'type\': 'handle_partial_fill' }\n- { \'type\': 'evaluate_market_conditions' }\n\nDo not include Observation; Observation is produced by ACT.`;
 
     const user = `MEMORY CONTEXT\n${memoryContext}\n\nTASK\nTask type: ${input.task.task_type}\nTask input (JSON): ${JSON.stringify(input.task.task_input)}\n\nINSTRUCTIONS\nUse a ReAct-like structure internally: Thought -> Action (choose one).\nOutput must be JSON only.`;
 
@@ -339,6 +345,11 @@ export class BrainLoop {
       if (input.task.task_type === 'detect_concentration') proposed_action = { type: 'detect_concentration' };
       if (input.task.task_type === 'evaluate_circuit_breakers') proposed_action = { type: 'evaluate_circuit_breakers' };
       if (input.task.task_type === 'size_position') proposed_action = { type: 'size_position' };
+      if (input.task.task_type === 'place_limit_order') proposed_action = { type: 'place_limit_order' };
+      if (input.task.task_type === 'manage_open_position') proposed_action = { type: 'manage_open_position' };
+      if (input.task.task_type === 'compute_position_size') proposed_action = { type: 'compute_position_size' };
+      if (input.task.task_type === 'handle_partial_fill') proposed_action = { type: 'handle_partial_fill' };
+      if (input.task.task_type === 'evaluate_market_conditions') proposed_action = { type: 'evaluate_market_conditions' };
 
       return {
         chain_of_thought:
@@ -493,6 +504,54 @@ export class BrainLoop {
         result: { approved_size, kelly_fraction: k, reason: k > 0 ? 'ok' : 'halted_by_drawdown' },
         outcome_score: undefined,
       };
+    }
+
+    // Execution computations
+    if (args.task.agent_role === 'execution' && args.task.task_type === 'evaluate_market_conditions') {
+      const res = execIsTradeableMarket(tInput.spread, tInput.avg_spread, tInput.hoursToResolution);
+      return { action_taken, result: res, outcome_score: undefined };
+    }
+
+    if (args.task.agent_role === 'execution' && args.task.task_type === 'compute_position_size') {
+      const slippage = execEstimateSlippage(tInput.openInterest);
+      const res = execComputePositionSize(tInput.edgeEstimate, tInput.kelly_fraction, tInput.account_equity, slippage);
+      return { action_taken, result: res, outcome_score: undefined };
+    }
+
+    if (args.task.agent_role === 'execution' && args.task.task_type === 'place_limit_order') {
+      // Guard 1: market conditions
+      const cond = execIsTradeableMarket(tInput.spread, tInput.avg_spread, tInput.hoursToResolution);
+      if (!cond.tradeable) return { action_taken, result: { placed: false, reason: cond.reason }, outcome_score: undefined };
+
+      // Guard 2: risk approval required
+      if (tInput.riskApprovedSize === null || tInput.riskApprovedSize === undefined) {
+        return { action_taken, result: { placed: false, reason: 'missing_risk_approval' }, outcome_score: undefined };
+      }
+
+      const order = await placeOrder({
+        order_id: null as any,
+        bot_id: args.task.bot_id ?? 'execution-bot-1',
+        market_ticker: tInput.ticker,
+        order_type: 'limit' as any,
+        side: tInput.side,
+        size: tInput.riskApprovedSize,
+        limit_price: tInput.limit_price,
+        attempt_count: 1,
+        openInterest: tInput.openInterest,
+      });
+
+      return { action_taken: { ...action_taken, order }, result: order as any, outcome_score: undefined };
+    }
+
+    if (args.task.agent_role === 'execution' && args.task.task_type === 'manage_open_position') {
+      const o = tInput.order;
+      const res = evaluateExit(o.fill_price, tInput.current_price, tInput.stop_level, tInput.profit_target, o.side);
+      return { action_taken, result: res, outcome_score: undefined };
+    }
+
+    if (args.task.agent_role === 'execution' && args.task.task_type === 'handle_partial_fill') {
+      const res = handlePartialFill(tInput.order, tInput.currentSpread, tInput.avgSpread);
+      return { action_taken, result: res, outcome_score: undefined };
     }
 
     // Strategy computations
