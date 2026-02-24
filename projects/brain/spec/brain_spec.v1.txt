@@ -1,0 +1,606 @@
+
+THE BRAIN
+Architecture Specification for an Agent That Gets Smarter
+MEMORY  ·  REASONING QUALITY  ·  GENERALIZATION
+
+MEMORY
+Remembers what happened, why it failed, and what worked — across every run.
+REASONING
+Knows if it's getting smarter vs. getting lucky. Self-evaluates and corrects.
+GENERALIZATION
+Applies what it learned on Task A to Task B without starting over.
+
+
+01
+The Core Loop
+Everything the brain does flows through five steps
+
+PHILOSOPHY
+The brain is not a pipeline. A pipeline executes the same sequence every time. The brain makes decisions at every step — what to do, how to do it, and what went wrong. The loop is the same. The decisions inside it change as the brain accumulates experience.
+
+REASON
+→
+ACT
+→
+OBSERVE
+→
+REFLECT
+→
+STORE
+
+This loop is borrowed from two of the most influential agent architectures in the research literature. ReAct (Yao et al., 2022) interleaves reasoning and acting — the agent thinks out loud before every action, making its reasoning transparent and debuggable. Reflexion (Shinn et al., 2023) adds the self-reflection step: after each run, the agent evaluates what went wrong and generates verbal guidance for the next attempt. Together, they form the foundation of an agent that improves through experience without any model fine-tuning.
+
+The critical insight from Reflexion research: agents using self-reflection improved problem-solving accuracy with statistical significance (p < 0.001) across nine different LLMs. ReAct + Reflexion combined solved 130 out of 134 sequential decision-making tasks versus much lower baselines for either approach alone. Self-reflection is not optional — it is the mechanism that separates an agent that learns from one that just repeats.
+
+Step
+What Happens
+Implemented By
+REASON
+Given the task and all relevant memory, the agent reasons through what to do. It writes its thinking explicitly — not as an internal computation, but as text that can be evaluated, logged, and critiqued.
+ReAct-style Chain-of-Thought prompt. Reasoning is always externalized as structured text.
+ACT
+The agent takes a single, specific action. On a data task: query a dataset, run a calculation, call an API, generate a prediction.
+Task-specific action executor. The action space is defined per task type, not per agent.
+OBSERVE
+The real world responds. The outcome is captured with full fidelity — not just success/fail, but the actual result, any errors, timing, and context.
+Structured observation schema. Every observation is typed and logged to persistent storage immediately.
+REFLECT
+The agent evaluates its performance honestly. Was its reasoning correct? Did it predict the outcome accurately? What specifically went wrong or right? This is the credit-assignment step.
+Reflexion-style self-reflection prompt. Reflection is scored — the agent rates its own reasoning quality 1-5 and explains why.
+STORE
+Valuable information is written to the appropriate memory layer — episodic record of this run, updated semantic facts, refined procedural patterns. Dead or redundant memories are pruned.
+Memory writer with consolidation logic. Not all observations become memories. The agent decides what is worth keeping.
+
+WARNING
+STORE is where most agent systems fail. They log everything and retrieve nothing useful, or retrieve everything and drown the context window in noise. The brain must be as disciplined about forgetting as about remembering. Dead memory is toxic — it consumes context space without improving decisions.
+Source: Aurora AI (autonomous agent running since Feb 2026, 181+ sessions): 'By session 113, I had optimized my memory files and freed 49% of the context they had been consuming. That 49% reduction translated directly into longer, more productive sessions.'
+
+
+02
+Memory Architecture
+Three layers that work together — none is sufficient alone
+
+The research literature (CoALA paper, Letta/MemGPT, Mem0, and the 2025 Agent Memory Survey covering 100+ papers) consistently identifies three memory types that an intelligent agent needs. Each serves a different purpose. The mistake most implementations make is building only one — usually episodic — and wondering why the agent doesn't generalize.
+
+PHILOSOPHY
+Episodic memory alone makes an agent over-personalized with no general knowledge. Semantic memory alone makes it knowledgeable but unable to learn from experience. Procedural memory alone makes it good at known workflows but inflexible. All three working together is what produces genuine learning.
+
+Layer 1 — Episodic Memory: What Happened
+Episodic memory stores specific past runs with full context: what the task was, what the agent reasoned, what action it took, what the real world returned, what the agent reflected afterward, and whether it was right. This is the raw experience log. It is the most granular layer — every run creates an episode.
+
+episodic_memory.ts
+// Episode — written after every completed run
+type Episode = {
+  id:           string
+  task_type:    string          // 'data_analysis' | 'prediction' | 'pattern_find' | ...
+  task_input:   object          // the actual task given
+  reasoning:    string          // what the agent thought (ReAct chain-of-thought)
+  action_taken: object          // exactly what the agent did
+  observation:  object          // exactly what the world returned
+  reflection:   string          // what the agent concluded afterward
+  outcome:      'correct' | 'incorrect' | 'partial'
+  outcome_score: number         // 0-1, how correct was the answer
+  reasoning_score: number       // 0-1, how good was the reasoning (self-evaluated)
+  error_type?:  string          // if incorrect: what category of error
+  created_at:   timestamp
+  ttl_days:     number          // how long to keep this episode before pruning
+}
+
+// Retrieval: vector similarity + recency weighting
+// When agent encounters a new task, it retrieves the 3-5 most similar past episodes
+// Similarity = semantic similarity of task_input + same task_type bonus
+// Recency weight: recent episodes score higher, preventing stale anchoring
+// Importance weight: high-outcome-score episodes persist longer (ttl_days extended)
+
+Retrieval is not just semantic similarity. Research from Langchain and the Mem0 paper shows that memory relevance requires three components combined: semantic similarity (is this episode about a similar topic?), recency (was this recent?), and importance (was this a high-signal outcome?). Weighting all three produces much better recall than similarity alone.
+
+Layer 2 — Semantic Memory: What the Agent Has Learned
+Semantic memory is distilled knowledge — facts, patterns, and rules the agent has extracted from multiple episodic experiences. Where episodic memory says 'on Tuesday the agent got this specific task wrong,' semantic memory says 'the agent consistently underperforms on time-series data with fewer than 30 data points.' This is generalized understanding, not raw event recall.
+
+semantic_memory.ts
+// SemanticFact — extracted from episode clusters, updated over time
+type SemanticFact = {
+  id:              string
+  fact:            string          // the learned pattern, stated plainly
+  domain:          string          // what task types this applies to
+  supporting_episode_ids: string[] // which episodes this was extracted from
+  confidence:      number          // 0-1, how reliable is this fact
+  times_confirmed: number          // how many subsequent episodes supported it
+  times_violated:  number          // how many times this fact was wrong
+  created_at:      timestamp
+  last_updated:    timestamp
+}
+
+// Examples of real semantic facts the agent might develop:
+// { fact: 'Predictions on datasets with >15% missing values are unreliable.',
+//   confidence: 0.87, times_confirmed: 12, times_violated: 2 }
+//
+// { fact: 'Moving average outperforms point estimates for smoothed trend questions.',
+//   confidence: 0.72, times_confirmed: 8, times_violated: 3 }
+//
+// { fact: 'Data labeled as quarterly often has hidden seasonal adjustment.',
+//   confidence: 0.91, times_confirmed: 18, times_violated: 1 }
+
+// Consolidation: runs nightly, extracts facts from last 7 days of episodes
+// Confirmation: when a new episode aligns with an existing fact, confidence++
+// Contradiction: when a new episode violates a fact, times_violated++
+// Retirement: if times_violated/times_confirmed > 0.4, fact is flagged for review
+
+Layer 3 — Procedural Memory: How to Do Things Well
+Procedural memory encodes the agent's learned approach to specific task types — not just what it knows, but how it behaves. This is the most powerful layer for generalization: when the agent encounters a new task type, its procedural memory determines how it approaches it based on what has worked before on similar task types.
+
+procedural_memory.ts
+// Procedure — the agent's learned behavioral pattern for a task type
+type Procedure = {
+  id:              string
+  task_type:       string
+  approach:        string[]         // ordered steps the agent has learned to take
+  cautions:        string[]         // pitfalls to watch for
+  success_pattern: string           // what a good outcome looks like
+  failure_pattern: string           // what a bad outcome looks like
+  avg_success_rate: number          // empirical performance on this task type
+  last_updated:    timestamp
+}
+
+// Example procedure built from experience:
+// {
+//   task_type: 'trend_prediction',
+//   approach: [
+//     '1. Check for missing values first. If >15%, flag uncertainty.',
+//     '2. Test for seasonality before choosing aggregation method.',
+//     '3. Use rolling average rather than point estimate for smoother series.',
+//     '4. State confidence interval, not just point prediction.',
+//   ],
+//   cautions: [
+//     'Do not extrapolate beyond 3x the historical window.',
+//     'Label seasonally-adjusted data — do not treat as raw.',
+//   ],
+//   avg_success_rate: 0.74
+// }
+
+// Procedures are injected into the REASON step prompt for the matching task type
+// This is how past learning directly shapes future behavior
+
+Memory Lifecycle — How Memories Move Between Layers
+
+  EXPERIENCE (raw episode)
+       ↓
+  EPISODIC LAYER         ← immediate write after every run
+  (full context, short TTL)
+       ↓  (nightly consolidation job)
+  SEMANTIC LAYER         ← patterns extracted from episode clusters
+  (distilled facts, long TTL, confidence-scored)
+       ↓  (after N confirmed episodes per task type)
+  PROCEDURAL LAYER       ← behavioral patterns for how to approach tasks
+  (stable approach, updated quarterly or on major performance shift)
+       ↓
+  PROMPT INJECTION at REASON step
+  (relevant episodes + semantic facts + procedure for this task type)
+
+Memory Hygiene Rule
+Implementation
+Episode TTL by outcome
+Correct episodes: 30 days. Incorrect episodes: 60 days (failures teach more). Partial: 20 days. High-importance (>0.9 score): 90 days.
+Max context budget
+Memory injected into prompt capped at 3,000 tokens. System auto-compresses by prioritizing: (1) most similar episodes, (2) highest confidence facts, (3) matching procedure.
+Pruning trigger
+If semantic fact confidence drops below 0.3 after 5+ episodes, it is retired. If procedure success rate drops >20% over 30 days, it is flagged for revision.
+One memory action per session
+Consolidation and pruning run in background, not during the reasoning loop. Following practitioner wisdom: memory hygiene is maintenance, not work. Never sacrifice a run cycle to do memory cleanup.
+No redundant storage
+Before writing a new semantic fact, system checks for semantic similarity >0.85 with existing facts. If found, the existing fact is updated rather than a duplicate created.
+
+
+03
+Measuring Reasoning Quality
+Knowing if the brain is getting smarter — not just getting lucky
+
+CRITICAL
+This is the hardest of the three capabilities. An agent that is simply lucky will show high accuracy on easy tasks and fail on hard ones. An agent that is genuinely reasoning well will show accuracy that improves over time, self-evaluations that match actual outcomes, and performance that transfers to new task types. These are different tests.
+
+The research on agent evaluation (MachineLearningMastery 2025 guide, Turingcollege practical guide, Microsoft Dynamics evaluation framework) all converge on the same insight: task success alone is a terrible proxy for reasoning quality. An agent that gets 80% right on Monday and 80% right on Friday has not necessarily improved — it may have just gotten the same tasks in a different order. Real reasoning quality has three signatures.
+
+Signature 1 — Accuracy Trend, Not Snapshot
+A single accuracy number tells you nothing. A trend tells you everything. The brain measures accuracy as a rolling window over the last N runs per task type, and tracks whether that window is improving, stable, or degrading. Improvement must be statistically meaningful — a run of lucky guesses looks like improvement but reverses quickly.
+
+accuracy_trend.ts
+// Accuracy trend calculation
+type AccuracyTrend = {
+  task_type:    string
+  window_size:  number         // last N runs
+  accuracy_t0:  number         // accuracy at start of window
+  accuracy_t1:  number         // accuracy at end of window
+  delta:        number         // t1 - t0 (positive = improving)
+  volatility:   number         // std dev of scores within window
+  trend_class:  'improving' | 'stable' | 'degrading' | 'volatile'
+}
+
+// trend_class rules:
+// improving: delta > 0.05 AND volatility < 0.15
+// stable:    |delta| <= 0.05
+// degrading: delta < -0.05
+// volatile:  volatility >= 0.15 (high variance — likely luck, not skill)
+
+// A 'volatile' trend is treated as a warning — the agent may be guessing
+// Trigger: run 5 additional tasks of this type to get a cleaner signal
+
+Signature 2 — Self-Evaluation Calibration
+A reasoning agent that is genuinely getting smarter should also get better at evaluating itself. After each run, the agent rates its own reasoning quality (1-5). That self-rating is compared against the actual outcome. An agent whose self-ratings correlate strongly with actual outcomes has good calibration — it knows when it's reasoning well. An agent with poor calibration is overconfident or underconfident, and its self-reflections are noise.
+
+calibration.ts
+// Calibration score — computed weekly per task type
+// How well does the agent's self-rating predict actual outcome?
+
+function computeCalibration(episodes: Episode[]): CalibrationReport {
+  // Group episodes by self-rated reasoning_score bucket (1-5)
+  // For each bucket, compute actual avg outcome_score
+  // Good calibration: bucket 5 has highest outcomes, bucket 1 has lowest
+  // Perfect calibration: reasoning_score and outcome_score are monotonically correlated
+
+  const buckets = groupBy(episodes, e => Math.ceil(e.reasoning_score * 5))
+  const calibration = Object.entries(buckets).map(([bucket, eps]) => ({
+    self_rating: parseInt(bucket),
+    avg_actual_outcome: mean(eps.map(e => e.outcome_score)),
+    n: eps.length
+  }))
+
+  return {
+    calibration_curve: calibration,
+    calibration_score: computeSpearmanCorrelation(calibration),  // -1 to 1
+    is_calibrated: spearman > 0.6,   // threshold for 'knows what it knows'
+    overconfident: /* bucket 5 actual < 0.5 — thinks it's right but isn't */,
+    underconfident: /* bucket 1-2 actual > 0.7 — better than it thinks */,
+  }
+}
+
+// Poor calibration is itself a signal: the agent's reflections may be unreliable
+// Response: increase the weight of actual outcomes vs. self-reflections in memory
+
+Signature 3 — Transfer Test: Does It Generalize?
+The definitive test of genuine reasoning versus task-specific memorization: give the agent a task type it has not seen before and measure its performance. A memorizer will perform at chance. A reasoner will apply relevant procedural patterns and semantic facts from similar task types and outperform chance on the first attempt.
+
+transfer_test.ts
+// Transfer test — run when a new task type is introduced
+type TransferTestResult = {
+  new_task_type:       string
+  related_task_types:  string[]      // what the agent already knows
+  baseline_accuracy:   number        // expected accuracy with no memory (chance)
+  actual_accuracy:     number        // what agent achieved on first 10 runs
+  transfer_score:      number        // actual - baseline, normalized
+  memory_used:         string[]      // which semantic facts and procedures were applied
+  transfer_quality:    'positive' | 'neutral' | 'negative'
+}
+
+// transfer_quality:
+// positive: actual > baseline + 0.1 (memory clearly helped)
+// neutral:  |actual - baseline| <= 0.1 (memory neither helped nor hurt)
+// negative: actual < baseline - 0.1 (memory hurt — wrong pattern applied)
+
+// Negative transfer is critical to log — it means the agent is over-generalizing
+// Response: tighten the semantic similarity threshold for procedure retrieval
+// on this task type pair
+
+The Intelligence Score — One Number Per Task Type
+All three signatures combine into a single weekly intelligence score per task type. This is what the daily report shows. It answers the question: is the brain actually getting smarter on this task type or not?
+
+intelligence_score.ts
+// Intelligence Score = weighted combination of all three signatures
+//
+// IS = (0.40 × accuracy_trend_delta)
+//    + (0.35 × calibration_score)
+//    + (0.25 × transfer_score_if_applicable)
+//
+// Ranges: -1.0 (regressing) to +1.0 (strong improvement on all three)
+// Threshold for 'genuinely learning': IS > +0.15 sustained over 2 weeks
+// Threshold for 'in trouble': IS < -0.10 for 1 week → trigger diagnostic run
+
+// Diagnostic run: agent is given 10 tasks it previously got right
+// If accuracy drops >20% → memory may be polluted → run consolidation audit
+// If accuracy holds → likely encountering genuinely harder tasks → expand dataset
+
+
+04
+Generalization
+How knowledge learned on one task transfers to the next
+
+Generalization is the proof that the brain exists. A specialized lookup table gets 100% on questions it has seen. A brain gets 70% on questions it has never seen — because it extracts principles, not just answers.
+
+PHILOSOPHY
+The research literature is clear: LLM-based agents with structured episodic and semantic memory significantly outperform those without it on novel task types. But negative transfer — where the wrong pattern is applied — is equally documented. The brain must know the scope of its knowledge, not just its content.
+
+How Generalization Works in Practice
+When the brain encounters a new task type, it does not start from zero and it does not blindly apply everything it knows. It identifies the most relevant prior knowledge through a structured retrieval process, applies it with appropriate uncertainty, and measures whether it helped or hurt.
+
+generalization.ts
+// Generalization retrieval — runs at the start of REASON step
+async function buildGeneralizationContext(task: Task): Promise<GenContext> {
+
+  // Step 1: Identify task type and find related types from procedural memory
+  const taskType = classifyTask(task)                    // e.g. 'trend_prediction'
+  const relatedTypes = findRelatedTaskTypes(taskType)    // e.g. ['forecasting', 'regression']
+
+  // Step 2: Retrieve relevant episodes via vector search
+  // Search across all task types — not just exact matches
+  const relevantEpisodes = await vectorSearch({
+    query: task.description,
+    filter: { outcome: 'correct' },    // only retrieve successful past runs
+    limit: 5,
+    similarity_threshold: 0.70         // don't retrieve unrelated experiences
+  })
+
+  // Step 3: Pull semantic facts relevant to this task and related types
+  const relevantFacts = await getSemanticFacts({
+    domains: [taskType, ...relatedTypes],
+    min_confidence: 0.65,
+    limit: 10
+  })
+
+  // Step 4: Pull procedure for this task type (or closest related)
+  const procedure = await getProcedure(taskType)
+    ?? await getClosestProcedure(relatedTypes)  // fallback to related type
+
+  // Step 5: Mark uncertainty if using cross-type transfer
+  const usingTransfer = procedure?.task_type !== taskType
+
+  return {
+    relevant_episodes: relevantEpisodes,
+    semantic_facts: relevantFacts,
+    procedure,
+    transfer_warning: usingTransfer
+      ? `Applying procedure from '${procedure.task_type}' — verify it fits this task.`
+      : null
+  }
+}
+
+// The transfer_warning is injected into the REASON prompt
+// Agent is explicitly told when it's operating in transfer territory
+// This produces more cautious, hypothesis-oriented reasoning
+// Which produces more useful self-reflections when it fails
+
+The Generalization Index
+The brain tracks a Generalization Index — a measure of how well knowledge transfers across task types. This is distinct from accuracy within a task type. A high Generalization Index means the brain has developed transferable principles. A low one means it has developed specialized lookup tables that do not transfer.
+
+GI Score
+What It Means
+0.8 – 1.0
+Excellent transfer. What the agent learns on Task A directly improves Task B. The brain has abstracted genuine principles.
+0.5 – 0.8
+Moderate transfer. Some patterns generalize, some do not. The brain has a mix of principles and specialized knowledge.
+0.2 – 0.5
+Limited transfer. The agent is primarily memorizing task-specific patterns. Semantic memory may not be generalizing correctly.
+< 0.2
+No transfer. The agent is effectively a specialized lookup table. Symptom: semantic facts have very narrow domain scope.
+< 0 (negative)
+Harmful transfer. Wrong patterns being applied across task types. Symptom: negative transfer tests. Fix: tighten similarity thresholds.
+
+
+05
+The Training Environment
+Why data tasks are the ideal place to build a brain
+
+A brain needs an environment that grades it honestly, quickly, and cheaply. Data tasks are nearly ideal because the answer either matches the real data or it does not. There is no ambiguity, no subjective quality judgment, and no 24-hour wait for feedback. The brain can run hundreds of iterations per day and learn from every one.
+
+Property
+Data Tasks
+YouTube (rejected)
+Feedback latency
+Seconds — answer is right or wrong immediately
+24 hours minimum for initial performance signal
+Cost per attempt
+API call cost — cents per run
+Hours of production pipeline per video
+Failure diagnosis
+Clear — wrong answer, wrong reasoning, or wrong data handling
+Ambiguous — was it the hook, thumbnail, topic, or algorithm?
+Iteration speed
+Hundreds of runs per day
+3-4 videos per week maximum
+Ground truth
+Objective — real data is the judge
+Subjective — CPM, CTR, retention all noisy
+Transfer signal
+Clear — does performance on Dataset A predict Dataset B?
+Unclear — genre, niche, and audience all confound
+
+Task Types for Brain Training — The Curriculum
+The brain does not get a random mix of tasks. It gets a curriculum — a deliberate progression from simple to complex, with each new task type building on what was learned before. This is how you stress-test generalization: the task types share underlying principles but differ in structure.
+
+	•	Level 1 — Pattern Recognition: Given a dataset, identify the most significant trend, anomaly, or outlier. Clear ground truth. Tests basic reasoning and observation quality.
+	•	Level 2 — Causal Inference: Given two datasets with a relationship, identify whether correlation is likely causal or coincidental. Tests semantic memory and principle application.
+	•	Level 3 — Prediction: Given historical data, predict a future value with a confidence interval. Tests procedural memory and calibration — did the agent correctly estimate its own uncertainty?
+	•	Level 4 — Comparative Analysis: Given two data sources on the same phenomenon, identify where they agree, where they disagree, and why. Tests generalization — applies reasoning from multiple prior task types.
+	•	Level 5 — Novel Task: A task type the brain has not seen before, but which shares principles with previous types. This is the generalization test. The brain must identify which prior knowledge applies and apply it with appropriate caution.
+
+KEY INSIGHT
+The curriculum is not fixed. After the brain demonstrates strong performance on Level 1-3 tasks (accuracy trend improving, good calibration, positive transfer), Level 4 and 5 tasks are introduced. The brain earns harder tasks by demonstrating genuine learning on easier ones.
+
+
+06
+Tech Stack
+Minimal, task-agnostic, and built to swap components
+
+PHILOSOPHY
+Every component of the stack is chosen for one reason: it keeps the brain generic. The reasoning layer has no knowledge of what task is being run. The memory layer does not care whether it is storing data task episodes or future YouTube episodes. The evaluation layer uses the same intelligence score formula regardless of domain.
+
+Component
+Implementation & Rationale
+Reasoning engine
+Claude API (Sonnet 4.5). System prompt is task-agnostic — it describes the brain's role, not the task. Task-specific context is injected at runtime from memory.
+Orchestration
+Node.js. Simple cron-based loop. The orchestrator has one job: run the loop, catch failures, log everything.
+Episodic storage
+Supabase (PostgreSQL). Episodes are structured rows. Full-text search for exact recall. Vector column (pgvector) for semantic retrieval.
+Semantic + procedural storage
+Supabase. Semantic facts and procedures are simple structured tables. No exotic graph databases needed at this scale.
+Vector embeddings
+OpenAI text-embedding-3-small. Low cost, good quality for semantic search across episodes and facts.
+Memory consolidation
+Supabase Edge Function on nightly cron. Reads last 7 days of episodes, calls Claude to extract semantic facts, writes to semantic table.
+Evaluation / reporting
+Supabase analytics queries + Claude to generate the intelligence score narrative. Daily report emailed to Bear at 8am.
+Task runner
+Simple dataset loader — reads CSV or JSON, generates tasks programmatically. No external API dependencies for Level 1-3 tasks.
+
+
+07
+Build Plan
+Six phases — brain first, tasks second, evaluation throughout
+
+CRITICAL
+The build order is strict: memory layer first, then the reasoning loop, then evaluation. Never the other way. A reasoning loop without memory is stateless. Evaluation without the reasoning loop has nothing to measure. The brain must exist before it can learn.
+
+P1
+Database Schema & Memory Foundation  ·  Days 1–2
+
+	•	Supabase project setup. Enable pgvector extension.
+	•	Create episodes table with all Episode fields + vector column for embeddings.
+	•	Create semantic_facts table with domain, confidence, times_confirmed, times_violated.
+	•	Create procedures table with approach array, cautions, success/failure patterns.
+	•	Create intelligence_scores table — stores weekly IS per task type for trending.
+	•	Create tasks table — the queue of tasks for the brain to process.
+	•	TEST: Insert a mock episode. Retrieve it by vector similarity. Confirm retrieval works.
+
+P2
+The Core Loop — Reason, Act, Observe, Reflect, Store  ·  Days 3–5
+
+	•	Build the base Agent class with the five-step loop as explicit method calls.
+	•	REASON step: construct system prompt + memory context injection. Call Claude API with ReAct-style chain-of-thought instruction.
+	•	ACT step: execute the action returned by REASON. For data tasks: query dataset, compute value, return result.
+	•	OBSERVE step: capture full observation — result, any errors, timing, raw data if relevant.
+	•	REFLECT step: call Claude with observation + reasoning trace. Ask it to rate reasoning quality 1-5 and explain what went wrong or right.
+	•	STORE step: write episode to database. Generate embedding via OpenAI. Store embedding in pgvector column.
+	•	TEST: Run the loop on 10 simple tasks manually. Confirm episodes are being written with correct structure and embeddings.
+
+P3
+Memory Retrieval & Injection  ·  Days 6–7
+
+	•	Build episodic retrieval: vector search for top-5 similar episodes. Weight by recency + importance.
+	•	Build semantic fact retrieval: query by domain match + confidence threshold.
+	•	Build procedure retrieval: exact task type match, fallback to closest related type.
+	•	Build memory context assembler: combines all three layers into a formatted prompt section within the 3,000 token budget.
+	•	Wire memory injection into the REASON step system prompt.
+	•	TEST: Run the same task twice with identical setup. Second run should retrieve first run's episode. Confirm the retrieved context changes the reasoning output.
+
+P4
+Memory Consolidation & Pruning  ·  Days 8–9
+
+	•	Build nightly consolidation job (Supabase Edge Function on cron).
+	•	Consolidation logic: fetch last 7 days of episodes. Cluster by task type. Call Claude to extract semantic facts from each cluster.
+	•	Fact deduplication: before writing a new semantic fact, check cosine similarity with existing facts. Merge if similarity > 0.85.
+	•	Fact confidence update: when new episodes align with or contradict existing facts, update times_confirmed / times_violated.
+	•	Episode pruning: apply TTL rules. High-importance episodes extended. Low-signal episodes expired.
+	•	Procedure update: if task type has >20 episodes, rebuild procedure from top-performing episodes.
+	•	TEST: Run 20 episodes of the same task type. Run consolidation. Confirm at least 2 semantic facts were created. Confirm oldest low-importance episodes were pruned.
+
+P5
+Evaluation — Intelligence Score & Calibration  ·  Days 10–11
+
+	•	Build accuracy trend calculator per task type over rolling window.
+	•	Build calibration scorer: correlate self-rated reasoning_score with actual outcome_score. Compute Spearman correlation.
+	•	Build transfer test runner: introduce new task type, measure performance on first 10 runs vs. baseline.
+	•	Compute Intelligence Score as weighted combination of all three signals.
+	•	Build daily report generator: Claude synthesizes IS trends into a plain-language summary — what the brain learned this week, where it is improving, where it is struggling.
+	•	Wire report delivery: email via Resend at 8am.
+	•	TEST: After 30 episodes across 2 task types, report should show a meaningful IS score and at least one specific insight about the brain's performance.
+
+P6
+Task Curriculum & Launch  ·  Days 12–14
+
+	•	Build task generator for Level 1 tasks (pattern recognition) from public datasets.
+	•	Build task generator for Level 2 tasks (causal inference).
+	•	Build curriculum manager: promote brain to next level when IS > 0.15 sustained for 5 days.
+	•	Run 100 Level 1 tasks. Monitor loop, memory writes, and report quality.
+	•	Introduce Level 2 tasks. Measure transfer score — confirm memory from Level 1 provides positive transfer.
+	•	Confirm the brain is running autonomously: loop executes without intervention, episodes accumulate, IS trends visible in daily report.
+	•	MILESTONE: Brain has run >100 tasks, IS is positive and trending upward, calibration score > 0.6, and at least one positive transfer result documented.
+
+KEY INSIGHT
+Phase 6 is not the end. It is the proof of concept. Once the brain demonstrates genuine learning on data tasks — improving accuracy, good calibration, positive transfer — it is ready to be pointed at a new domain. YouTube, prediction markets, anything. The task changes. The brain does not.
+
+
+08
+Full Database Schema
+The complete Supabase schema for all brain tables
+
+schema.sql
+-- Enable vector extension
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- TASKS: the queue of work for the brain
+CREATE TABLE tasks (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_type   TEXT NOT NULL,
+  level       INT  NOT NULL DEFAULT 1,
+  input       JSONB NOT NULL,
+  ground_truth JSONB NOT NULL,   -- the real answer, revealed after attempt
+  status      TEXT DEFAULT 'queued',  -- queued | processing | complete | failed
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+-- EPISODES: every run the brain has ever made
+CREATE TABLE episodes (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_id         UUID REFERENCES tasks(id),
+  task_type       TEXT NOT NULL,
+  task_input      JSONB,
+  reasoning       TEXT,          -- full chain-of-thought from REASON step
+  action_taken    JSONB,
+  observation     JSONB,
+  reflection      TEXT,          -- self-reflection from REFLECT step
+  outcome         TEXT,          -- 'correct' | 'incorrect' | 'partial'
+  outcome_score   FLOAT,         -- 0-1
+  reasoning_score FLOAT,         -- 0-1 (self-rated in REFLECT step)
+  error_type      TEXT,          -- category of error if incorrect
+  embedding       vector(1536),  -- OpenAI text-embedding-3-small
+  expires_at      TIMESTAMPTZ,   -- TTL-based pruning
+  created_at      TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX ON episodes USING ivfflat (embedding vector_cosine_ops);
+CREATE INDEX ON episodes (task_type, outcome_score);
+
+-- SEMANTIC_FACTS: distilled knowledge extracted from episodes
+CREATE TABLE semantic_facts (
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  fact                  TEXT NOT NULL,
+  domain                TEXT NOT NULL,
+  supporting_episode_ids UUID[],
+  confidence            FLOAT DEFAULT 0.5,
+  times_confirmed       INT DEFAULT 0,
+  times_violated        INT DEFAULT 0,
+  embedding             vector(1536),
+  created_at            TIMESTAMPTZ DEFAULT now(),
+  last_updated          TIMESTAMPTZ DEFAULT now()
+);
+
+-- PROCEDURES: learned behavioral patterns per task type
+CREATE TABLE procedures (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_type        TEXT UNIQUE NOT NULL,
+  approach         TEXT[],        -- ordered steps
+  cautions         TEXT[],
+  success_pattern  TEXT,
+  failure_pattern  TEXT,
+  avg_success_rate FLOAT,
+  episode_count    INT DEFAULT 0,
+  last_updated     TIMESTAMPTZ DEFAULT now()
+);
+
+-- INTELLIGENCE_SCORES: weekly brain performance per task type
+CREATE TABLE intelligence_scores (
+  id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  task_type         TEXT NOT NULL,
+  week_of           DATE NOT NULL,
+  accuracy_trend    FLOAT,
+  calibration_score FLOAT,
+  transfer_score    FLOAT,
+  intelligence_score FLOAT,
+  trend_class       TEXT,
+  is_calibrated     BOOLEAN,
+  generalization_index FLOAT,
+  episode_count     INT,
+  created_at        TIMESTAMPTZ DEFAULT now()
+);
+
+Build the brain first.
+Once it learns to think, every task is just a new environment.
+YouTube. Markets. Anything.
