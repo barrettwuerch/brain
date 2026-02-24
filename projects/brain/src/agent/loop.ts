@@ -13,6 +13,9 @@ import { writeEpisode } from '../memory/episodic';
 import { checkStateBeforeRun } from '../behavioral/state_manager';
 import { formatAndStoreFinding } from '../bots/research/research_output';
 import { classifyMomentum as researchClassifyMomentum, detectVolumeAnomaly as researchDetectVolumeAnomaly, scanMarketTrend as researchScanMarketTrend, scoreRQS as researchScoreRQS } from '../bots/research/research_compute';
+import { formalizeStrategy, detectOverfitting, computeWalkForwardWindows } from '../bots/strategy/strategy_compute';
+import { runBacktest } from '../bots/strategy/backtest_engine';
+import { updateFindingStatus } from '../db/research_findings';
 
 export interface ReasonInput {
   task: Task;
@@ -151,6 +154,26 @@ export class BrainLoop {
 
     const storedEpisode = { ...episode, id: storeOut.episode_id ?? episode.id };
 
+    // Strategy Bot: after run_backtest, update the linked research_finding status.
+    if (task.agent_role === 'strategy' && task.task_type === 'run_backtest') {
+      try {
+        const rep: any = actOut.result;
+        const findingId = String(rep?.finding_id ?? '');
+        const rec = String(rep?.recommendation ?? '');
+        if (findingId) {
+          if (rec === 'approved_for_forward_test') {
+            await updateFindingStatus(findingId, 'in_backtest');
+          } else if (rec === 'archived') {
+            await updateFindingStatus(findingId, 'archived');
+          } else if (rec === 'return_to_research') {
+            await updateFindingStatus(findingId, 'under_investigation');
+          }
+        }
+      } catch (e: any) {
+        console.error('[strategy] failed to update finding status:', e?.message ?? e);
+      }
+    }
+
     // Research Bot: format + store finding (needs stored episode UUID for supporting_episode_ids).
     if (task.agent_role === 'research' && storeOut.episode_id) {
       try {
@@ -280,6 +303,10 @@ export class BrainLoop {
       if (input.task.task_type === 'market_trend_scan') proposed_action = { type: 'scan_market_trend' };
       if (input.task.task_type === 'volume_anomaly_detect') proposed_action = { type: 'detect_volume_anomaly' };
       if (input.task.task_type === 'price_momentum_classify') proposed_action = { type: 'classify_price_momentum' };
+      if (input.task.task_type === 'formalize_strategy') proposed_action = { type: 'formalize_strategy' };
+      if (input.task.task_type === 'run_backtest') proposed_action = { type: 'run_backtest' };
+      if (input.task.task_type === 'detect_overfitting') proposed_action = { type: 'detect_overfitting' };
+      if (input.task.task_type === 'walk_forward_analysis') proposed_action = { type: 'walk_forward_analysis' };
 
       return {
         chain_of_thought:
@@ -375,6 +402,35 @@ export class BrainLoop {
       const expected = tInput.expected_answer;
       const outcome_score = expected ? grade(expected, { rqs_score }) : undefined;
       return { action_taken, result: { rqs_score }, outcome_score };
+    }
+
+    // Strategy computations
+    if (a.type === 'formalize_strategy') {
+      const formalization = formalizeStrategy(tInput.finding);
+      const expected = tInput.expected_answer;
+      const outcome_score = expected ? grade(expected, formalization) : undefined;
+      return { action_taken: { ...action_taken, formalization }, result: formalization, outcome_score };
+    }
+
+    if (a.type === 'run_backtest') {
+      const report = runBacktest(tInput.formalization, tInput.outcomes, tInput.slippage);
+      const expected = tInput.expected_answer;
+      const outcome_score = expected ? grade(expected, report) : undefined;
+      return { action_taken: { ...action_taken, report }, result: report as any, outcome_score };
+    }
+
+    if (a.type === 'detect_overfitting') {
+      const res = detectOverfitting(tInput.report);
+      const expected = tInput.expected_answer;
+      const outcome_score = expected ? grade(expected, res) : undefined;
+      return { action_taken: { ...action_taken, overfit: res }, result: res, outcome_score };
+    }
+
+    if (a.type === 'walk_forward_analysis') {
+      const res = computeWalkForwardWindows(tInput.outcomes, tInput.windowSize ?? 20);
+      const expected = tInput.expected_answer;
+      const outcome_score = expected ? grade(expected, res) : undefined;
+      return { action_taken: { ...action_taken, walk_forward: res }, result: res, outcome_score };
     }
 
     // CPI computations (Level 1)

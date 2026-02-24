@@ -12,7 +12,8 @@
     "dev:curriculum": "tsx src/evaluation/curriculum_manager.ts",
     "dev:check-states": "tsx src/scripts/check_states.ts",
     "dev:seed:research": "tsx src/bots/research/research_tasks.ts",
-    "dev:check-findings": "tsx src/scripts/check_findings.ts"
+    "dev:check-findings": "tsx src/scripts/check_findings.ts",
+    "dev:seed:strategy": "tsx src/bots/strategy/strategy_tasks.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.0",
