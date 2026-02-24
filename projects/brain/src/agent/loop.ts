@@ -135,6 +135,32 @@ export class BrainLoop {
 
     const user = `MEMORY CONTEXT\n${memoryContext}\n\nTASK\nTask type: ${input.task.task_type}\nTask input (JSON): ${JSON.stringify(input.task.task_input)}\n\nINSTRUCTIONS\nUse a ReAct-like structure internally: Thought -> Action (choose one).\nOutput must be JSON only.`;
 
+    const testMode = String(process.env.BRAIN_TEST_MODE || '').toLowerCase() === 'true';
+
+    if (testMode) {
+      // Hardcoded but realistic decision-making for Level 1.
+      const url = (input.task.task_input as any)?.dataset?.url;
+      const q = String((input.task.task_input as any)?.question ?? '').toLowerCase();
+      let proposed_action: Record<string, any> = { type: 'compute_max', dataset_url: url };
+      if (q.includes('month-over-month') || q.includes('month over month') || q.includes('delta')) {
+        proposed_action = { type: 'compute_max_mom_delta', dataset_url: url };
+      } else if (q.includes('trending') || q.includes('trend') || q.includes('last 6')) {
+        proposed_action = { type: 'compute_trend_last_n', dataset_url: url, n: 6 };
+      }
+
+      return {
+        chain_of_thought:
+          `MEMORY: (empty in Phase 3 test mode)\n` +
+          `TASK: ${input.task.task_type}\n` +
+          `PLAN: Choose the simplest computation matching the question.\n` +
+          `ACTION: ${JSON.stringify(proposed_action)}\n` +
+          `UNCERTAINTY: Dataset format or missing values could affect parsing.`,
+        proposed_action,
+        confidence: 0.78,
+        uncertainty_flags: ['csv_format_mismatch', 'missing_values_possible'],
+      };
+    }
+
     const { claudeText, extractFirstJsonObject } = await import('../lib/anthropic.js');
     const raw = await claudeText({ system, user, maxTokens: 700, temperature: 0.2 });
     const parsed = extractFirstJsonObject(raw);
@@ -223,6 +249,24 @@ Scoring rubric:
 `;
 
     const user = `TASK\n${JSON.stringify(args.task.task_input)}\n\nCHAIN_OF_THOUGHT\n${args.reasonOut.chain_of_thought}\n\nPROPOSED_ACTION\n${JSON.stringify(args.reasonOut.proposed_action)}\n\nUNCERTAINTY_FLAGS\n${JSON.stringify(args.reasonOut.uncertainty_flags)}\n\nEXPECTED\n${JSON.stringify(args.obsOut.expected)}\n\nACTUAL\n${JSON.stringify(args.obsOut.actual)}\n\nOUTCOME\n${args.obsOut.outcome} score=${args.obsOut.outcome_score}`;
+
+    const testMode = String(process.env.BRAIN_TEST_MODE || '').toLowerCase() === 'true';
+
+    if (testMode) {
+      const correct = args.obsOut.outcome === 'correct';
+      return {
+        reflection_text: correct
+          ? 'Reasoning matched the question type and produced the expected result. Uncertainty flags were appropriate but non-blocking.'
+          : 'I selected an action that did not yield the expected answer. I should have verified the dataset parsing assumptions and cross-checked the computed result against the expected structure before committing.',
+        reasoning_score: correct ? 0.82 : 0.42,
+        lessons: correct
+          ? ['Keep matching question wording to computation type; keep uncertainty flags explicit.']
+          : [
+              'Before acting, restate the expected answer shape (keys/types) and ensure the proposed action will produce it.',
+              'If CSV schema is unknown, inspect header row and handle missing/blank values explicitly.',
+            ],
+      };
+    }
 
     const { claudeText, extractFirstJsonObject } = await import('../lib/anthropic.js');
     const raw = await claudeText({ system, user, maxTokens: 600, temperature: 0.2 });
