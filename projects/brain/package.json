@@ -30,6 +30,7 @@
 
     "dev:check-positions": "tsx src/scripts/check_positions.ts",
     "dev:check-outcomes": "tsx src/scripts/check_outcomes.ts",
+    "dev:reconcile-outcomes": "tsx src/scripts/reconcile_outcomes.ts",
 
     "dev:nightly": "tsx src/scripts/nightly_intelligence.ts",
     "dev:prune": "tsx -e \"import('./src/bots/intelligence/consolidation.ts').then(m => m.pruneExpiredMemories()).then(r => console.log('pruned:', r))\"",

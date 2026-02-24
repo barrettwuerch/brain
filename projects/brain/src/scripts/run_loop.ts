@@ -4,7 +4,6 @@ import 'dotenv/config';
 
 import { supabaseAdmin } from '../lib/supabase';
 import { BrainLoop } from '../agent/loop';
-import { reconcileSufficientOutcomes } from '../db/strategy_outcomes';
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -29,11 +28,6 @@ async function main() {
   while (true) {
     const task = await fetchNextQueued();
     if (!task) {
-      // Maintenance: reconcile any sufficient outcomes even when no tasks are queued.
-      try {
-        await reconcileSufficientOutcomes(25);
-      } catch {}
-
       console.log('Queue empty. Done.');
       break;
     }

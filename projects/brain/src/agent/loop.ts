@@ -358,12 +358,6 @@ export class BrainLoop {
       }
     }
 
-    // Background reconciliation: if any strategy_outcomes reached 'sufficient', evaluate & propagate to findings.
-    try {
-      const { reconcileSufficientOutcomes } = await import('../db/strategy_outcomes');
-      await reconcileSufficientOutcomes(10);
-    } catch {}
-
     return { episode: storedEpisode, store: storeOut };
   }
 

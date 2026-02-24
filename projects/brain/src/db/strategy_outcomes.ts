@@ -74,8 +74,9 @@ async function latestBacktestMetrics(strategyId: string): Promise<{ backtestWinR
     .from('episodes')
     .select('observation,created_at,task_type')
     .in('task_type', ['run_backtest', 'run_crypto_backtest'])
-    // PostgREST supports json path filter expressions.
+    // Compare against the most recent APPROVED backtest, not just the most recent run.
     .filter('observation->actual->>finding_id', 'eq', strategyId)
+    .filter('observation->actual->>recommendation', 'eq', 'approved_for_forward_test')
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
