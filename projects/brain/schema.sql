@@ -166,6 +166,15 @@ create index if not exists procedures_desk_idx on public.procedures (desk);
 create index if not exists procedures_bot_id_idx on public.procedures (bot_id);
 
 -- 5) Intelligence scores: time series metrics of reasoning quality
+-- is_score range: approximately -0.3 to 1.0
+-- NOT -1 to +1 as sometimes stated.
+-- Floor is ~-0.3 because calibration (Spearman correlation)
+-- contributes a minimum of -0.20, while outcome and reasoning
+-- scores floor at 0.0 (they are 0/1 binary inputs).
+-- Thresholds PAUSED (-0.10) and EXPLOITING (+0.10) are both
+-- within the realistic range and are correct as specified.
+-- Do not normalize IS assuming -1 floor — use 0 as practical floor
+-- for any display or bucketing logic.
 create table if not exists public.intelligence_scores (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
@@ -193,6 +202,10 @@ create table if not exists public.bot_states (
 
   current_state text not null default 'exploiting'
     check (current_state in ('exploiting','cautious','paused','diagnostic','recovering')),
+  -- CAUTIOUS exits:
+  -- → EXPLOITING if IS > 0.05 for 3 consecutive evaluations
+  -- → PAUSED if IS < -0.10 on latest evaluation
+  -- No manual review required for either transition
   state_since timestamptz not null default now(),
   reason text,
   requires_manual_review boolean not null default false,

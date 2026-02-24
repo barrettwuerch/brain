@@ -478,7 +478,7 @@ export class BrainLoop {
 
     const memoryContext = recentFailuresBlock + parts.map((p) => p.text).join('\n\n');
 
-    const baseSystem = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n- { \'type\': 'place_limit_order' }\n- { \'type\': 'manage_open_position' }\n- { \'type\': 'compute_position_size' }\n- { \'type\': 'handle_partial_fill' }\n- { \'type\': 'evaluate_market_conditions' }\n- { \'type\': 'consolidate_memories' }\n- { \'type\': 'attribute_performance' }\n- { \'type\': 'generate_daily_report' }\n- { \'type\': 'prune_expired_memories' }\n- { \'type\': 'route_research_findings' }\n- { \'type\': 'review_bot_states' }\n- { \'type\': 'generate_priority_map' }\n- { \'type\': 'register_watch_conditions' }\n- { \'type\': 'funding_rate_scan' }\n- { \'type\': 'volatility_regime_detect' }\n- { \'type\': 'correlation_scan' }\n\nDo not include Observation; Observation is produced by ACT.`;
+    const baseSystem = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n- { \'type\': 'place_limit_order' }\n- { \'type\': 'manage_open_position' }\n- { \'type\': 'handle_partial_fill' }\n- { \'type\': 'evaluate_market_conditions' }\n- { \'type\': 'consolidate_memories' }\n- { \'type\': 'attribute_performance' }\n- { \'type\': 'generate_daily_report' }\n- { \'type\': 'prune_expired_memories' }\n- { \'type\': 'route_research_findings' }\n- { \'type\': 'review_bot_states' }\n- { \'type\': 'generate_priority_map' }\n- { \'type\': 'register_watch_conditions' }\n- { \'type\': 'funding_rate_scan' }\n- { \'type\': 'volatility_regime_detect' }\n- { \'type\': 'correlation_scan' }\n\nDo not include Observation; Observation is produced by ACT.`;
 
     const roleSkill = await this.loadRoleSkill(input.task.agent_role ?? undefined);
     const system = roleSkill + '\n\n---\n\n' + baseSystem;
@@ -517,7 +517,10 @@ export class BrainLoop {
       if (input.task.task_type === 'size_position') proposed_action = { type: 'size_position' };
       if (input.task.task_type === 'place_limit_order') proposed_action = { type: 'place_limit_order' };
       if (input.task.task_type === 'manage_open_position') proposed_action = { type: 'manage_open_position' };
-      if (input.task.task_type === 'compute_position_size') proposed_action = { type: 'compute_position_size' };
+      // compute_position_size is owned by Risk Bot (size_position task)
+      // Execution Bot reads riskApprovedSize from task_input only
+      // Execution Bot never computes its own approved size
+      // See: src/bots/risk/risk_tasks.ts → size_position
       if (input.task.task_type === 'handle_partial_fill') proposed_action = { type: 'handle_partial_fill' };
       if (input.task.task_type === 'evaluate_market_conditions') proposed_action = { type: 'evaluate_market_conditions' };
       if (input.task.task_type === 'consolidate_memories') proposed_action = { type: 'consolidate_memories' };
@@ -770,20 +773,10 @@ export class BrainLoop {
       return { action_taken, result: res, outcome_score: undefined };
     }
 
-    if (args.task.agent_role === 'execution' && args.task.task_type === 'compute_position_size') {
-      const slippage = execEstimateSlippage(tInput.openInterest);
-      const res = execComputePositionSize(tInput.edgeEstimate, tInput.kelly_fraction, tInput.account_equity, slippage);
-      return { action_taken, result: res, outcome_score: undefined };
-    }
-
-    if (args.task.agent_role === 'execution' && args.task.task_type === 'compute_crypto_position_size') {
-      const slippage = 0.001;
-      const base = execComputePositionSize(tInput.edgeEstimate, tInput.kellyFraction, tInput.accountEquity, slippage);
-      const vol = String(tInput.volRegime ?? 'normal');
-      if (vol === 'extreme') return { action_taken, result: { ...base, size: 0 }, outcome_score: undefined };
-      if (vol === 'elevated') return { action_taken, result: { ...base, size: Math.floor(base.size * 0.75) }, outcome_score: undefined };
-      return { action_taken, result: base, outcome_score: undefined };
-    }
+    // compute_position_size is owned by Risk Bot (size_position task)
+    // Execution Bot reads riskApprovedSize from task_input only
+    // Execution Bot never computes its own approved size
+    // See: src/bots/risk/risk_tasks.ts → size_position
 
     if (args.task.agent_role === 'execution' && args.task.task_type === 'place_limit_order') {
       // Guard 1: market conditions

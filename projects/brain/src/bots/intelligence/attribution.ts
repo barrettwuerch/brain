@@ -2,6 +2,7 @@ import 'dotenv/config';
 
 import { supabaseAdmin } from '../../lib/supabase';
 import { spearman } from '../../evaluation/calibration';
+import { evaluateCautiousTransition, transitionState } from '../../behavioral/state_manager';
 
 export async function attributePerformance(): Promise<{ byBot: Record<string, string>; highlights: string[]; warnings: string[]; strategyHighlights: string[]; strategyWarnings: string[]; strategySummary: { approved: number; accumulating: number; underperforming: number; sufficientNotEvaluated: number } }> {
   const { data: bots, error: botsErr } = await supabaseAdmin.from('bot_states').select('*');
@@ -44,6 +45,24 @@ export async function attributePerformance(): Promise<{ byBot: Record<string, st
 
     const state = String((b as any).current_state);
     if (state === 'paused' || state === 'diagnostic') warnings.push(`${bot_id}: state=${state}`);
+
+    if (state === 'cautious') {
+      // Note: intelligence_scores is not bot-keyed yet; use latest overall 3 scores as a proxy.
+      const { data: rows } = await supabaseAdmin
+        .from('intelligence_scores')
+        .select('value,created_at')
+        .eq('metric', 'intelligence_score')
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      const scores = (rows ?? []).map((r: any) => Number(r.value ?? 0));
+      const decision = evaluateCautiousTransition(bot_id, scores);
+      if (decision !== 'stay') {
+        await transitionState(bot_id, decision as any, 'intelligence_cautious_evaluation');
+        if (decision === 'exploiting') highlights.push(`${bot_id} recovered from CAUTIOUS`);
+        if (decision === 'paused') warnings.push(`${bot_id} escalated CAUTIOUS → PAUSED`);
+      }
+    }
 
     const warm = Boolean((b as any).warm_up);
     const rem = Number((b as any).warm_up_episodes_remaining ?? 0);

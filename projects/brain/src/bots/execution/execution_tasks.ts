@@ -29,12 +29,10 @@ async function main() {
     openInterest: 800,
   });
 
-  await insertTask('compute_position_size', {
-    edgeEstimate: 0.02,
-    kelly_fraction: 0.6,
-    account_equity: 10000,
-    openInterest: 5000,
-  });
+  // compute_position_size is owned by Risk Bot (size_position task)
+  // Execution Bot reads riskApprovedSize from task_input only
+  // Execution Bot never computes its own approved size
+  // See: src/bots/risk/risk_tasks.ts → size_position
 
   const { data: f } = await supabaseAdmin
     .from('research_findings')

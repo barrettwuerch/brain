@@ -117,6 +117,22 @@ export async function triggerDiagnostic(botId: string): Promise<void> {
   console.log(`[diagnostic] triggerDiagnostic stub for bot_id=${botId}`);
 }
 
+export function evaluateCautiousTransition(
+  _botId: string,
+  recentISScores: number[],
+): 'stay' | 'exploiting' | 'paused' {
+  const xs = recentISScores.map(Number).filter((n) => Number.isFinite(n));
+
+  if (xs.length >= 3) {
+    const last3 = xs.slice(0, 3);
+    if (last3.every((v) => v > 0.05)) return 'exploiting';
+  }
+
+  if (xs.length >= 1 && xs[0] < -0.1) return 'paused';
+
+  return 'stay';
+}
+
 /**
  * Phase 6: decrement warm-up counter after an episode is written.
  * Hard constraint: bot_states writes must be centralized here.

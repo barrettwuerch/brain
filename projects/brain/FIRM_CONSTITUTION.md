@@ -38,3 +38,40 @@ All bot_ids, task types, and semantic facts carry wing prefix:
 - No two new adapters built simultaneously
 - Brain loop, memory layer, state machine: never forked per market
 - Alpaca is the execution layer for crypto + equities + options
+
+---
+
+## Pre-Live Verification Gates
+No market goes live with real capital until all four gates below are verified and documented with console output.
+These tests do not require live API keys — they require deliberate test fixtures.
+
+### Gate 1 — End-to-End Chain Test
+A synthetic ResearchFinding with rqs_score=0.70 must flow automatically through the full pipeline without manual intervention:
+Research (status=under_investigation, rqs_score=0.70) → Orchestrator routes to Strategy → Strategy backtests and approves → Orchestrator registers WatchCondition → Scanner fires on the condition → Execution task created and processed → Position opened in positions table
+
+All steps verified with console output saved to tests/pre_live/gate1_chain_test.txt
+
+### Gate 2 — Circuit Breaker Test
+1. Manually trigger max_drawdown circuit breaker
+2. Verify all affected bots transition to PAUSED (check-states output confirms)
+3. Verify manual reset to EXPLOITING works
+4. Verify no new positions were opened while PAUSED
+
+Console output saved to tests/pre_live/gate2_circuit_breaker.txt
+
+### Gate 3 — IS Scoring with Varied Outcomes
+Run 20+ episodes with deliberately mixed outcomes (mix of outcome=correct and outcome=incorrect).
+Verify IS score reflects the mix and is not uniformly 0.475 (test mode artifact).
+Verify calibration_score is non-zero with varied data.
+
+Console output saved to tests/pre_live/gate3_is_scoring.txt
+
+### Gate 4 — Kelly Scaling Verification
+Verify position size reduces correctly at each tier:
+0–5% drawdown: size = base × 1.00
+5–10% drawdown: size = base × 0.60
+10–15% drawdown: size = base × 0.30
+
+Test by calling getKellyMultiplier() directly with values in each tier range.
+
+Console output saved to tests/pre_live/gate4_kelly_scaling.txt

@@ -69,26 +69,48 @@ export async function evaluateAgainstBacktest(
 }
 
 async function latestBacktestMetrics(strategyId: string): Promise<{ backtestWinRate: number; backtestPnl: number } | null> {
-  // Pull the most recent backtest episode where report.finding_id == strategyId.
-  const { data, error } = await supabaseAdmin
+  // Pull the most recent APPROVED backtest episode for this strategyId.
+  // Episode structure may store the BacktestReport in either observation.actual or action_taken.report.
+
+  const q1 = await supabaseAdmin
     .from('episodes')
     .select('observation,created_at,task_type')
     .in('task_type', ['run_backtest', 'run_crypto_backtest'])
-    // Compare against the most recent APPROVED backtest, not just the most recent run.
     .filter('observation->actual->>finding_id', 'eq', strategyId)
     .filter('observation->actual->>recommendation', 'eq', 'approved_for_forward_test')
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
 
-  if (error) throw error;
-  if (!data) return null;
+  if (q1.error) throw q1.error;
+  let data: any = q1.data;
+
+  if (!data) {
+    const q2 = await supabaseAdmin
+      .from('episodes')
+      .select('action_taken,created_at,task_type')
+      .in('task_type', ['run_backtest', 'run_crypto_backtest'])
+      .filter('action_taken->report->>finding_id', 'eq', strategyId)
+      .filter('action_taken->report->>recommendation', 'eq', 'approved_for_forward_test')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (q2.error) throw q2.error;
+    data = q2.data as any;
+
+    if (!data) return null;
+
+    const rep: any = (data as any).action_taken?.report;
+    const backtestWinRate = safeNum(rep?.win_rate);
+    const backtestPnl = safeNum(rep?.total_pnl);
+    return { backtestWinRate, backtestPnl };
+  }
 
   const rep: any = (data as any).observation?.actual;
   const backtestWinRate = safeNum(rep?.win_rate);
   const backtestPnl = safeNum(rep?.total_pnl);
 
-  if (!Number.isFinite(backtestWinRate) && !Number.isFinite(backtestPnl)) return null;
   return { backtestWinRate, backtestPnl };
 }
 
@@ -110,7 +132,10 @@ export async function checkAndUpdateFindingStatus(strategyId: string): Promise<v
 
   if (out.status === 'sufficient') {
     const m = await latestBacktestMetrics(strategyId);
-    if (!m) return;
+    if (!m) {
+      console.warn(`[FEEDBACK] No approved backtest found for strategy ${strategyId} — skipping divergence comparison`);
+      return;
+    }
 
     await evaluateAgainstBacktest(strategyId, m.backtestWinRate, m.backtestPnl);
     // re-check once after evaluation

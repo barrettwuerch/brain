@@ -28,14 +28,8 @@ async function main() {
     volRegime: 'normal',
   });
 
-  await insertTask('compute_crypto_position_size', {
-    edgeEstimate: 0.03,
-    kellyFraction: 0.2,
-    accountEquity: 10000,
-    openInterest: 999999,
-    market_type: 'crypto',
-    volRegime: 'normal',
-  });
+  // compute_position_size is owned by Risk Bot (size_position task)
+  // Execution Bot reads riskApprovedSize from task_input only
 
   await insertTask('place_crypto_limit_order', {
     ticker,
