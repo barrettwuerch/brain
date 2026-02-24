@@ -4,6 +4,8 @@
 import type { Episode, EpisodeOutcome, Task } from '../types';
 import { grade, maxMoM, maxRow, parseCpi, trendLastN } from './level1_compute';
 import { classifyMomentum, trendFromYesPrices, volumeAnomaly } from './trading_compute';
+
+import fs from 'node:fs/promises';
 import { embed } from '../lib/embeddings';
 import { supabaseAdmin } from '../lib/supabase';
 import { readSimilarEpisodes } from '../memory/episodic';
@@ -30,6 +32,9 @@ import {
   isTradeableMarket as execIsTradeableMarket,
 } from '../bots/execution/execution_compute';
 import { evaluateExit, handlePartialFill, placeOrder } from '../bots/execution/order_manager';
+import { attributePerformance as intelligenceAttributePerformance } from '../bots/intelligence/attribution';
+import { extractAndStoreFacts, pruneExpiredMemories } from '../bots/intelligence/consolidation';
+import { generateFullDailyReport } from '../bots/intelligence/report_generator';
 
 export interface ReasonInput {
   task: Task;
@@ -231,6 +236,19 @@ export class BrainLoop {
     return { episode: storedEpisode, store: storeOut };
   }
 
+  async loadRoleSkill(agentRole?: string): Promise<string> {
+    const skillPath = agentRole
+      ? new URL(`../../skills/${agentRole.toUpperCase()}_BOT_SKILL.md`, import.meta.url)
+      : new URL(`../../SKILL.md`, import.meta.url);
+
+    try {
+      return await fs.readFile(skillPath, 'utf8');
+    } catch {
+      const fallback = new URL(`../../SKILL.md`, import.meta.url);
+      return await fs.readFile(fallback, 'utf8');
+    }
+  }
+
   /** REASON: decide what to do given task + retrieved memory. */
   async reason(input: ReasonInput): Promise<ReasonOutput> {
     // Phase 2: ReAct-style reasoner.
@@ -313,7 +331,10 @@ export class BrainLoop {
 
     const memoryContext = parts.map((p) => p.text).join('\n\n');
 
-    const system = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n- { \'type\': 'place_limit_order' }\n- { \'type\': 'manage_open_position' }\n- { \'type\': 'compute_position_size' }\n- { \'type\': 'handle_partial_fill' }\n- { \'type\': 'evaluate_market_conditions' }\n\nDo not include Observation; Observation is produced by ACT.`;
+    const baseSystem = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n- { \'type\': 'place_limit_order' }\n- { \'type\': 'manage_open_position' }\n- { \'type\': 'compute_position_size' }\n- { \'type\': 'handle_partial_fill' }\n- { \'type\': 'evaluate_market_conditions' }\n- { \'type\': 'consolidate_memories' }\n- { \'type\': 'attribute_performance' }\n- { \'type\': 'generate_daily_report' }\n- { \'type\': 'prune_expired_memories' }\n\nDo not include Observation; Observation is produced by ACT.`;
+
+    const roleSkill = await this.loadRoleSkill(input.task.agent_role ?? undefined);
+    const system = roleSkill + '\n\n---\n\n' + baseSystem;
 
     const user = `MEMORY CONTEXT\n${memoryContext}\n\nTASK\nTask type: ${input.task.task_type}\nTask input (JSON): ${JSON.stringify(input.task.task_input)}\n\nINSTRUCTIONS\nUse a ReAct-like structure internally: Thought -> Action (choose one).\nOutput must be JSON only.`;
 
@@ -350,9 +371,15 @@ export class BrainLoop {
       if (input.task.task_type === 'compute_position_size') proposed_action = { type: 'compute_position_size' };
       if (input.task.task_type === 'handle_partial_fill') proposed_action = { type: 'handle_partial_fill' };
       if (input.task.task_type === 'evaluate_market_conditions') proposed_action = { type: 'evaluate_market_conditions' };
+      if (input.task.task_type === 'consolidate_memories') proposed_action = { type: 'consolidate_memories' };
+      if (input.task.task_type === 'attribute_performance') proposed_action = { type: 'attribute_performance' };
+      if (input.task.task_type === 'generate_daily_report') proposed_action = { type: 'generate_daily_report' };
+      if (input.task.task_type === 'prune_expired_memories') proposed_action = { type: 'prune_expired_memories' };
 
+      const skillPreview = roleSkill.split(/\r?\n/).slice(0, 5).join('\n');
       return {
         chain_of_thought:
+          `ROLE SKILL (preview)\n${skillPreview}\n\n` +
           `MEMORY CONTEXT\n${memoryContext}\n` +
           `\nTASK: ${input.task.task_type}\n` +
           `PLAN: Choose the simplest computation matching the question.\n` +
@@ -552,6 +579,30 @@ export class BrainLoop {
     if (args.task.agent_role === 'execution' && args.task.task_type === 'handle_partial_fill') {
       const res = handlePartialFill(tInput.order, tInput.currentSpread, tInput.avgSpread);
       return { action_taken, result: res, outcome_score: undefined };
+    }
+
+    // Intelligence computations
+    if (args.task.agent_role === 'intelligence' && args.task.task_type === 'consolidate_memories') {
+      const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabaseAdmin.from('episodes').select('*').gte('created_at', cutoff);
+      if (error) throw error;
+      const stored = await extractAndStoreFacts((data ?? []) as any);
+      return { action_taken, result: { stored }, outcome_score: undefined };
+    }
+
+    if (args.task.agent_role === 'intelligence' && args.task.task_type === 'attribute_performance') {
+      const out = await intelligenceAttributePerformance();
+      return { action_taken, result: out, outcome_score: undefined };
+    }
+
+    if (args.task.agent_role === 'intelligence' && args.task.task_type === 'generate_daily_report') {
+      const report = await generateFullDailyReport();
+      return { action_taken, result: { ok: true, reportLen: report.length }, outcome_score: undefined };
+    }
+
+    if (args.task.agent_role === 'intelligence' && args.task.task_type === 'prune_expired_memories') {
+      const out = await pruneExpiredMemories();
+      return { action_taken, result: out, outcome_score: undefined };
     }
 
     // Strategy computations

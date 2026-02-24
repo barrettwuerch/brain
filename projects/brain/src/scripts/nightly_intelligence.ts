@@ -1,37 +1,29 @@
 import 'dotenv/config';
 
 import { supabaseAdmin } from '../lib/supabase';
+import { extractAndStoreFacts, pruneExpiredMemories } from '../bots/intelligence/consolidation';
 import { attributePerformance } from '../bots/intelligence/attribution';
-import { extractAndStoreFacts, pruneExpiredEpisodes, retireWeakFacts } from '../bots/intelligence/consolidation';
 import { generateFullDailyReport } from '../bots/intelligence/report_generator';
 
-function startOfDayUtc(date: Date) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0));
-}
-
 async function main() {
-  const pruned = await pruneExpiredEpisodes();
-  console.log('pruned_episodes', pruned);
+  console.log('=== NIGHTLY INTELLIGENCE RUN ===');
 
-  const retired = await retireWeakFacts();
-  console.log('retired_facts', retired);
-
-  const now = new Date();
-  const todayStart = startOfDayUtc(now);
-
-  const { data: todayEpisodes, error } = await supabaseAdmin
-    .from('episodes')
-    .select('*')
-    .gte('created_at', todayStart.toISOString());
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { data: episodes, error } = await supabaseAdmin.from('episodes').select('*').gte('created_at', cutoff);
   if (error) throw error;
 
-  const facts = await extractAndStoreFacts((todayEpisodes ?? []) as any, 'prediction_markets');
-  console.log('consolidation', facts);
+  const factsStored = await extractAndStoreFacts((episodes ?? []) as any);
+  console.log('facts_stored', factsStored);
 
-  const attr = await attributePerformance(7);
-  console.log('attribution_summary', { highlights: attr.highlights, warnings: attr.warnings });
+  const pruned = await pruneExpiredMemories();
+  console.log('prune', pruned);
+
+  const attribution = await attributePerformance();
+  console.log('attribution_warnings', attribution.warnings);
 
   await generateFullDailyReport();
+
+  console.log('=== DONE ===');
 }
 
 main().catch((e) => {

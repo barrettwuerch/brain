@@ -4,9 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { supabaseAdmin } from '../../lib/supabase';
-import { generateDailyReport } from '../../evaluation/daily_report';
-import { attributePerformance } from './attribution';
-import { countPrunableEpisodes, extractAndStoreFacts } from './consolidation';
+import { attributePerformance, detectCalibrationWarnings } from './attribution';
 
 function isoDate(d: Date) {
   return d.toISOString().slice(0, 10);
@@ -16,68 +14,113 @@ function startOfDayUtc(date: Date) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0));
 }
 
+function topLessonThemes(lessons: string[], topN: number = 3): string[] {
+  const counts = new Map<string, number>();
+  for (const l of lessons) {
+    const s = String(l ?? '').trim();
+    if (!s) continue;
+    if (s.startsWith('finding_id:')) continue;
+    counts.set(s, (counts.get(s) ?? 0) + 1);
+  }
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, topN)
+    .map(([k, v]) => `${k} (x${v})`);
+}
+
 export async function generateFullDailyReport(): Promise<string> {
   const now = new Date();
-  const todayStart = startOfDayUtc(now);
   const date = isoDate(now);
+  const todayStart = startOfDayUtc(now).toISOString();
 
-  const base = await generateDailyReport();
-
-  const attribution = await attributePerformance(7);
-
-  const { data: todayEpisodes, error } = await supabaseAdmin
+  const { data: eps, error: epsErr, count } = await supabaseAdmin
     .from('episodes')
-    .select('*')
-    .gte('created_at', todayStart.toISOString());
-  if (error) throw error;
+    .select('id,bot_id,lessons,created_at', { count: 'exact' })
+    .gte('created_at', todayStart);
+  if (epsErr) throw epsErr;
 
-  const consolidation = await extractAndStoreFacts((todayEpisodes ?? []) as any, 'prediction_markets');
-  const prunable = await countPrunableEpisodes();
+  const bots = Array.from(new Set((eps ?? []).map((e: any) => String(e.bot_id ?? 'default'))));
 
-  const { data: states } = await supabaseAdmin
-    .from('bot_states')
-    .select('bot_id,current_state,reason')
-    .order('updated_at', { ascending: false });
+  const lessons: string[] = [];
+  for (const e of eps ?? []) {
+    const arr = (e as any).lessons;
+    if (Array.isArray(arr)) for (const l of arr) lessons.push(String(l));
+  }
 
-  const nonExploiting = (states ?? []).filter((s: any) => String(s.current_state) !== 'exploiting');
+  const top3 = topLessonThemes(lessons, 3);
+
+  const { data: rf, error: rfErr } = await supabaseAdmin
+    .from('research_findings')
+    .select('id,rqs_score,created_at')
+    .gte('created_at', todayStart);
+  if (rfErr) throw rfErr;
+
+  const rfCount = rf?.length ?? 0;
+  const avgRqs = rfCount ? (rf ?? []).reduce((s: number, r: any) => s + Number(r.rqs_score ?? 0), 0) / rfCount : 0;
+
+  const { data: cb, error: cbErr } = await supabaseAdmin
+    .from('bot_state_transitions')
+    .select('id,created_at,reason')
+    .ilike('reason', 'circuit_breaker%')
+    .gte('created_at', todayStart);
+  if (cbErr) throw cbErr;
+
+  const attribution = await attributePerformance();
+  const calib = await detectCalibrationWarnings();
 
   const lines: string[] = [];
-  lines.push(`=== BRAIN — Full Daily Report [${date}] ===`);
+  lines.push(`BRAIN — Daily Report (${date})`);
   lines.push('');
-  lines.push(base);
+  lines.push('ACTIVITY');
+  lines.push(`Episodes today: ${count ?? 0} across ${bots.length} bots`);
+  lines.push(`Research findings: ${rfCount} (avg RQS: ${avgRqs.toFixed(3)})`);
+  lines.push(`Circuit breaker events: ${cb?.length ?? 0}`);
+  lines.push('');
 
-  lines.push('');
-  lines.push('--- ATTRIBUTION ---');
-  for (const [bot, r] of Object.entries(attribution.by_bot)) {
-    lines.push(
-      `- ${bot}: trend=${r.is_trend} latestIS=${r.latest_is ?? 'n/a'} calibWarn=${r.calibration_warning} luckyWarn=${r.lucky_warning}`,
-    );
+  lines.push('INTELLIGENCE SCORES');
+  for (const [bot, desc] of Object.entries(attribution.byBot)) {
+    // Trend arrows not implemented yet (needs bot-keyed IS history); show → placeholder.
+    lines.push(`${bot}: ${desc} →`);
   }
-
   lines.push('');
-  lines.push('--- CONSOLIDATION ---');
-  lines.push(`Facts stored: ${consolidation.stored} | Updated: ${consolidation.updated} | Skipped: ${consolidation.skipped}`);
-  lines.push(`Episodes eligible for pruning: ${prunable} (not pruned yet — run dev:prune)`);
 
+  lines.push('CALIBRATION');
+  if (calib.length) {
+    for (const w of calib) lines.push(w);
+  } else {
+    lines.push('All bots well-calibrated');
+  }
   lines.push('');
-  lines.push('--- NEEDS ATTENTION ---');
+
+  lines.push('LESSONS');
+  if (top3.length) for (const t of top3) lines.push(t);
+  else lines.push('(none)');
+  lines.push('');
+
+  lines.push('NEEDS ATTENTION');
   if (attribution.warnings.length) {
-    for (const w of attribution.warnings) lines.push(`- ${w}`);
+    for (const w of attribution.warnings) lines.push(w);
+  } else {
+    lines.push('Nothing requires attention');
   }
-  if (nonExploiting.length) {
-    for (const s of nonExploiting) lines.push(`- bot_state: ${s.bot_id} state=${s.current_state} reason=${s.reason ?? ''}`);
-  }
-  if (!attribution.warnings.length && !nonExploiting.length) lines.push('- (none)');
 
   const report = lines.join('\n');
 
   const outDir = path.join(process.cwd(), 'reports');
   await fs.mkdir(outDir, { recursive: true });
-  const outPath = path.join(outDir, `${date}-full.txt`);
+  const outPath = path.join(outDir, `${date}.txt`);
   await fs.writeFile(outPath, report, 'utf8');
 
   console.log(report);
-  console.log(`\nSaved full report: ${outPath}`);
+  console.log(`Report saved: ${outPath}`);
 
   return report;
+}
+
+// If run directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+  generateFullDailyReport().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
 }
