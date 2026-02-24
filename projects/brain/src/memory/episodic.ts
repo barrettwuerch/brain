@@ -1,12 +1,13 @@
-// Episodic memory layer — stubs
+// Episodic memory layer
 
 import type { Episode } from '../types';
 
 import { embed } from '../lib/embeddings';
-import { supabaseAdmin } from '../lib/supabase';
+import { supabase, supabaseAdmin } from '../lib/supabase';
 
 export interface EpisodicWriteInput {
   episode: Episode;
+  embedding: number[];
 }
 
 export interface EpisodicReadInput {
@@ -15,33 +16,66 @@ export interface EpisodicReadInput {
   limit?: number;
 }
 
-export async function writeEpisode(_input: EpisodicWriteInput): Promise<void> {
-  // Phase 3+ store is implemented in loop.ts store().
-  // Keep this stub for future refactor when we centralize episode writes here.
+export async function writeEpisode(input: EpisodicWriteInput): Promise<{ id: string }> {
+  // PostgREST + pgvector: represent vector as string like '[1,2,3]'
+  const embedding = `[${input.embedding.join(',')}]`;
+
+  const row: any = {
+    task_id: input.episode.task_id,
+    task_type: input.episode.task_type,
+    task_input: input.episode.task_input,
+
+    // Optional trading-desk scoping
+    agent_role: input.episode.agent_role ?? null,
+    desk: input.episode.desk ?? null,
+    bot_id: input.episode.bot_id ?? null,
+
+    reasoning: input.episode.reasoning,
+    action_taken: input.episode.action_taken,
+    observation: input.episode.observation,
+    reflection: input.episode.reflection,
+    outcome: input.episode.outcome,
+    outcome_score: input.episode.outcome_score,
+    reasoning_score: input.episode.reasoning_score,
+    error_type: input.episode.error_type,
+    ttl_days: input.episode.ttl_days,
+
+    embedding,
+  };
+
+  const { data, error } = await supabaseAdmin
+    .from('episodes')
+    .insert(row)
+    .select('id')
+    .single();
+
+  if (error) throw error;
+  return { id: String((data as any)?.id) };
 }
 
 export async function readSimilarEpisodes(input: EpisodicReadInput): Promise<Episode[]> {
-  // Phase 4 minimal: vector similarity search via RPC.
+  // Vector similarity search via RPC.
   const queryText = `${input.task_type}\n${JSON.stringify(input.task_input)}`;
   const vec = await embed(queryText);
   const query_embedding = `[${vec.join(',')}]`;
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabase
     .rpc('match_episodes', { query_embedding, match_count: input.limit ?? 5 });
 
   if (error) throw error;
 
-  // Map partial rows to Episode-ish shape (fields we return from RPC)
   return (data ?? []).map((r: any) => ({
     id: String(r.id),
     created_at: String(r.created_at),
     task_id: null,
     task_type: String(r.task_type),
     task_input: input.task_input,
-    reasoning: '',
-    action_taken: {},
-    observation: {},
+
+    reasoning: String(r.reasoning ?? ''),
+    action_taken: (r.action_taken ?? {}) as Record<string, any>,
+    observation: (r.observation ?? {}) as Record<string, any>,
     reflection: String(r.reflection ?? ''),
+
     outcome: (r.outcome ?? 'partial'),
     outcome_score: Number(r.outcome_score ?? 0),
     reasoning_score: Number(r.reasoning_score ?? 0),

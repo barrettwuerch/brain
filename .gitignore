@@ -20,6 +20,7 @@ venv/
 !**/.env.example
 
 # OpenClaw / local
+.openclaw/
 memory/heartbeat-state.json
 *credentials.json
 clawtasks-credentials.json

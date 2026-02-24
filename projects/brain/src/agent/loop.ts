@@ -5,6 +5,10 @@ import type { Episode, EpisodeOutcome, Task } from '../types';
 import { grade, maxMoM, maxRow, parseCpi, trendLastN } from './level1_compute';
 import { embed } from '../lib/embeddings';
 import { supabaseAdmin } from '../lib/supabase';
+import { readSimilarEpisodes } from '../memory/episodic';
+import { readSemanticFacts } from '../memory/semantic';
+import { readProcedure } from '../memory/procedural';
+import { writeEpisode } from '../memory/episodic';
 
 export interface ReasonInput {
   task: Task;
@@ -67,8 +71,20 @@ export class BrainLoop {
     let obsOut: ObserveOutput;
     let refOut: ReflectOutput;
 
+    // Phase 4: retrieve memory context before reasoning.
+    const episodic = await readSimilarEpisodes({ task_type: task.task_type, task_input: task.task_input, limit: 5 });
+    const semanticFacts = await readSemanticFacts({ domain: task.task_type, limit: 8 });
+    const procedure = await readProcedure({ task_type: task.task_type });
+
     try {
-      reasonOut = await this.reason({ task, memory: { episodic: [], semantic: [], procedure: null } });
+      reasonOut = await this.reason({
+        task,
+        memory: {
+          episodic,
+          semantic: semanticFacts.map((f) => ({ fact: f.fact, confidence: f.confidence })),
+          procedure: procedure ? { approach: procedure.approach, cautions: procedure.cautions } : null,
+        },
+      });
     } catch (e) {
       // Mark task failed and bail.
       await supabaseAdmin.from('tasks').update({ status: 'failed' }).eq('id', task.id);
@@ -287,37 +303,12 @@ Scoring rubric:
     refOut: ReflectOutput;
   }): Promise<StoreOutput> {
     const textToEmbed = `${args.reasonOut.chain_of_thought}\n\nREFLECTION:\n${args.refOut.reflection_text}`;
-    const vec = await embed(textToEmbed);
+    const embedding = await embed(textToEmbed);
 
-    // PostgREST + pgvector: represent vector as string like '[1,2,3]'
-    const embedding = `[${vec.join(',')}]`;
-
-    const row: any = {
-      task_id: args.task.id,
-      task_type: args.task.task_type,
-      task_input: args.task.task_input,
-      reasoning: args.episode.reasoning,
-      action_taken: args.episode.action_taken,
-      observation: args.episode.observation,
-      reflection: args.episode.reflection,
-      outcome: args.episode.outcome,
-      outcome_score: args.episode.outcome_score,
-      reasoning_score: args.episode.reasoning_score,
-      error_type: args.episode.error_type,
-      ttl_days: args.episode.ttl_days,
-      embedding,
-    };
-
-    const { data, error } = await supabaseAdmin
-      .from('episodes')
-      .insert(row)
-      .select('id')
-      .single();
-
-    if (error) throw error;
+    const written = await writeEpisode({ episode: args.episode, embedding });
 
     return {
-      episode_id: (data as any)?.id,
+      episode_id: written.id,
       episode_written: true,
       semantic_updates: 0,
       procedure_updates: 0,

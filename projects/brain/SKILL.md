@@ -113,7 +113,10 @@ projects/brain/
 │   └── tasks/
 │       └── level1.ts
 ├── scripts/
-│   └── schema_push.md
+│   ├── schema_push.md
+│   ├── run_once.ts
+│   ├── run_loop.ts
+│   └── check_episodes.ts
 └── examples/
     └── episode_example.json
 ```

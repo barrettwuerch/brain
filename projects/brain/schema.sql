@@ -1,5 +1,6 @@
--- THE BRAIN — Supabase schema (Phase 1 scaffold)
+-- THE BRAIN — Supabase schema (consolidated snapshot)
 -- Goal: support ReAct + Reflexion loop with 3-layer memory + reasoning quality measurement.
+-- NOTE: This file is maintained as a running snapshot. It should reflect all migrations.
 
 -- Extensions
 create extension if not exists pgcrypto;
@@ -13,12 +14,20 @@ create table if not exists public.tasks (
   task_type text not null,            -- e.g. 'data_analysis' | 'prediction' | 'pattern_find'
   task_input jsonb not null,          -- raw input payload
 
+  -- trading desk scoping (nullable; generic brain tasks don't require these)
+  agent_role text,
+  desk text,
+  bot_id text,
+
   status text not null default 'queued' check (status in ('queued','running','completed','failed')),
   tags text[] not null default '{}'
 );
 
 create index if not exists tasks_created_at_idx on public.tasks (created_at desc);
 create index if not exists tasks_task_type_idx on public.tasks (task_type);
+create index if not exists tasks_agent_role_idx on public.tasks (agent_role);
+create index if not exists tasks_desk_idx on public.tasks (desk);
+create index if not exists tasks_bot_id_idx on public.tasks (bot_id);
 
 -- 2) Episodic memory: one episode per completed run
 create table if not exists public.episodes (
@@ -28,6 +37,11 @@ create table if not exists public.episodes (
   task_id uuid references public.tasks(id) on delete set null,
   task_type text not null,
   task_input jsonb not null,
+
+  -- trading desk scoping (nullable; generic brain episodes don't require these)
+  agent_role text,
+  desk text,
+  bot_id text,
 
   reasoning text not null,            -- ReAct-style externalized reasoning
   action_taken jsonb not null,        -- exact action(s) performed
@@ -48,11 +62,53 @@ create table if not exists public.episodes (
 create index if not exists episodes_created_at_idx on public.episodes (created_at desc);
 create index if not exists episodes_task_type_idx on public.episodes (task_type);
 create index if not exists episodes_outcome_idx on public.episodes (outcome);
+create index if not exists episodes_agent_role_idx on public.episodes (agent_role);
+create index if not exists episodes_desk_idx on public.episodes (desk);
+create index if not exists episodes_bot_id_idx on public.episodes (bot_id);
 
 -- Vector index for similarity search (requires enough rows to be effective)
 create index if not exists episodes_embedding_ivfflat_idx
   on public.episodes using ivfflat (embedding vector_cosine_ops)
   with (lists = 100);
+
+-- 0004: Vector similarity search helper for episodes (expanded return payload)
+-- (Drop+create is handled in migrations; this is the final function definition.)
+create or replace function public.match_episodes(
+  query_embedding vector(1536),
+  match_count int default 5
+)
+returns table (
+  id uuid,
+  created_at timestamptz,
+  task_type text,
+  outcome text,
+  outcome_score double precision,
+  reasoning_score double precision,
+  reasoning text,
+  action_taken jsonb,
+  observation jsonb,
+  reflection text,
+  similarity double precision
+)
+language sql stable
+as $$
+  select
+    e.id,
+    e.created_at,
+    e.task_type,
+    e.outcome,
+    e.outcome_score,
+    e.reasoning_score,
+    e.reasoning,
+    e.action_taken,
+    e.observation,
+    e.reflection,
+    1 - (e.embedding <=> query_embedding) as similarity
+  from public.episodes e
+  where e.embedding is not null
+  order by e.embedding <=> query_embedding
+  limit match_count;
+$$;
 
 -- 3) Semantic memory: distilled facts extracted from episodes
 create table if not exists public.semantic_facts (
@@ -84,6 +140,11 @@ create table if not exists public.procedures (
 
   task_type text not null,
 
+  -- trading desk scoping (nullable; generic brain procedures don't require these)
+  agent_role text,
+  desk text,
+  bot_id text,
+
   approach text[] not null default '{}',
   cautions text[] not null default '{}',
   success_pattern text,
@@ -95,6 +156,9 @@ create table if not exists public.procedures (
 
 create unique index if not exists procedures_task_type_unique on public.procedures (task_type);
 create index if not exists procedures_status_idx on public.procedures (status);
+create index if not exists procedures_agent_role_idx on public.procedures (agent_role);
+create index if not exists procedures_desk_idx on public.procedures (desk);
+create index if not exists procedures_bot_id_idx on public.procedures (bot_id);
 
 -- 5) Intelligence scores: time series metrics of reasoning quality
 create table if not exists public.intelligence_scores (

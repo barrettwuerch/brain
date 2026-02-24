@@ -42,10 +42,50 @@ export function trendLastN(rows: CpiRow[], n: number): 'up' | 'down' | 'flat' {
   return 'flat';
 }
 
+function isNumber(x: any): x is number {
+  return typeof x === 'number' && Number.isFinite(x);
+}
+
+function isPlainObject(x: any): x is Record<string, any> {
+  return x !== null && typeof x === 'object' && !Array.isArray(x);
+}
+
+function deepFuzzyEqual(expected: any, actual: any, eps = 0.001): boolean {
+  // Numbers: fuzzy compare
+  if (isNumber(expected) && isNumber(actual)) return Math.abs(expected - actual) < eps;
+
+  // Strings/booleans/null: strict
+  if (expected === null || actual === null) return expected === actual;
+  if (typeof expected !== 'object' || typeof actual !== 'object') return expected === actual;
+
+  // Arrays: same length + elementwise
+  if (Array.isArray(expected) || Array.isArray(actual)) {
+    if (!Array.isArray(expected) || !Array.isArray(actual)) return false;
+    if (expected.length !== actual.length) return false;
+    for (let i = 0; i < expected.length; i++) {
+      if (!deepFuzzyEqual(expected[i], actual[i], eps)) return false;
+    }
+    return true;
+  }
+
+  // Objects: same keys + recursive compare
+  if (isPlainObject(expected) && isPlainObject(actual)) {
+    const ek = Object.keys(expected).sort();
+    const ak = Object.keys(actual).sort();
+    if (ek.length !== ak.length) return false;
+    for (let i = 0; i < ek.length; i++) {
+      if (ek[i] !== ak[i]) return false;
+      const k = ek[i];
+      if (!deepFuzzyEqual(expected[k], actual[k], eps)) return false;
+    }
+    return true;
+  }
+
+  // Fallback: strict
+  return expected === actual;
+}
+
 export function grade(expected: any, actual: any): number {
-  // Simple exact-match grading for Phase 2.
-  // Returns 1 for exact match, else 0. Can be made fuzzy later.
-  const e = JSON.stringify(expected);
-  const a = JSON.stringify(actual);
-  return e === a ? 1 : 0;
+  // Phase 2+: fuzzy numeric matching to avoid float false negatives.
+  return deepFuzzyEqual(expected, actual) ? 1 : 0;
 }
