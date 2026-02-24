@@ -70,6 +70,7 @@ export interface ReflectOutput {
   reflection_text: string;
   reasoning_score: number;             // 0..1
   lessons: string[];
+  error_type?: 'computation_error' | 'strategy_error' | 'data_quality' | 'regime_mismatch' | 'unknown';
 }
 
 export interface StoreOutput {
@@ -80,6 +81,9 @@ export interface StoreOutput {
 }
 
 export class BrainLoop {
+  private recentFailures: Episode[] = [];
+  private lastFailureAtMs: number | null = null;
+
   /**
    * Run the full loop once for a single task.
    * This should:
@@ -91,6 +95,13 @@ export class BrainLoop {
    *  - store episode + (optionally) semantic/procedural updates
    */
   async run(task: Task): Promise<{ episode: Episode; store: StoreOutput } | { aborted: true; reason: string }> {
+    // Recent-failures buffer housekeeping (within-session learning speed).
+    if (this.recentFailures.length > 5) this.recentFailures = this.recentFailures.slice(0, 5);
+    if (this.lastFailureAtMs && Date.now() - this.lastFailureAtMs > 30 * 60 * 1000) {
+      this.recentFailures = [];
+      this.lastFailureAtMs = null;
+    }
+
     // STATE_CHECK: behavioral state gate before anything else.
     const stateCheck = await checkStateBeforeRun(task);
     if (stateCheck.shouldAbort) {
@@ -138,7 +149,7 @@ export class BrainLoop {
       refOut = await this.reflect({ task, reasonOut, obsOut });
     } catch (e) {
       // Reflection failure should not lose the episode; we can store a minimal reflection.
-      refOut = { reflection_text: 'Reflection failed to run.', reasoning_score: 0.3, lessons: ['Fix reflection pipeline / prompt.'] };
+      refOut = { reflection_text: 'Reflection failed to run.', reasoning_score: 0.3, lessons: ['Fix reflection pipeline / prompt.'], error_type: 'unknown' };
     }
 
     const ttl_days = obsOut.outcome === 'incorrect' ? 60 : 30;
@@ -162,7 +173,7 @@ export class BrainLoop {
       outcome: obsOut.outcome,
       outcome_score: obsOut.outcome_score,
       reasoning_score: refOut.reasoning_score,
-      error_type: obsOut.error_type ?? null,
+      error_type: (obsOut.outcome === 'incorrect' ? (refOut.error_type ?? 'unknown') : null),
       ttl_days,
       embedding: null,
     };
@@ -329,7 +340,29 @@ export class BrainLoop {
       if (parts[epIdx].text.length < 200) break;
     }
 
-    const memoryContext = parts.map((p) => p.text).join('\n\n');
+    // Inject recent failures from this session (priority budget: 300 tokens, carved out)
+    let recentFailuresBlock = '';
+    if (this.recentFailures.length > 0) {
+      const lines: string[] = ['RECENT FAILURES THIS SESSION'];
+      for (const f of this.recentFailures) {
+        lines.push(`- task=${f.task_type} error_type=${f.error_type ?? 'unknown'}`);
+        lines.push(`  reflection: ${String(f.reflection ?? '').slice(0, 400)}`);
+      }
+      recentFailuresBlock = lines.join('\n') + '\n\n';
+
+      // enforce 300 token cap by dropping oldest entries first
+      while (estimateTokens(recentFailuresBlock) > 300 && this.recentFailures.length > 0) {
+        this.recentFailures.pop();
+        const l2: string[] = ['RECENT FAILURES THIS SESSION'];
+        for (const f of this.recentFailures) {
+          l2.push(`- task=${f.task_type} error_type=${f.error_type ?? 'unknown'}`);
+          l2.push(`  reflection: ${String(f.reflection ?? '').slice(0, 400)}`);
+        }
+        recentFailuresBlock = l2.join('\n') + '\n\n';
+      }
+    }
+
+    const memoryContext = recentFailuresBlock + parts.map((p) => p.text).join('\n\n');
 
     const baseSystem = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n- { \'type\': 'place_limit_order' }\n- { \'type\': 'manage_open_position' }\n- { \'type\': 'compute_position_size' }\n- { \'type\': 'handle_partial_fill' }\n- { \'type\': 'evaluate_market_conditions' }\n- { \'type\': 'consolidate_memories' }\n- { \'type\': 'attribute_performance' }\n- { \'type\': 'generate_daily_report' }\n- { \'type\': 'prune_expired_memories' }\n\nDo not include Observation; Observation is produced by ACT.`;
 
@@ -587,7 +620,7 @@ export class BrainLoop {
       const { data, error } = await supabaseAdmin.from('episodes').select('*').gte('created_at', cutoff);
       if (error) throw error;
       const stored = await extractAndStoreFacts((data ?? []) as any);
-      return { action_taken, result: { stored }, outcome_score: undefined };
+      return { action_taken, result: stored, outcome_score: undefined };
     }
 
     if (args.task.agent_role === 'intelligence' && args.task.task_type === 'attribute_performance') {
@@ -699,6 +732,15 @@ Scoring rubric:
 - Correct but shallow/fragile reasoning => <=0.6
 - Incorrect but flagged uncertainty appropriately => 0.4-0.6
 - Incorrect and overconfident / missed obvious uncertainty => <=0.3
+
+Additionally, when OUTCOME is incorrect, classify this failure with exactly one error_type value:
+- computation_error: the formula or calculation was wrong
+- strategy_error: the approach or plan was wrong for this task
+- data_quality: the input data was malformed or missing
+- regime_mismatch: the approach was valid but wrong for current market conditions
+- unknown: cannot determine cause
+
+Return error_type as a field in your JSON response when OUTCOME is incorrect.
 `;
 
     const user = `TASK\n${JSON.stringify(args.task.task_input)}\n\nCHAIN_OF_THOUGHT\n${args.reasonOut.chain_of_thought}\n\nPROPOSED_ACTION\n${JSON.stringify(args.reasonOut.proposed_action)}\n\nUNCERTAINTY_FLAGS\n${JSON.stringify(args.reasonOut.uncertainty_flags)}\n\nEXPECTED\n${JSON.stringify(args.obsOut.expected)}\n\nACTUAL\n${JSON.stringify(args.obsOut.actual)}\n\nOUTCOME\n${args.obsOut.outcome} score=${args.obsOut.outcome_score}`;
@@ -718,6 +760,7 @@ Scoring rubric:
               'Before acting, restate the expected answer shape (keys/types) and ensure the proposed action will produce it.',
               'If CSV schema is unknown, inspect header row and handle missing/blank values explicitly.',
             ],
+        error_type: correct ? undefined : 'unknown',
       };
     }
 
@@ -725,10 +768,14 @@ Scoring rubric:
     const raw = await claudeText({ system, user, maxTokens: 600, temperature: 0.2 });
     const parsed = extractFirstJsonObject(raw);
 
+    const error_type = String(parsed.error_type ?? 'unknown');
+    const allowed = new Set(['computation_error', 'strategy_error', 'data_quality', 'regime_mismatch', 'unknown']);
+
     return {
       reflection_text: String(parsed.reflection_text ?? ''),
       reasoning_score: Number(parsed.reasoning_score ?? 0.5),
       lessons: Array.isArray(parsed.lessons) ? parsed.lessons.map(String) : [],
+      error_type: args.obsOut.outcome === 'incorrect' && allowed.has(error_type) ? (error_type as any) : undefined,
     };
   }
 
@@ -743,6 +790,13 @@ Scoring rubric:
     const embedding = await embed(textToEmbed);
 
     const written = await writeEpisode({ episode: args.episode, embedding });
+
+    // Update within-session recent failures buffer after the episode is written.
+    if (args.episode.outcome === 'incorrect') {
+      this.recentFailures.unshift(args.episode);
+      this.lastFailureAtMs = Date.now();
+      if (this.recentFailures.length > 5) this.recentFailures.pop();
+    }
 
     return {
       episode_id: written.id,

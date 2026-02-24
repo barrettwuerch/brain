@@ -13,7 +13,7 @@ async function main() {
   if (error) throw error;
 
   const factsStored = await extractAndStoreFacts((episodes ?? []) as any);
-  console.log('facts_stored', factsStored);
+  console.log(`Facts stored: ${factsStored.successCount} success, ${factsStored.failureCount} failure patterns`);
 
   const pruned = await pruneExpiredMemories();
   console.log('prune', pruned);

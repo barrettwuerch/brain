@@ -1,4 +1,4 @@
-// Episodic memory layer
+import 'dotenv/config';
 
 import type { Episode } from '../types';
 
@@ -79,10 +79,15 @@ export async function readSimilarEpisodes(input: EpisodicReadInput): Promise<Epi
     task_type: String(r.task_type),
     task_input: input.task_input,
 
+    agent_role: null,
+    desk: null,
+    bot_id: null,
+
     reasoning: String(r.reasoning ?? ''),
     action_taken: (r.action_taken ?? {}) as Record<string, any>,
     observation: (r.observation ?? {}) as Record<string, any>,
     reflection: String(r.reflection ?? ''),
+    lessons: [],
 
     outcome: (r.outcome ?? 'partial'),
     outcome_score: Number(r.outcome_score ?? 0),

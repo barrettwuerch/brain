@@ -49,7 +49,13 @@ export interface Episode {
   outcome: EpisodeOutcome;
   outcome_score: number;      // 0..1
   reasoning_score: number;    // 0..1
-  error_type?: string | null;
+  error_type?:
+    | 'computation_error'
+    | 'strategy_error'
+    | 'data_quality'
+    | 'regime_mismatch'
+    | 'unknown'
+    | null;
 
   ttl_days: number;
 

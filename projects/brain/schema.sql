@@ -53,6 +53,7 @@ create table if not exists public.episodes (
   outcome_score double precision not null check (outcome_score >= 0 and outcome_score <= 1),
   reasoning_score double precision not null check (reasoning_score >= 0 and reasoning_score <= 1),
   error_type text,
+  constraint episodes_error_type_check check (error_type is null or error_type in ('computation_error','strategy_error','data_quality','regime_mismatch','unknown')),
 
   ttl_days int not null default 30,
 
@@ -67,6 +68,7 @@ create index if not exists episodes_agent_role_idx on public.episodes (agent_rol
 create index if not exists episodes_desk_idx on public.episodes (desk);
 create index if not exists episodes_bot_id_idx on public.episodes (bot_id);
 create index if not exists episodes_lessons_gin_idx on public.episodes using gin (lessons);
+create index if not exists episodes_error_type_idx on public.episodes (error_type) where error_type is not null;
 
 -- Vector index for similarity search (requires enough rows to be effective)
 create index if not exists episodes_embedding_ivfflat_idx
@@ -120,6 +122,7 @@ create table if not exists public.semantic_facts (
 
   domain text not null,               -- what task types this applies to
   fact text not null,
+  fact_type text not null default 'success_pattern' check (fact_type in ('success_pattern','failure_pattern')),
 
   supporting_episode_ids uuid[] not null default '{}',
 

@@ -26,7 +26,7 @@ function mostCommonLessonThemes(episodes: Episode[], topN: number = 3): string[]
     .map(([k]) => k);
 }
 
-export async function extractAndStoreFacts(episodes: Episode[]): Promise<number> {
+async function extractSuccessFacts(episodes: Episode[]): Promise<{ stored: number; updated: number; skipped: number }> {
   // Filter to last 24h correct episodes
   const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const recent = episodes.filter((e) => {
@@ -44,9 +44,14 @@ export async function extractAndStoreFacts(episodes: Episode[]): Promise<number>
   }
 
   let stored = 0;
+  let updated = 0;
+  let skipped = 0;
 
   for (const [task_type, eps] of byType.entries()) {
-    if (eps.length < 3) continue;
+    if (eps.length < 3) {
+      skipped++;
+      continue;
+    }
 
     const themes = mostCommonLessonThemes(eps, 3);
     const fact = `task_type=${task_type} | lessons: ${themes.join(' | ')}`;
@@ -57,6 +62,7 @@ export async function extractAndStoreFacts(episodes: Episode[]): Promise<number>
       .select('id,times_confirmed')
       .eq('fact', fact)
       .eq('status', 'active')
+      .eq('fact_type', 'success_pattern')
       .limit(1)
       .maybeSingle();
     if (exErr) throw exErr;
@@ -68,14 +74,86 @@ export async function extractAndStoreFacts(episodes: Episode[]): Promise<number>
         .update({ times_confirmed, last_updated: new Date().toISOString() })
         .eq('id', existing.id);
       if (updErr) throw updErr;
+      updated++;
       continue;
     }
 
     const row = {
-      domain: 'prediction_markets', // desk domain
+      domain: 'prediction_markets',
       fact,
+      fact_type: 'success_pattern',
       supporting_episode_ids: eps.map((e) => String(e.id)).filter(Boolean),
       confidence: 0.6,
+      times_confirmed: 1,
+      times_violated: 0,
+      status: 'active',
+    };
+
+    const { error } = await supabaseAdmin.from('semantic_facts').insert(row);
+    if (error) throw error;
+
+    stored++;
+  }
+
+  return { stored, updated, skipped };
+}
+
+async function extractFailureFacts(episodes: Episode[]): Promise<number> {
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const recent = episodes.filter((e) => {
+    const t = new Date(String(e.created_at)).getTime();
+    return Number.isFinite(t) && t >= cutoff.getTime() && e.outcome === 'incorrect';
+  });
+
+  // Group by error_type + task_type
+  const groups = new Map<string, Episode[]>();
+  for (const e of recent) {
+    const et = String((e as any).error_type ?? 'unknown');
+    const key = `${String(e.task_type)}::${et}`;
+    const arr = groups.get(key) ?? [];
+    arr.push(e);
+    groups.set(key, arr);
+  }
+
+  let stored = 0;
+
+  for (const [key, eps] of groups.entries()) {
+    if (eps.length < 1) continue;
+    const [task_type, error_type] = key.split('::');
+
+    const refl = String((eps[0] as any).reflection ?? '').slice(0, 240);
+    const content = `[FAILURE PATTERN] task_type=${task_type} error_type=${error_type}: ${refl}`;
+
+    // Guard: only store meaningful failure patterns (avoid noise from manual DB edits / inconsistent states)
+    if (!refl || refl.toLowerCase().includes('produced the expected result')) continue;
+
+    const { data: existing, error: exErr } = await supabaseAdmin
+      .from('semantic_facts')
+      .select('id,times_confirmed,confidence')
+      .eq('fact', content)
+      .eq('status', 'active')
+      .eq('fact_type', 'failure_pattern')
+      .limit(1)
+      .maybeSingle();
+    if (exErr) throw exErr;
+
+    if (existing?.id) {
+      const times_confirmed = Number((existing as any).times_confirmed ?? 0) + 1;
+      const confidence = Math.min(Number((existing as any).confidence ?? 0.7) + 0.05, 0.95);
+      const { error: updErr } = await supabaseAdmin
+        .from('semantic_facts')
+        .update({ times_confirmed, confidence, last_updated: new Date().toISOString() })
+        .eq('id', existing.id);
+      if (updErr) throw updErr;
+      continue;
+    }
+
+    const row = {
+      domain: String(task_type),
+      fact: content,
+      fact_type: 'failure_pattern',
+      supporting_episode_ids: eps.map((e) => String(e.id)).filter(Boolean),
+      confidence: 0.7,
       times_confirmed: 1,
       times_violated: 0,
       status: 'active',
@@ -90,10 +168,14 @@ export async function extractAndStoreFacts(episodes: Episode[]): Promise<number>
   return stored;
 }
 
+export async function extractAndStoreFacts(episodes: Episode[]): Promise<{ successCount: number; failureCount: number }> {
+  const success = await extractSuccessFacts(episodes);
+  const failureCount = await extractFailureFacts(episodes);
+  return { successCount: success.stored, failureCount };
+}
+
 export async function pruneExpiredMemories(): Promise<{ episodesPruned: number; factsRetired: number }> {
   // Episodes: delete where created_at < NOW() - ttl_days
-  // Implementation note: PostgREST doesn't support per-row interval deletes easily.
-  // We fetch candidates older than 90 days and prune in app code.
   const maxDays = 90;
   const cutoff = new Date(Date.now() - maxDays * 24 * 60 * 60 * 1000).toISOString();
 

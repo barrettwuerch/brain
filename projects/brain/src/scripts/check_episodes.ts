@@ -5,7 +5,7 @@ import { supabaseAdmin } from '../lib/supabase';
 async function main() {
   const { data, error, count } = await supabaseAdmin
     .from('episodes')
-    .select('id,embedding,outcome,outcome_score,reasoning_score,reflection', { count: 'exact' })
+    .select('id,embedding,outcome,outcome_score,reasoning_score,reflection,error_type', { count: 'exact' })
     .order('created_at', { ascending: false })
     .limit(5);
 
@@ -21,6 +21,7 @@ async function main() {
       os: r.outcome_score,
       rs: r.reasoning_score,
       reflLen: (r.reflection || '').length,
+      error_type: r.error_type ?? null,
     })),
   );
 }
