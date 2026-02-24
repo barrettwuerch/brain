@@ -51,6 +51,13 @@ export async function writeEpisode(input: EpisodicWriteInput): Promise<{ id: str
     .single();
 
   if (error) throw error;
+
+  // Phase 6: warm-up decrement (behavioral state machine)
+  if (input.episode.bot_id) {
+    const { decrementWarmUpAfterEpisode } = await import('../behavioral/state_manager');
+    await decrementWarmUpAfterEpisode(input.episode.bot_id);
+  }
+
   return { id: String((data as any)?.id) };
 }
 

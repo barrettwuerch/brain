@@ -4,10 +4,12 @@
   "type": "module",
   "scripts": {
     "dev:seed:level1": "tsx src/tasks/level1.ts",
+    "dev:seed:trading": "tsx src/tasks/trading_level1.ts",
     "dev:run-once": "tsx src/scripts/run_once.ts",
     "dev:run-loop": "tsx src/scripts/run_loop.ts",
     "dev:evaluate": "tsx src/evaluation/intelligence_score.ts",
     "dev:report": "tsx src/evaluation/daily_report.ts",
+    "dev:curriculum": "tsx src/evaluation/curriculum_manager.ts",
     "dev:check-states": "tsx src/scripts/check_states.ts"
   },
   "dependencies": {

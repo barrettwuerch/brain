@@ -104,7 +104,8 @@ projects/brain/
 │   ├── types.ts
 │   ├── agent/
 │   │   ├── loop.ts
-│   │   └── level1_compute.ts
+│   │   ├── level1_compute.ts
+│   │   └── trading_compute.ts
 │   ├── lib/
 │   │   ├── supabase.ts
 │   │   ├── embeddings.ts
@@ -116,7 +117,8 @@ projects/brain/
 │   ├── behavioral/
 │   │   └── state_manager.ts
 │   └── tasks/
-│       └── level1.ts
+│       ├── level1.ts
+│       └── trading_level1.ts
 ├── scripts/
 │   ├── schema_push.md
 │   ├── run_once.ts
@@ -170,8 +172,13 @@ Complete in **BRAIN_TEST_MODE=true** (no-LLM mode):
 - Intelligence score computation + write to `intelligence_scores` (`src/evaluation/intelligence_score.ts`)
 - Daily report generator + file output (`src/evaluation/daily_report.ts` → `reports/YYYY-MM-DD.txt`)
 
-### 🔄 Phase 6 — Curriculum Manager (IN PROGRESS)
-Promote the brain from CPI tasks → trading tasks when IS > 0.15 sustained for 5 days.
+### ✅ Phase 6 — Trading Task Curriculum + Curriculum Manager (COMPLETE)
+- Trading Level 1 task generator (`src/tasks/trading_level1.ts`) seeds Kalshi-based, gradeable prediction-market research tasks
+- `act()` supports trading task actions via pure compute functions (`src/agent/trading_compute.ts`)
+- Curriculum manager monitor implemented (`src/evaluation/curriculum_manager.ts`)
+- Bot warm-up counter decrements per-episode in `bot_states` (via state_manager only)
+
+Note: Brain is now trained on prediction market tasks. Ready for real API keys and live market data.
 
 ---
 

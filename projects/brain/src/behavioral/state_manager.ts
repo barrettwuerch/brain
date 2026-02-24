@@ -118,6 +118,30 @@ export async function triggerDiagnostic(botId: string): Promise<void> {
 }
 
 /**
+ * Phase 6: decrement warm-up counter after an episode is written.
+ * Hard constraint: bot_states writes must be centralized here.
+ */
+export async function decrementWarmUpAfterEpisode(botId: string): Promise<void> {
+  const state = await readBotState(botId);
+  if (!state) return;
+  if (!state.warm_up) return;
+
+  const remaining = Math.max(0, Number(state.warm_up_episodes_remaining ?? 0) - 1);
+  const warm_up = remaining > 0;
+
+  const { error } = await supabaseAdmin
+    .from('bot_states')
+    .update({
+      warm_up,
+      warm_up_episodes_remaining: remaining,
+      updated_at: nowIso(),
+    })
+    .eq('bot_id', botId);
+
+  if (error) throw error;
+}
+
+/**
  * Called as first step in BrainLoop.run() BEFORE reason().
  * Returns shouldAbort=true if bot is PAUSED or DIAGNOSTIC.
  */

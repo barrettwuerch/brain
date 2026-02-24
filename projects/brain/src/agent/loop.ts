@@ -3,6 +3,7 @@
 
 import type { Episode, EpisodeOutcome, Task } from '../types';
 import { grade, maxMoM, maxRow, parseCpi, trendLastN } from './level1_compute';
+import { classifyMomentum, trendFromYesPrices, volumeAnomaly } from './trading_compute';
 import { embed } from '../lib/embeddings';
 import { supabaseAdmin } from '../lib/supabase';
 import { readSimilarEpisodes } from '../memory/episodic';
@@ -124,6 +125,11 @@ export class BrainLoop {
       task_id: task.id,
       task_type: task.task_type,
       task_input: task.task_input,
+
+      agent_role: task.agent_role ?? null,
+      desk: task.desk ?? null,
+      bot_id: task.bot_id ?? null,
+
       reasoning: reasonOut.chain_of_thought,
       action_taken: actOut.action_taken,
       observation: { actual: obsOut.actual, expected: obsOut.expected },
@@ -226,22 +232,29 @@ export class BrainLoop {
 
     const memoryContext = parts.map((p) => p.text).join('\n\n');
 
-    const system = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n\nDo not include Observation; Observation is produced by ACT.`;
+    const system = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n\nDo not include Observation; Observation is produced by ACT.`;
 
     const user = `MEMORY CONTEXT\n${memoryContext}\n\nTASK\nTask type: ${input.task.task_type}\nTask input (JSON): ${JSON.stringify(input.task.task_input)}\n\nINSTRUCTIONS\nUse a ReAct-like structure internally: Thought -> Action (choose one).\nOutput must be JSON only.`;
 
     const testMode = String(process.env.BRAIN_TEST_MODE || '').toLowerCase() === 'true';
 
     if (testMode) {
-      // Hardcoded but realistic decision-making for Level 1.
+      // Hardcoded but realistic decision-making for Phase 3/6 test mode.
       const url = (input.task.task_input as any)?.dataset?.url;
       const q = String((input.task.task_input as any)?.question ?? '').toLowerCase();
+
+      // CPI actions default
       let proposed_action: Record<string, any> = { type: 'compute_max', dataset_url: url };
       if (q.includes('month-over-month') || q.includes('month over month') || q.includes('delta')) {
         proposed_action = { type: 'compute_max_mom_delta', dataset_url: url };
       } else if (q.includes('trending') || q.includes('trend') || q.includes('last 6')) {
         proposed_action = { type: 'compute_trend_last_n', dataset_url: url, n: 6 };
       }
+
+      // Trading actions (based on task_type)
+      if (input.task.task_type === 'market_trend_scan') proposed_action = { type: 'scan_market_trend' };
+      if (input.task.task_type === 'volume_anomaly_detect') proposed_action = { type: 'detect_volume_anomaly' };
+      if (input.task.task_type === 'price_momentum_classify') proposed_action = { type: 'classify_price_momentum' };
 
       return {
         chain_of_thought:
@@ -272,12 +285,37 @@ export class BrainLoop {
   async act(args: { task: Task; reasonOut: ReasonOutput }): Promise<ActOutput> {
     const a = args.reasonOut.proposed_action || { type: 'noop' };
 
-    // Level-1 computation executors.
     const tInput: any = args.task.task_input || {};
-    const url: string | undefined = a.dataset_url || tInput?.dataset?.url;
-
     const action_taken = a;
 
+    // Trading computations (use frozen snapshot in task_input; no API calls here).
+    if (a.type === 'scan_market_trend') {
+      const prices: number[] = Array.isArray(tInput.price_points_yes) ? tInput.price_points_yes.map(Number) : [];
+      const trend = trendFromYesPrices(prices);
+      const expected = tInput.expected_answer;
+      const outcome_score = expected ? grade(expected, { trend }) : undefined;
+      return { action_taken, result: { trend }, outcome_score };
+    }
+
+    if (a.type === 'detect_volume_anomaly') {
+      const current_volume = Number(tInput.current_volume ?? 0);
+      const avg_volume = Number(tInput.avg_volume ?? 0);
+      const res = volumeAnomaly(current_volume, avg_volume);
+      const expected = tInput.expected_answer;
+      const outcome_score = expected ? grade(expected, res) : undefined;
+      return { action_taken, result: res, outcome_score };
+    }
+
+    if (a.type === 'classify_price_momentum') {
+      const prices: number[] = Array.isArray(tInput.price_points_yes) ? tInput.price_points_yes.map(Number) : [];
+      const momentum = classifyMomentum(prices);
+      const expected = tInput.expected_answer;
+      const outcome_score = expected ? grade(expected, { momentum }) : undefined;
+      return { action_taken, result: { momentum }, outcome_score };
+    }
+
+    // CPI computations (Level 1)
+    const url: string | undefined = a.dataset_url || tInput?.dataset?.url;
     if (!url || typeof url !== 'string') {
       return { action_taken, result: { ok: false, error: 'missing_dataset_url' }, outcome_score: 0 };
     }
