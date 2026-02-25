@@ -39,7 +39,9 @@
     "dev:seed:cos-weekly": "tsx src/bots/cos/cos_tasks.ts weekly",
     "dev:seed:cos-priorities": "tsx src/bots/cos/cos_tasks.ts priorities",
     "dev:seed:cos-blindspots": "tsx src/bots/cos/cos_tasks.ts blind_spots",
-    "dev:test-cos-email": "tsx src/bots/cos/cos_email.ts"
+    "dev:test-cos-email": "tsx src/bots/cos/cos_email.ts",
+    "dev:seed:gate1-finding": "tsx src/scripts/seed_gate1_finding.ts",
+    "dev:seed:gate1-preformalized-challenge": "tsx src/scripts/seed_gate1_preformalized_challenge.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.0",

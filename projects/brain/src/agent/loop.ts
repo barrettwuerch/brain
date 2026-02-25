@@ -683,14 +683,94 @@ export class BrainLoop {
 
     const { claudeText, extractFirstJsonObject } = await import('../lib/anthropic.js');
     const raw = await claudeText({ system, user, maxTokens: 700, temperature: 0.2 });
-    const parsed = extractFirstJsonObject(raw);
 
-    return {
-      chain_of_thought: String(parsed.chain_of_thought ?? ''),
-      proposed_action: (parsed.proposed_action ?? { type: 'noop' }) as Record<string, any>,
-      confidence: Number(parsed.confidence ?? 0.5),
-      uncertainty_flags: Array.isArray(parsed.uncertainty_flags) ? parsed.uncertainty_flags.map(String) : [],
-    };
+    try {
+      const parsed = extractFirstJsonObject(raw);
+      return {
+        chain_of_thought: String(parsed.chain_of_thought ?? ''),
+        proposed_action: (parsed.proposed_action ?? { type: 'noop' }) as Record<string, any>,
+        confidence: Number(parsed.confidence ?? 0.5),
+        uncertainty_flags: Array.isArray(parsed.uncertainty_flags) ? parsed.uncertainty_flags.map(String) : [],
+      };
+    } catch (e: any) {
+      // Robust fallback: if the model emits malformed JSON, do not crash the loop.
+      // Use a safe, deterministic action mapping for the current task.
+      console.warn('[REASON] JSON parse failed; falling back to safe action mapping:', e?.message ?? e);
+
+      const t = String(input.task.task_type ?? '');
+      let proposed_action: Record<string, any> = { type: 'noop' };
+      const map: Record<string, Record<string, any>> = {
+        market_trend_scan: { type: 'scan_market_trend' },
+        crypto_trend_scan: { type: 'scan_market_trend' },
+        volume_anomaly_detect: { type: 'detect_volume_anomaly' },
+        crypto_volume_profile: { type: 'detect_volume_anomaly' },
+        price_momentum_classify: { type: 'classify_price_momentum' },
+        score_rqs: { type: 'score_rqs' },
+
+        formalize_strategy: { type: 'formalize_strategy' },
+        formalize_crypto_strategy: { type: 'formalize_strategy' },
+        challenge_strategy: { type: 'challenge_strategy' },
+        challenge_crypto_strategy: { type: 'challenge_strategy' },
+
+        run_backtest: { type: 'run_backtest' },
+        run_crypto_backtest: { type: 'run_backtest' },
+        detect_overfitting: { type: 'detect_overfitting' },
+        walk_forward_analysis: { type: 'walk_forward_analysis' },
+
+        monitor_positions: { type: 'monitor_positions' },
+        check_drawdown_limit: { type: 'check_drawdown_limit' },
+        detect_concentration: { type: 'detect_concentration' },
+        evaluate_circuit_breakers: { type: 'evaluate_circuit_breakers' },
+        size_position: { type: 'size_position' },
+        publish_regime_state: { type: 'publish_regime_state' },
+
+        evaluate_market_conditions: { type: 'evaluate_market_conditions' },
+        evaluate_crypto_market_conditions: { type: 'evaluate_crypto_market_conditions' },
+        place_limit_order: { type: 'place_limit_order' },
+        place_crypto_limit_order: { type: 'place_limit_order' },
+        manage_open_position: { type: 'manage_open_position' },
+        manage_crypto_position: { type: 'manage_open_position' },
+        handle_partial_fill: { type: 'handle_partial_fill' },
+
+        consolidate_memories: { type: 'consolidate_memories' },
+        attribute_performance: { type: 'attribute_performance' },
+        generate_daily_report: { type: 'generate_daily_report' },
+        prune_expired_memories: { type: 'prune_expired_memories' },
+        propose_skill_update: { type: 'propose_skill_update' },
+
+        route_research_findings: { type: 'route_research_findings' },
+        review_bot_states: { type: 'review_bot_states' },
+        generate_priority_map: { type: 'generate_priority_map' },
+        register_watch_conditions: { type: 'register_watch_conditions' },
+        update_stale_watch_conditions: { type: 'update_stale_watch_conditions' },
+
+        funding_rate_scan: { type: 'funding_rate_scan' },
+        volatility_regime_detect: { type: 'volatility_regime_detect' },
+        correlation_scan: { type: 'correlation_scan' },
+        generate_next_generation_hypothesis: { type: 'generate_next_generation_hypothesis' },
+        validate_edge_mechanism: { type: 'validate_edge_mechanism' },
+        monitor_approved_findings: { type: 'monitor_approved_findings' },
+
+        generate_weekly_report: { type: 'generate_weekly_report' },
+        review_dead_ends: { type: 'review_dead_ends' },
+        assess_strategic_priorities: { type: 'assess_strategic_priorities' },
+        generate_daily_brief: { type: 'generate_daily_brief' },
+        generate_weekly_memo: { type: 'generate_weekly_memo' },
+        detect_systematic_blind_spots: { type: 'detect_systematic_blind_spots' },
+        generate_decision_packet: { type: 'generate_decision_packet' },
+        review_regime_strategy_alignment: { type: 'review_regime_strategy_alignment' },
+        evaluate_bottlenecks: { type: 'evaluate_bottlenecks' },
+      };
+
+      if (map[t]) proposed_action = map[t];
+
+      return {
+        chain_of_thought: `FALLBACK: malformed JSON from LLM. Using safe action mapping for task_type=${t}.`,
+        proposed_action,
+        confidence: 0.4,
+        uncertainty_flags: ['llm_json_parse_failed'],
+      };
+    }
   }
 
   /** ACT: execute the planned action (single step). */

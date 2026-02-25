@@ -88,7 +88,27 @@ export async function routeUnroutedFindings(): Promise<number> {
     .limit(1000);
   if (error) throw error;
 
-  const unrouted = identifyUnroutedFindings(candidates as any, (existingTasks ?? []) as any);
+  let unrouted = identifyUnroutedFindings(candidates as any, (existingTasks ?? []) as any);
+
+  // Gate: do not route findings while adversarial mechanism validation is pending.
+  // (Mechanism validation is seeded when mechanism_clarity < 0.6.)
+  const { data: pendingMech, error: pmErr } = await supabaseAdmin
+    .from('tasks')
+    .select('task_input,status')
+    .eq('task_type', 'validate_edge_mechanism')
+    .in('status', ['queued', 'running'])
+    .limit(2000);
+  if (pmErr) throw pmErr;
+
+  const pendingIds = new Set(
+    (pendingMech ?? [])
+      .map((t: any) => String(t?.task_input?.finding_id ?? ''))
+      .filter((x: string) => x.length > 0),
+  );
+
+  if (pendingIds.size) {
+    unrouted = unrouted.filter((f: any) => !pendingIds.has(String(f.id)));
+  }
 
   let routed = 0;
 
@@ -155,6 +175,16 @@ export async function reviewAndTransitionBots(): Promise<string[]> {
     if (shouldAutoApproveRecovery(bs)) {
       await transitionState(String(bs.bot_id), 'recovering', 'orchestrator_auto_approved');
       actions.push(`auto_approved:${bs.bot_id}`);
+    }
+
+    // Recovery completion: when recovering and drawdown has been cleared, step down into CAUTIOUS.
+    // This supports the Gate 2 full recovery cycle.
+    if (String(bs.current_state) === 'recovering') {
+      const dd = Number(bs.current_drawdown ?? 0);
+      if (dd <= 0.001) {
+        await transitionState(String(bs.bot_id), 'cautious', 'orchestrator_recovery_complete', { current_drawdown: dd });
+        actions.push(`recovered_to_cautious:${bs.bot_id}`);
+      }
     }
 
     if (String(bs.current_state) === 'diagnostic' && Boolean(bs.requires_manual_review) === true) {
