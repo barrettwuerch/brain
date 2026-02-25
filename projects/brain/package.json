@@ -18,6 +18,7 @@
 
     "dev:seed:research": "tsx src/adapters/kalshi/research_tasks.ts",
     "dev:seed:crypto-research": "tsx src/adapters/alpaca/research_tasks.ts",
+    "dev:seed:monitor-findings": "tsx src/bots/research/monitor_tasks.ts",
     "dev:check-findings": "tsx src/scripts/check_findings.ts",
 
     "dev:seed:strategy": "tsx src/bots/strategy/strategy_tasks.ts",
@@ -34,10 +35,12 @@
     "dev:reconcile-outcomes": "tsx src/scripts/reconcile_outcomes.ts",
 
     "dev:nightly": "tsx src/scripts/nightly_intelligence.ts",
+    "dev:weekly-report": "tsx src/scripts/run_weekly_report.ts",
     "dev:prune": "tsx -e \"import('./src/bots/intelligence/consolidation.ts').then(m => m.pruneExpiredMemories()).then(r => console.log('pruned:', r))\"",
     "dev:seed:intelligence": "tsx src/bots/intelligence/intelligence_tasks.ts",
     "dev:seed:skill-update": "tsx src/bots/intelligence/intelligence_tasks.ts skill_update",
-    "dev:seed:orchestrator": "tsx src/bots/orchestrator/orchestrator_tasks.ts"
+    "dev:seed:orchestrator": "tsx src/bots/orchestrator/orchestrator_tasks.ts",
+    "dev:review-dead-ends": "tsx src/scripts/run_dead_end_review.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.0",

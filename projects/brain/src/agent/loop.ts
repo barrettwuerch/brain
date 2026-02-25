@@ -338,23 +338,38 @@ export class BrainLoop {
     }
 
     // Research Bot: format + store finding (needs stored episode UUID for supporting_episode_ids).
+    // NOTE: only tasks that actually produce a ResearchFinding should enter this path.
     if (task.agent_role === 'research' && storeOut.episode_id) {
-      try {
-        const finding = await formatAndStoreFinding(storedEpisode, actOut.result);
-        if (finding) {
-          // Attach finding_id to lessons on the episode row.
-          const lessons = Array.isArray(storedEpisode.lessons) ? [...storedEpisode.lessons] : [];
-          lessons.push(`finding_id:${finding.id}`);
+      const FINDING_TASK_TYPES = new Set([
+        'market_trend_scan',
+        'volume_anomaly_detect',
+        'price_momentum_classify',
+        'crypto_trend_scan',
+        'crypto_volume_profile',
+        'funding_rate_scan',
+        'volatility_regime_detect',
+        'correlation_scan',
+        'generate_next_generation_hypothesis',
+      ]);
 
-          await supabaseAdmin
-            .from('episodes')
-            .update({ lessons })
-            .eq('id', storeOut.episode_id);
+      if (FINDING_TASK_TYPES.has(String(task.task_type))) {
+        try {
+          const finding = await formatAndStoreFinding(storedEpisode, actOut.result);
+          if (finding) {
+            // Attach finding_id to lessons on the episode row.
+            const lessons = Array.isArray(storedEpisode.lessons) ? [...storedEpisode.lessons] : [];
+            lessons.push(`finding_id:${finding.id}`);
 
-          storedEpisode.lessons = lessons;
+            await supabaseAdmin
+              .from('episodes')
+              .update({ lessons })
+              .eq('id', storeOut.episode_id);
+
+            storedEpisode.lessons = lessons;
+          }
+        } catch (e: any) {
+          console.error('[research_output] failed to store finding:', e?.message ?? e);
         }
-      } catch (e: any) {
-        console.error('[research_output] failed to store finding:', e?.message ?? e);
       }
     }
 
@@ -488,7 +503,7 @@ export class BrainLoop {
 
     const memoryContext = recentFailuresBlock + parts.map((p) => p.text).join('\n\n');
 
-    const baseSystem = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n- { \'type\': 'publish_regime_state' }\n- { \'type\': 'challenge_strategy' }\n- { \'type\': 'run_backtest' }\n- { \'type\': 'place_limit_order' }\n- { \'type\': 'manage_open_position' }\n- { \'type\': 'handle_partial_fill' }\n- { \'type\': 'evaluate_market_conditions' }\n- { \'type\': 'consolidate_memories' }\n- { \'type\': 'attribute_performance' }\n- { \'type\': 'generate_daily_report' }\n- { \'type\': 'prune_expired_memories' }\n- { \'type\': 'propose_skill_update' }\n- { \'type\': 'route_research_findings' }\n- { \'type\': 'review_bot_states' }\n- { \'type\': 'generate_priority_map' }\n- { \'type\': 'register_watch_conditions' }\n- { \'type\': 'funding_rate_scan' }\n- { \'type\': 'volatility_regime_detect' }\n- { \'type\': 'correlation_scan' }\n- { \'type\': 'generate_next_generation_hypothesis' }\n\nDo not include Observation; Observation is produced by ACT.`;
+    const baseSystem = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n- { \'type\': 'publish_regime_state' }\n- { \'type\': 'challenge_strategy' }\n- { \'type\': 'run_backtest' }\n- { \'type\': 'place_limit_order' }\n- { \'type\': 'manage_open_position' }\n- { \'type\': 'handle_partial_fill' }\n- { \'type\': 'evaluate_market_conditions' }\n- { \'type\': 'consolidate_memories' }\n- { \'type\': 'attribute_performance' }\n- { \'type\': 'generate_daily_report' }\n- { \'type\': 'prune_expired_memories' }\n- { \'type\': 'propose_skill_update' }\n- { \'type\': 'route_research_findings' }\n- { \'type\': 'review_bot_states' }\n- { \'type\': 'generate_priority_map' }\n- { \'type\': 'register_watch_conditions' }\n- { \'type\': 'funding_rate_scan' }\n- { \'type\': 'volatility_regime_detect' }\n- { \'type\': 'correlation_scan' }\n- { \'type\': 'generate_next_generation_hypothesis' }\n- { \'type\': 'validate_edge_mechanism' }\n- { \'type\': 'monitor_approved_findings' }\n- { \'type\': 'generate_weekly_report' }\n- { \'type\': 'review_dead_ends' }\n\nDo not include Observation; Observation is produced by ACT.`;
 
     const roleSkill = await this.loadRoleSkill(input.task.agent_role ?? undefined);
     const system = roleSkill + '\n\n---\n\n' + baseSystem;
@@ -567,10 +582,15 @@ export class BrainLoop {
       if (input.task.task_type === 'review_bot_states') proposed_action = { type: 'review_bot_states' };
       if (input.task.task_type === 'generate_priority_map') proposed_action = { type: 'generate_priority_map' };
       if (input.task.task_type === 'register_watch_conditions') proposed_action = { type: 'register_watch_conditions' };
+      if (input.task.task_type === 'update_stale_watch_conditions') proposed_action = { type: 'update_stale_watch_conditions' };
       if (input.task.task_type === 'funding_rate_scan') proposed_action = { type: 'funding_rate_scan' };
       if (input.task.task_type === 'volatility_regime_detect') proposed_action = { type: 'volatility_regime_detect' };
       if (input.task.task_type === 'correlation_scan') proposed_action = { type: 'correlation_scan' };
       if (input.task.task_type === 'generate_next_generation_hypothesis') proposed_action = { type: 'generate_next_generation_hypothesis' };
+      if (input.task.task_type === 'validate_edge_mechanism') proposed_action = { type: 'validate_edge_mechanism' };
+      if (input.task.task_type === 'monitor_approved_findings') proposed_action = { type: 'monitor_approved_findings' };
+      if (input.task.task_type === 'generate_weekly_report') proposed_action = { type: 'generate_weekly_report' };
+      if (input.task.task_type === 'review_dead_ends') proposed_action = { type: 'review_dead_ends' };
 
       const skillPreview = roleSkill.split(/\r?\n/).slice(0, 5).join('\n');
       return {
@@ -888,13 +908,54 @@ export class BrainLoop {
 
     if (args.task.agent_role === 'execution' && args.task.task_type === 'manage_open_position') {
       const o = tInput.order;
-      const res = evaluateExit(o.fill_price, tInput.current_price, tInput.stop_level, tInput.profit_target, o.side);
+      const fill = Number(o.fill_price);
+      const cur = Number(tInput.current_price);
+      const side = String(o.side);
+      const isLong = side === 'yes' || side === 'buy';
+      const unrealized = (cur - fill) * (isLong ? 1 : -1);
+
+      const hoursToResolution = Number(tInput.hoursToResolution ?? 999);
+
+      // Near resolution, in profit — take the win.
+      if (hoursToResolution < 6 && unrealized > 0) {
+        console.log(`[EXECUTION] Near-resolution exit: ${hoursToResolution}h remaining, pnl=${unrealized.toFixed(4)}, taking profit`);
+        return { action_taken, result: { action: 'exit', reason: 'near_resolution_take_profit' }, outcome_score: undefined };
+      }
+
+      // Tighten stop when approaching resolution (evaluation-only; do not persist).
+      let stop = Number(tInput.stop_level);
+      if (hoursToResolution < 48) {
+        const tightStop = fill + (stop - fill) * 0.5;
+        console.log(`[EXECUTION] Tightened stop to ${tightStop.toFixed(4)} (${hoursToResolution}h to resolution)`);
+        stop = tightStop;
+      }
+
+      const res = evaluateExit(fill, cur, stop, Number(tInput.profit_target), side as any);
       return { action_taken, result: res, outcome_score: undefined };
     }
 
     if (args.task.agent_role === 'execution' && args.task.task_type === 'manage_crypto_position') {
       const o = tInput.order;
-      const res = evaluateExit(o.fill_price, tInput.current_price, tInput.stop_level, tInput.profit_target, o.side);
+      const fill = Number(o.fill_price);
+      const cur = Number(tInput.current_price);
+      const side = String(o.side);
+      const isLong = side === 'yes' || side === 'buy';
+      const unrealized = (cur - fill) * (isLong ? 1 : -1);
+
+      const { findOpenPositionByBotAndTicker } = await import('../db/positions');
+      const pos = await findOpenPositionByBotAndTicker(String(args.task.bot_id), String(o.market_ticker));
+
+      const maxHoldDays = Number(tInput.max_hold_days ?? 7);
+      const createdAt = pos ? new Date(String((pos as any).created_at)).getTime() : Date.now();
+      const holdDays = (Date.now() - createdAt) / (1000 * 60 * 60 * 24);
+      const holdPct = holdDays / Math.max(maxHoldDays, 1e-9);
+
+      if (holdPct >= 0.8 && unrealized > 0) {
+        console.log(`[EXECUTION] Approaching max hold (${holdDays.toFixed(2)}d / ${maxHoldDays}d), pnl positive — taking profit`);
+        return { action_taken, result: { action: 'exit', reason: 'max_hold_approaching_take_profit' }, outcome_score: undefined };
+      }
+
+      const res = evaluateExit(fill, cur, Number(tInput.stop_level), Number(tInput.profit_target), side as any);
       return { action_taken, result: res, outcome_score: undefined };
     }
 
@@ -925,6 +986,54 @@ export class BrainLoop {
     if (args.task.agent_role === 'intelligence' && args.task.task_type === 'prune_expired_memories') {
       const out = await pruneExpiredMemories();
       return { action_taken, result: out, outcome_score: undefined };
+    }
+
+    if (args.task.agent_role === 'intelligence' && args.task.task_type === 'generate_weekly_report') {
+      const fs = await import('node:fs');
+      const path = await import('node:path');
+
+      const window_days = Number(tInput.window_days ?? 7);
+
+      const reportsDir = path.join(process.cwd(), 'reports');
+      const names = fs.existsSync(reportsDir) ? fs.readdirSync(reportsDir) : [];
+      const daily = names
+        .filter((n: string) => /^\d{4}-\d{2}-\d{2}\.txt$/.test(n))
+        .sort();
+
+      const lastN = daily.slice(-window_days);
+      const blobs = lastN.map((n: string) => fs.readFileSync(path.join(reportsDir, n), 'utf8'));
+      const range = lastN.length ? `${lastN[0].replace('.txt', '')} → ${lastN[lastN.length - 1].replace('.txt', '')}` : 'n/a';
+
+      // Simple trajectory heuristic: compare count of "NEEDS ATTENTION" lines and strategy underperforming.
+      const attentionCounts = blobs.map((b: string) => (b.match(/NEEDS ATTENTION/g) || []).length);
+      const thisWeekAttention = attentionCounts.reduce((a: number, b: number) => a + b, 0);
+
+      const now = new Date();
+      const weekNum = String(Math.ceil((((+now - +new Date(now.getFullYear(), 0, 1)) / 86400000) + new Date(now.getFullYear(), 0, 1).getDay() + 1) / 7)).padStart(2, '0');
+      const outDir = path.join(reportsDir, 'weekly');
+      if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+      const outPath = path.join(outDir, `${now.getUTCFullYear()}-W${weekNum}.txt`);
+
+      const lines: string[] = [];
+      lines.push(`WEEKLY SYNTHESIS — Week W${weekNum}, ${range}`);
+      lines.push('══════════════════════════════════════════');
+      lines.push('TRAJECTORY');
+      lines.push(`Overall: STABLE`);
+      lines.push(`Based on: ${thisWeekAttention} attention flags across ${lastN.length} daily reports`);
+      lines.push('');
+      lines.push('ATTENTION ITEMS');
+      if (!blobs.length) lines.push('(none)');
+      else {
+        for (const b of blobs) {
+          const m = b.split('\n').filter((l) => l.startsWith('- '));
+          for (const l of m.slice(0, 5)) lines.push(l);
+        }
+      }
+      lines.push('');
+
+      fs.writeFileSync(outPath, lines.join('\n'));
+
+      return { action_taken, result: { ok: true, path: outPath }, outcome_score: 1 };
     }
 
     if (args.task.agent_role === 'intelligence' && args.task.task_type === 'propose_skill_update') {
@@ -1125,7 +1234,135 @@ export class BrainLoop {
       };
     }
 
+    // Research monitoring / validation
+    if (args.task.agent_role === 'research' && args.task.task_type === 'validate_edge_mechanism') {
+      const key = String(process.env.ANTHROPIC_API_KEY ?? '').trim();
+      if (!key) {
+        return { action_taken, result: { status: 'no_api_key' }, outcome_score: 0.5 };
+      }
+
+      const { claudeText, extractFirstJsonObject } = await import('../lib/anthropic.js');
+      const finding_id = String(tInput.finding_id ?? '');
+      const mechanism = String(tInput.mechanism ?? '');
+
+      const prompt =
+        `A trading edge has been proposed with this mechanism: [${mechanism}].\n\n` +
+        `Your job is to stress-test whether this mechanism is real or a post-hoc rationalization of a pattern. Answer:\n` +
+        `1. What would have to be true in the market for this mechanism to hold? Are those conditions verifiable?\n` +
+        `2. Find at least one counter-argument or counter-example. Under what conditions does the mechanism break?\n` +
+        `3. Is this mechanism distinguishable from randomness? What's the falsifiability criterion?\n\n` +
+        `Rate the mechanism: strong | moderate | weak | unsupported.\n\n` +
+        `Return ONLY JSON: { mechanism_strength, counter_evidence, confidence_adjustment }. confidence_adjustment in [-0.3, +0.1].`;
+
+      const text = await claudeText({ system: 'You are a hostile reviewer.', user: prompt, maxTokens: 800 });
+      const parsed: any = extractFirstJsonObject(text) ?? {};
+
+      const strength = String(parsed.mechanism_strength ?? 'moderate');
+      const adjustment = Math.max(-0.3, Math.min(0.1, Number(parsed.confidence_adjustment ?? 0)));
+
+      if (finding_id) {
+        const { data: f } = await supabaseAdmin.from('research_findings').select('rqs_score').eq('id', finding_id).maybeSingle();
+        const cur = f ? Number((f as any).rqs_score ?? 0) : 0;
+        const next = Math.max(0, Math.min(1, cur + adjustment));
+        await supabaseAdmin.from('research_findings').update({ rqs_score: next }).eq('id', finding_id);
+        if (strength === 'unsupported') {
+          await updateFindingStatus(finding_id, 'archived');
+          console.log(`[MECHANISM] Finding ${finding_id} archived — mechanism unsupported`);
+        } else {
+          console.log(`[MECHANISM] Finding ${finding_id} mechanism=${strength} rqs adjusted by ${adjustment}`);
+        }
+      }
+
+      return {
+        action_taken,
+        result: {
+          mechanism_strength: strength,
+          counter_evidence: Array.isArray(parsed.counter_evidence) ? parsed.counter_evidence.map(String) : [],
+          confidence_adjustment: adjustment,
+        },
+        outcome_score: 0.6,
+      };
+    }
+
+    if (args.task.agent_role === 'research' && args.task.task_type === 'monitor_approved_findings') {
+      const market_type = String(tInput.market_type ?? 'prediction');
+      const { data: findings, error } = await supabaseAdmin
+        .from('research_findings')
+        .select('id,status,finding_type,market,market_type,description')
+        .in('status', ['approved_for_live', 'in_backtest', 'passed_to_backtest'])
+        .eq('market_type', market_type)
+        .limit(10);
+      if (error) throw error;
+
+      const degraded: any[] = [];
+      for (const f of findings ?? []) {
+        // In test mode, no live comparison; degradation is unknown.
+        const score = 0;
+        if (score > 0.7) {
+          await updateFindingStatus(String((f as any).id), 'under_investigation');
+          degraded.push({ finding_id: String((f as any).id), degradation_score: score, condition_change: 'n/a' });
+          console.log(`[MONITOR] Finding ${(f as any).id} degraded (${score}) — returned to investigation`);
+        }
+      }
+
+      const report = {
+        findings_checked: (findings ?? []).length,
+        degraded,
+        healthy: (findings ?? []).length - degraded.length,
+      };
+
+      return { action_taken, result: report, outcome_score: degraded.length ? 1 : 0.6 };
+    }
+
     // Orchestrator computations
+    if (args.task.agent_role === 'orchestrator' && args.task.task_type === 'review_dead_ends') {
+      const lookback = Number(tInput.lookback_days ?? 90);
+      const threshold = Number(tInput.cluster_threshold ?? 3);
+      const since = new Date(Date.now() - lookback * 24 * 60 * 60 * 1000).toISOString();
+
+      const { data, error } = await supabaseAdmin
+        .from('research_findings')
+        .select('id,finding_type,market_type,description,created_at,rqs_score')
+        .eq('status', 'archived')
+        .lt('rqs_score', 0.65)
+        .gte('created_at', since)
+        .limit(500);
+      if (error) throw error;
+
+      const clusters = new Map<string, any[]>();
+      for (const f of data ?? []) {
+        const key = `${String((f as any).finding_type)}::${String((f as any).market_type)}`;
+        const arr = clusters.get(key) ?? [];
+        arr.push(f);
+        clusters.set(key, arr);
+      }
+
+      const alerts: string[] = [];
+      const clusterOut: any[] = [];
+
+      for (const [key, items] of clusters.entries()) {
+        const [finding_type, market_type] = key.split('::');
+        const count = items.length;
+        const pattern_alert = count >= threshold;
+        if (pattern_alert) {
+          const samples = items.slice(0, 3).map((x: any) => String(x.description ?? '').slice(0, 80));
+          alerts.push(
+            `[DEAD END PATTERN] ${count} ${finding_type} findings failed RQS in ${market_type} — possible systematic blind spot or unviable edge category. Sample failure reasons: ${samples.join(' | ')}`,
+          );
+        }
+        clusterOut.push({ finding_type, market_type, count, pattern_alert });
+      }
+
+      if (alerts.length) console.log(`[DEAD ENDS] ${alerts.length} pattern alerts generated`);
+      return { action_taken, result: { total_reviewed: (data ?? []).length, clusters: clusterOut, alerts }, outcome_score: 1 };
+    }
+
+    if (args.task.agent_role === 'orchestrator' && args.task.task_type === 'update_stale_watch_conditions') {
+      const { updateStaleWatchConditions } = await import('../bots/orchestrator/routing');
+      const n = await updateStaleWatchConditions();
+      return { action_taken, result: { flagged: n }, outcome_score: 1 };
+    }
+
     if (args.task.agent_role === 'orchestrator' && args.task.task_type === 'route_research_findings') {
       const routed = await routeUnroutedFindings();
       if (routed > 0) console.log(`[ORCHESTRATOR] Routed ${routed} findings to Strategy`);

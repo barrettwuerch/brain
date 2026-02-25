@@ -20,6 +20,9 @@ async function main() {
   await insertTask('register_watch_conditions', {});
   await insertTask('review_bot_states', {});
   await insertTask('generate_priority_map', {});
+  await insertTask('monitor_approved_findings', { lookback_days: 30, market_type: 'prediction' });
+  await insertTask('monitor_approved_findings', { lookback_days: 30, market_type: 'crypto' });
+  await insertTask('update_stale_watch_conditions', {});
   console.log('Seeded orchestrator tasks.');
 }
 

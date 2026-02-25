@@ -69,9 +69,43 @@ async function extractSuccessFacts(episodes: Episode[]): Promise<{ stored: numbe
 
     if (existing?.id) {
       const times_confirmed = Number((existing as any).times_confirmed ?? 0) + 1;
+
+      const existingFact = String((existing as any).fact ?? fact);
+      const isProvisional = existingFact.startsWith('[PROVISIONAL');
+
+      // Promote provisional facts after 3 confirmations.
+      let nextFact = existingFact;
+      let nextConf: number | undefined = undefined;
+
+      const violatesCapitalPreservation = (text: string) => {
+        const t = text.toLowerCase();
+        if (t.includes('bypass') && t.includes('circuit')) return true;
+        if (t.includes('ignore') && t.includes('circuit')) return true;
+        if (t.includes('max_drawdown') && (t.includes('>') || t.includes('20%') || t.includes('0.2'))) return true;
+        if (t.includes('kelly') && (t.includes('2.0x') || t.includes('full kelly'))) return true;
+        return false;
+      };
+
+      if (isProvisional && violatesCapitalPreservation(existingFact)) {
+        // Immediate retire on capital preservation violations (do not wait for repeated contradictions).
+        await supabaseAdmin
+          .from('semantic_facts')
+          .update({ status: 'retired', last_updated: new Date().toISOString() })
+          .eq('id', existing.id);
+        console.log('[CROSS-DESK] Provisional fact violates capital preservation — retired immediately');
+        updated++;
+        continue;
+      }
+
+      if (isProvisional && times_confirmed >= 3) {
+        nextFact = existingFact.replace(/^\[PROVISIONAL[^\]]*\]\s*/i, '');
+        nextConf = Math.min(Number((existing as any).confidence ?? 0.6) / 0.6, 0.95);
+        console.log('[CROSS-DESK] Provisional fact confirmed — promoted to full confidence');
+      }
+
       const { error: updErr } = await supabaseAdmin
         .from('semantic_facts')
-        .update({ times_confirmed, last_updated: new Date().toISOString() })
+        .update({ times_confirmed, last_updated: new Date().toISOString(), fact: nextFact, ...(nextConf !== undefined ? { confidence: nextConf } : {}) })
         .eq('id', existing.id);
       if (updErr) throw updErr;
       updated++;
@@ -91,6 +125,32 @@ async function extractSuccessFacts(episodes: Episode[]): Promise<{ stored: numbe
 
     const { error } = await supabaseAdmin.from('semantic_facts').insert(row);
     if (error) throw error;
+
+    // FIX H: provisional cross-desk distribution (reduced confidence).
+    const violatesCapitalPreservation = (text: string) => {
+      const t = text.toLowerCase();
+      if (t.includes('bypass') && t.includes('circuit')) return true;
+      if (t.includes('ignore') && t.includes('circuit')) return true;
+      if (t.includes('max_drawdown') && (t.includes('>') || t.includes('20%') || t.includes('0.2'))) return true;
+      if (t.includes('kelly') && (t.includes('2.0x') || t.includes('full kelly'))) return true;
+      return false;
+    };
+
+    const provisional = {
+      ...row,
+      domain: 'crypto',
+      fact: `[PROVISIONAL from ${row.domain}] ${row.fact}`,
+      confidence: Math.min(row.confidence * 0.6, 0.95),
+      times_confirmed: 0,
+      times_violated: 0,
+      status: violatesCapitalPreservation(row.fact) ? 'retired' : 'active',
+    };
+
+    if (provisional.status === 'retired') {
+      console.log('[CROSS-DESK] Provisional fact violates capital preservation — retired immediately');
+    }
+
+    await supabaseAdmin.from('semantic_facts').insert(provisional);
 
     stored++;
   }

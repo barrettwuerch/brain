@@ -170,6 +170,50 @@ export async function reviewAndTransitionBots(): Promise<string[]> {
   return actions;
 }
 
+export async function updateStaleWatchConditions(): Promise<number> {
+  const { data: facts, error } = await supabaseAdmin
+    .from('semantic_facts')
+    .select('fact,confidence')
+    .eq('fact_type', 'success_pattern')
+    .gt('confidence', 0.8)
+    .ilike('fact', '%threshold%')
+    .order('last_updated', { ascending: false })
+    .limit(50);
+  if (error) throw error;
+
+  const { data: conds, error: cErr } = await supabaseAdmin
+    .from('watch_conditions')
+    .select('id,ticker,metric,value,status')
+    .eq('status', 'active');
+  if (cErr) throw cErr;
+
+  let flagged = 0;
+
+  for (const f of facts ?? []) {
+    const text = String((f as any).fact ?? '');
+    const mMetric = text.match(/metric=([a-zA-Z_]+)/);
+    const mVal = text.match(/threshold=([0-9.]+)/);
+    if (!mMetric || !mVal) continue;
+
+    const metric = mMetric[1];
+    const suggested = Number(mVal[1]);
+    if (!Number.isFinite(suggested)) continue;
+
+    for (const c of conds ?? []) {
+      const row: any = c;
+      if (String(row.metric) !== metric) continue;
+      const cur = Number(row.value);
+      if (!Number.isFinite(cur)) continue;
+      if (Math.abs(cur - suggested) / Math.max(Math.abs(cur), 1e-9) > 0.25) {
+        console.log(`[ORCHESTRATOR] Watch condition ${row.id} may need threshold update: current=${cur}, semantic fact suggests ${suggested}`);
+        flagged++;
+      }
+    }
+  }
+
+  return flagged;
+}
+
 export async function checkForCircuitBreakerEscalations(): Promise<string[]> {
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const { data, error } = await supabaseAdmin

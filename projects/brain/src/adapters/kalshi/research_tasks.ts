@@ -126,7 +126,7 @@ async function main() {
     notes: 'Generated from Kalshi public trades endpoint; snapshot is deterministic for grading.',
     rqs_components: {
       statistical_rigor: 0.4,
-      mechanism_clarity: 0.7,
+      mechanism_clarity: 0.5,
       novelty: 0.4,
       cost_adjusted_edge: 0.4,
     },

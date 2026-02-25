@@ -54,6 +54,7 @@ async function main() {
 
   await insertTask('consolidate_memories', {});
   await insertTask('attribute_performance', {});
+  await insertTask('generate_weekly_report', { window_days: 7, include_trajectory: true });
   console.log('Seeded intelligence tasks.');
 }
 

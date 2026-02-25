@@ -58,3 +58,39 @@ export async function expireStaleConditions(): Promise<number> {
   if (error) throw error;
   return data?.length ?? 0;
 }
+
+export async function supersedeWatchCondition(
+  oldId: string,
+  newParams: Partial<WatchCondition>,
+): Promise<WatchCondition> {
+  const { data: oldRow, error: oldErr } = await supabaseAdmin.from('watch_conditions').select('*').eq('id', oldId).single();
+  if (oldErr) throw oldErr;
+
+  const old: any = oldRow as any;
+  const version = Number(old.version ?? 1);
+
+  const create: any = {
+    ...old,
+    ...newParams,
+    id: undefined,
+    created_at: undefined,
+    updated_at: undefined,
+    version: version + 1,
+    superseded_by: null,
+    status: 'active',
+    trigger_count: 0,
+    last_triggered: null,
+  };
+
+  const { data: created, error: cErr } = await supabaseAdmin.from('watch_conditions').insert(create).select('*').single();
+  if (cErr) throw cErr;
+
+  const { error: updErr } = await supabaseAdmin
+    .from('watch_conditions')
+    .update({ status: 'superseded', superseded_by: (created as any).id })
+    .eq('id', oldId);
+  if (updErr) throw updErr;
+
+  console.log(`[SCANNER] Condition ${oldId} v${version} superseded by ${String((created as any).id)} v${version + 1}`);
+  return created as any;
+}

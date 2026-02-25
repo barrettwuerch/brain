@@ -2,7 +2,8 @@ import 'dotenv/config';
 
 import type { Episode, ResearchFinding, RQSComponents } from '../../types';
 
-import { writeResearchFinding } from '../../db/research_findings';
+import { writeResearchFinding, updateFindingStatus } from '../../db/research_findings';
+import { supabaseAdmin } from '../../lib/supabase';
 import { scoreRQS, validateSixQuestions } from './research_compute';
 
 function asStr(v: any): string | null {
@@ -123,5 +124,27 @@ export async function formatAndStoreFinding(
   };
 
   const written = await writeResearchFinding(toWrite);
+
+  // FIX D/D3: if mechanism_clarity is low, seed adversarial mechanism validation.
+  try {
+    const mc = Number((toWrite as any).rqs_components?.mechanism_clarity ?? 1);
+    if (written?.id && mc < 0.6) {
+      await supabaseAdmin.from('tasks').insert({
+        task_type: 'validate_edge_mechanism',
+        task_input: {
+          finding_id: written.id,
+          mechanism: toWrite.mechanism ?? '',
+          market_type: toWrite.market_type,
+        },
+        status: 'queued',
+        tags: ['research', 'mechanism'],
+        agent_role: 'research',
+        desk: String(toWrite.market_type) === 'crypto' ? 'crypto_markets' : 'prediction_markets',
+        bot_id: String(toWrite.market_type) === 'crypto' ? 'crypto-research-bot-1' : 'research-bot-1',
+      });
+      console.log(`[RQS] mechanism_clarity low (${mc}) — seeding mechanism validation`);
+    }
+  } catch {}
+
   return written;
 }

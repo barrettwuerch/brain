@@ -407,13 +407,19 @@ create table if not exists public.watch_conditions (
   active_hours text,
   vol_regime_gate text,
 
-  status text not null default 'active' check (status in ('active','paused','expired','max_reached')),
+  status text not null default 'active' check (status in ('active','paused','expired','max_reached','superseded')),
   last_triggered timestamptz,
   trigger_count int not null default 0,
   expires_at timestamptz,
 
-  registered_by text not null default 'orchestrator'
+  registered_by text not null default 'orchestrator',
+
+  version int not null default 1,
+  superseded_by uuid
 );
+
+comment on column public.watch_conditions.version is 'Increments when condition parameters are updated. Old versions have status=superseded and superseded_by pointing to the new condition id.';
+comment on column public.watch_conditions.superseded_by is 'If this condition was replaced by an updated version, this field contains the new watch_condition id. NULL for active/current conditions.';
 
 create index if not exists wc_status_idx on public.watch_conditions (status);
 create index if not exists wc_market_type_idx on public.watch_conditions (market_type);
