@@ -992,6 +992,37 @@ export class BrainLoop {
       const baseKellySize = Number(tInput.baseKellySize ?? 0);
       const k = getKellyMultiplier(dd);
       const approved_size = k * baseKellySize;
+
+      // Continuation support: size_position → place_limit_order
+      // If approved_size is zeroed by drawdown tiers, do not seed continuation.
+      try {
+        const cont = (tInput as any)?.continuation;
+        if (cont && approved_size > 0) {
+          const { task_type, agent_role, bot_id, desk, task_input } = cont;
+          if (!task_type || !bot_id || !task_input?.symbol || !task_input?.side || !task_input?.limitPrice) {
+            console.error('size_position continuation malformed, skipping', cont);
+          } else {
+            const { error: insErr } = await supabaseAdmin.from('tasks').insert({
+              task_type,
+              task_input: {
+                ...task_input,
+                riskApprovedSize: approved_size,
+              },
+              status: 'queued',
+              tags: ['risk', 'continuation', 'sized'],
+              agent_role,
+              desk,
+              bot_id,
+            });
+            if (insErr) throw insErr;
+            console.log('[RISK] Seeded continuation task', { task_type, bot_id, approved_size });
+          }
+        }
+      } catch (e: any) {
+        // Do not crash risk sizing on continuation errors.
+        console.error('[RISK] size_position continuation error (skipping):', e?.message ?? e);
+      }
+
       return {
         action_taken,
         result: { approved_size, kelly_fraction: k, reason: k > 0 ? 'ok' : 'halted_by_drawdown' },

@@ -165,7 +165,43 @@ export async function runScannerCycle(): Promise<{ conditionsChecked: number; fi
 
     if (!result.fire) continue;
 
-    if (c.action_type === 'place_limit_order') {
+    if ((c as any).action_type === 'size_position') {
+      // NOTE: drawdownPct must be fetched at *fire time* from bot_states.
+      // Do not cache bot_state at cycle start; drawdown needs to reflect current risk posture.
+      const { getAccount } = await import('../../lib/alpaca');
+
+      // Cache equity once per scanner cycle.
+      const account = await getAccount();
+      const equity = Number(account.equity);
+
+      // Fetch current drawdown for the target execution bot.
+      const { data: bs, error: bsErr } = await supabaseAdmin
+        .from('bot_states')
+        .select('current_drawdown')
+        .eq('bot_id', String(c.bot_id))
+        .maybeSingle();
+      if (bsErr) throw bsErr;
+      const dd = Number((bs as any)?.current_drawdown ?? 0);
+
+      const BASE_POSITION_FRACTION = 0.02; // TODO: replace with edge.confidence when available
+      const baseKellySize = equity * BASE_POSITION_FRACTION;
+
+      const { error } = await supabaseAdmin.from('tasks').insert({
+        task_type: 'size_position',
+        task_input: {
+          ...(c.action_params ?? {}),
+          drawdownPct: dd,
+          baseKellySize,
+        },
+        status: 'queued',
+        tags: ['scanner', 'risk'],
+        bot_id: 'risk-bot-1',
+        agent_role: 'risk',
+        desk: c.market_type === 'crypto' ? 'crypto_markets' : 'prediction_markets',
+      });
+      if (error) throw error;
+      tasksCreated++;
+    } else if (c.action_type === 'place_limit_order') {
       const taskType = c.market_type === 'crypto' ? 'place_limit_order' : 'place_kalshi_order';
       const desk = c.market_type === 'crypto' ? 'crypto_markets' : 'prediction_markets';
 
