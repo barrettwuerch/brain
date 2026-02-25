@@ -512,7 +512,56 @@ export class BrainLoop {
       }
     }
 
-    const memoryContext = recentFailuresBlock + parts.map((p) => p.text).join('\n\n');
+    let memoryContext = recentFailuresBlock + parts.map((p) => p.text).join('\n\n');
+
+    // Knowledge Library injection (Block 4)
+    try {
+      const taskType = String(input.task.task_type ?? '');
+      const deskRaw = String(input.task.desk ?? '');
+      const desk = deskRaw.includes('crypto') ? 'crypto' : deskRaw.includes('prediction') ? 'prediction' : 'shared';
+
+      const { data: kl, error: klErr } = await supabaseAdmin
+        .from('knowledge_library')
+        .select('title,content,source,domain')
+        .in('domain', ['shared', desk])
+        .limit(200);
+      if (klErr) throw klErr;
+
+      const applicable = (kl ?? []).filter((r: any) => {
+        try {
+          const meta = JSON.parse(String(r.source ?? '{}'));
+          const applies: string[] = Array.isArray(meta?.applies_to) ? meta.applies_to : [];
+          return applies.includes('all') || applies.includes(taskType);
+        } catch {
+          return false;
+        }
+      });
+
+      // Compact injection: titles + content, capped.
+      const titles = applicable.map((r: any) => String(r.title));
+
+
+      const lines: string[] = [];
+      lines.push('KNOWLEDGE LIBRARY:');
+      for (const r of applicable) {
+        lines.push(`- ${String((r as any).title)}`);
+        lines.push(String((r as any).content ?? ''));
+        lines.push('');
+      }
+
+      let klText = lines.join('\n');
+      // Enforce a budget for knowledge injection.
+      while (estimateTokens(klText) > 1200) {
+        // drop the last chunk
+        const idx = klText.lastIndexOf('\n- ');
+        if (idx <= 0) break;
+        klText = klText.slice(0, idx).trimEnd();
+      }
+
+      memoryContext = klText + '\n\n' + memoryContext;
+    } catch (e: any) {
+      console.warn('[KNOWLEDGE] injection failed:', e?.message ?? e);
+    }
 
     const baseSystem = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n- { \'type\': 'publish_regime_state' }\n- { \'type\': 'challenge_strategy' }\n- { \'type\': 'run_backtest' }\n- { \'type\': 'place_limit_order' }\n- { \'type\': 'manage_open_position' }\n- { \'type\': 'handle_partial_fill' }\n- { \'type\': 'evaluate_market_conditions' }\n- { \'type\': 'consolidate_memories' }\n- { \'type\': 'attribute_performance' }\n- { \'type\': 'generate_daily_report' }\n- { \'type\': 'prune_expired_memories' }\n- { \'type\': 'propose_skill_update' }\n- { \'type\': 'route_research_findings' }\n- { \'type\': 'review_bot_states' }\n- { \'type\': 'generate_priority_map' }\n- { \'type\': 'register_watch_conditions' }\n- { \'type\': 'funding_rate_scan' }\n- { \'type\': 'volatility_regime_detect' }\n- { \'type\': 'correlation_scan' }\n- { \'type\': 'generate_next_generation_hypothesis' }\n- { \'type\': 'validate_edge_mechanism' }\n- { \'type\': 'monitor_approved_findings' }\n- { \'type\': 'generate_weekly_report' }\n- { \'type\': 'review_dead_ends' }
 - { \'type\': 'assess_strategic_priorities' }
