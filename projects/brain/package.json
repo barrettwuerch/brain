@@ -8,43 +8,42 @@
     "dev:run-once": "tsx src/scripts/run_once.ts",
     "dev:run-loop": "tsx src/scripts/run_loop.ts",
     "dev:run-scanner": "tsx src/scripts/run_scanner.ts",
-
     "dev:evaluate": "tsx src/evaluation/intelligence_score.ts",
     "dev:daily-report": "tsx src/evaluation/daily_report.ts",
     "dev:report": "tsx src/bots/intelligence/report_generator.ts",
     "dev:curriculum": "tsx src/evaluation/curriculum_manager.ts",
-
     "dev:check-states": "tsx src/scripts/check_states.ts",
-
     "dev:seed:research": "tsx src/adapters/kalshi/research_tasks.ts",
     "dev:seed:crypto-research": "tsx src/adapters/alpaca/research_tasks.ts",
     "dev:seed:monitor-findings": "tsx src/bots/research/monitor_tasks.ts",
     "dev:check-findings": "tsx src/scripts/check_findings.ts",
-
     "dev:seed:strategy": "tsx src/bots/strategy/strategy_tasks.ts",
     "dev:seed:crypto-strategy": "tsx src/adapters/alpaca/strategy_tasks.ts",
-
     "dev:seed:risk": "tsx src/bots/risk/risk_tasks.ts",
     "dev:seed:publish-regime": "tsx src/bots/risk/risk_tasks.ts publish_regime",
-
     "dev:seed:execution": "tsx src/bots/execution/execution_tasks.ts",
     "dev:seed:crypto-execution": "tsx src/adapters/alpaca/execution_tasks.ts",
-
     "dev:check-positions": "tsx src/scripts/check_positions.ts",
     "dev:check-outcomes": "tsx src/scripts/check_outcomes.ts",
     "dev:reconcile-outcomes": "tsx src/scripts/reconcile_outcomes.ts",
-
     "dev:nightly": "tsx src/scripts/nightly_intelligence.ts",
     "dev:weekly-report": "tsx src/scripts/run_weekly_report.ts",
     "dev:prune": "tsx -e \"import('./src/bots/intelligence/consolidation.ts').then(m => m.pruneExpiredMemories()).then(r => console.log('pruned:', r))\"",
     "dev:seed:intelligence": "tsx src/bots/intelligence/intelligence_tasks.ts",
     "dev:seed:skill-update": "tsx src/bots/intelligence/intelligence_tasks.ts skill_update",
     "dev:seed:orchestrator": "tsx src/bots/orchestrator/orchestrator_tasks.ts",
-    "dev:review-dead-ends": "tsx src/scripts/run_dead_end_review.ts"
+    "dev:review-dead-ends": "tsx src/scripts/run_dead_end_review.ts",
+    "dev:seed:cos-daily": "tsx src/bots/cos/cos_tasks.ts daily",
+    "dev:seed:cos-weekly": "tsx src/bots/cos/cos_tasks.ts weekly",
+    "dev:seed:cos-priorities": "tsx src/bots/cos/cos_tasks.ts priorities",
+    "dev:seed:cos-blindspots": "tsx src/bots/cos/cos_tasks.ts blind_spots",
+    "dev:test-cos-email": "tsx src/bots/cos/cos_email.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.0",
-    "dotenv": "^17.3.1"
+    "dotenv": "^17.3.1",
+    "node-cron": "^4.2.1",
+    "resend": "^6.9.2"
   },
   "devDependencies": {
     "tsx": "^4.19.2",

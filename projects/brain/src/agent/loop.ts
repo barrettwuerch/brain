@@ -21,6 +21,15 @@ import { runBacktest } from '../bots/strategy/backtest_engine';
 import { updateFindingStatus } from '../db/research_findings';
 import { checkAndFireBreakers, DEFAULT_THRESHOLDS } from '../bots/risk/circuit_breakers';
 import {
+  handleAssessStrategicPriorities,
+  handleGenerateDailyBrief,
+  handleGenerateWeeklyMemo,
+  handleDetectSystematicBlindSpots,
+  handleGenerateDecisionPacket,
+  handleReviewRegimeStrategyAlignment,
+  handleEvaluateBottlenecks,
+} from '../bots/cos/cos_handlers';
+import {
   computeDrawdownVelocity,
   computeENP,
   drawdownToRecoveryRequired,
@@ -378,7 +387,9 @@ export class BrainLoop {
 
   async loadRoleSkill(agentRole?: string): Promise<string> {
     const skillPath = agentRole
-      ? new URL(`../../skills/${agentRole.toUpperCase()}_BOT_SKILL.md`, import.meta.url)
+      ? agentRole === 'chief_of_staff'
+        ? new URL(`../bots/cos/COS_BOT_SKILL.md`, import.meta.url)
+        : new URL(`../../skills/${agentRole.toUpperCase()}_BOT_SKILL.md`, import.meta.url)
       : new URL(`../../SKILL.md`, import.meta.url);
 
     try {
@@ -503,7 +514,14 @@ export class BrainLoop {
 
     const memoryContext = recentFailuresBlock + parts.map((p) => p.text).join('\n\n');
 
-    const baseSystem = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n- { \'type\': 'publish_regime_state' }\n- { \'type\': 'challenge_strategy' }\n- { \'type\': 'run_backtest' }\n- { \'type\': 'place_limit_order' }\n- { \'type\': 'manage_open_position' }\n- { \'type\': 'handle_partial_fill' }\n- { \'type\': 'evaluate_market_conditions' }\n- { \'type\': 'consolidate_memories' }\n- { \'type\': 'attribute_performance' }\n- { \'type\': 'generate_daily_report' }\n- { \'type\': 'prune_expired_memories' }\n- { \'type\': 'propose_skill_update' }\n- { \'type\': 'route_research_findings' }\n- { \'type\': 'review_bot_states' }\n- { \'type\': 'generate_priority_map' }\n- { \'type\': 'register_watch_conditions' }\n- { \'type\': 'funding_rate_scan' }\n- { \'type\': 'volatility_regime_detect' }\n- { \'type\': 'correlation_scan' }\n- { \'type\': 'generate_next_generation_hypothesis' }\n- { \'type\': 'validate_edge_mechanism' }\n- { \'type\': 'monitor_approved_findings' }\n- { \'type\': 'generate_weekly_report' }\n- { \'type\': 'review_dead_ends' }\n\nDo not include Observation; Observation is produced by ACT.`;
+    const baseSystem = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n- { \'type\': 'publish_regime_state' }\n- { \'type\': 'challenge_strategy' }\n- { \'type\': 'run_backtest' }\n- { \'type\': 'place_limit_order' }\n- { \'type\': 'manage_open_position' }\n- { \'type\': 'handle_partial_fill' }\n- { \'type\': 'evaluate_market_conditions' }\n- { \'type\': 'consolidate_memories' }\n- { \'type\': 'attribute_performance' }\n- { \'type\': 'generate_daily_report' }\n- { \'type\': 'prune_expired_memories' }\n- { \'type\': 'propose_skill_update' }\n- { \'type\': 'route_research_findings' }\n- { \'type\': 'review_bot_states' }\n- { \'type\': 'generate_priority_map' }\n- { \'type\': 'register_watch_conditions' }\n- { \'type\': 'funding_rate_scan' }\n- { \'type\': 'volatility_regime_detect' }\n- { \'type\': 'correlation_scan' }\n- { \'type\': 'generate_next_generation_hypothesis' }\n- { \'type\': 'validate_edge_mechanism' }\n- { \'type\': 'monitor_approved_findings' }\n- { \'type\': 'generate_weekly_report' }\n- { \'type\': 'review_dead_ends' }
+- { \'type\': 'assess_strategic_priorities' }
+- { \'type\': 'generate_daily_brief' }
+- { \'type\': 'generate_weekly_memo' }
+- { \'type\': 'detect_systematic_blind_spots' }
+- { \'type\': 'generate_decision_packet' }
+- { \'type\': 'review_regime_strategy_alignment' }
+- { \'type\': 'evaluate_bottlenecks' }\n\nDo not include Observation; Observation is produced by ACT.`;
 
     const roleSkill = await this.loadRoleSkill(input.task.agent_role ?? undefined);
     const system = roleSkill + '\n\n---\n\n' + baseSystem;
@@ -591,6 +609,13 @@ export class BrainLoop {
       if (input.task.task_type === 'monitor_approved_findings') proposed_action = { type: 'monitor_approved_findings' };
       if (input.task.task_type === 'generate_weekly_report') proposed_action = { type: 'generate_weekly_report' };
       if (input.task.task_type === 'review_dead_ends') proposed_action = { type: 'review_dead_ends' };
+      if (input.task.task_type === 'assess_strategic_priorities') proposed_action = { type: 'assess_strategic_priorities' };
+      if (input.task.task_type === 'generate_daily_brief') proposed_action = { type: 'generate_daily_brief' };
+      if (input.task.task_type === 'generate_weekly_memo') proposed_action = { type: 'generate_weekly_memo' };
+      if (input.task.task_type === 'detect_systematic_blind_spots') proposed_action = { type: 'detect_systematic_blind_spots' };
+      if (input.task.task_type === 'generate_decision_packet') proposed_action = { type: 'generate_decision_packet' };
+      if (input.task.task_type === 'review_regime_strategy_alignment') proposed_action = { type: 'review_regime_strategy_alignment' };
+      if (input.task.task_type === 'evaluate_bottlenecks') proposed_action = { type: 'evaluate_bottlenecks' };
 
       const skillPreview = roleSkill.split(/\r?\n/).slice(0, 5).join('\n');
       return {
@@ -962,6 +987,63 @@ export class BrainLoop {
     if (args.task.agent_role === 'execution' && args.task.task_type === 'handle_partial_fill') {
       const res = handlePartialFill(tInput.order, tInput.currentSpread, tInput.avgSpread);
       return { action_taken, result: res, outcome_score: undefined };
+    }
+
+    // Chief of Staff (CoS) computations
+    if (args.task.agent_role === 'chief_of_staff') {
+      const wrapDb = (db: any) => ({
+        ...db,
+        from: (table: string) => {
+          const q = db.from(table);
+          if (table !== 'semantic_facts') return q;
+          return {
+            ...q,
+            insert: (row: any) => {
+              const r = { ...row };
+              if ('content' in r && !('fact' in r)) {
+                r.fact = r.content;
+                delete r.content;
+              }
+              if ('ttl_hours' in r && !('ttl_days' in r)) {
+                r.ttl_days = Number(r.ttl_hours) / 24;
+                delete r.ttl_hours;
+              }
+              if (r.fact_type === 'failure') r.fact_type = 'failure_pattern';
+              return db.from(table).insert(r);
+            },
+          };
+        },
+      });
+
+      const db = wrapDb(supabaseAdmin);
+
+      const r: any = await (async () => {
+        switch (String(args.task.task_type)) {
+          case 'assess_strategic_priorities':
+            return await handleAssessStrategicPriorities(args.task, db);
+          case 'generate_daily_brief':
+            return await handleGenerateDailyBrief(args.task, db);
+          case 'generate_weekly_memo':
+            return await handleGenerateWeeklyMemo(args.task, db);
+          case 'detect_systematic_blind_spots':
+            return await handleDetectSystematicBlindSpots(args.task, db);
+          case 'generate_decision_packet':
+            return await handleGenerateDecisionPacket(args.task, db);
+          case 'review_regime_strategy_alignment':
+            return await handleReviewRegimeStrategyAlignment(args.task, db);
+          case 'evaluate_bottlenecks':
+            return await handleEvaluateBottlenecks(args.task, db);
+          default:
+            return { observation: { ok: false, error: 'unknown_cos_task' }, outcome_score: 0 };
+        }
+      })();
+
+      // CoS handlers return {observation,outcome_score}; normalize to ActOutput.
+      return {
+        action_taken,
+        result: (r?.observation ?? {}) as any,
+        outcome_score: typeof r?.outcome_score === 'number' ? r.outcome_score : undefined,
+      };
     }
 
     // Intelligence computations
