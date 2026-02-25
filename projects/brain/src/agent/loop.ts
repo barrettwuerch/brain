@@ -1066,29 +1066,94 @@ export class BrainLoop {
     // See: src/bots/risk/risk_tasks.ts → size_position
 
     if (args.task.agent_role === 'execution' && args.task.task_type === 'place_limit_order') {
-      // Guard 1: market conditions
-      const cond = execIsTradeableMarket(tInput.spread, tInput.avg_spread, tInput.hoursToResolution);
-      if (!cond.tradeable) return { action_taken, result: { placed: false, reason: cond.reason }, outcome_score: undefined };
+      const earlyExit = (reason: string, details?: any) => {
+        return {
+          action_taken,
+          result: { placed: false, reason, details: details ?? null },
+          outcome_score: undefined,
+        };
+      };
+
+      // Guard 0: bot must be in a tradeable state right now.
+      const { data: botState, error: bsErr } = await supabaseAdmin
+        .from('bot_states')
+        .select('current_state,current_drawdown')
+        .eq('bot_id', String(args.task.bot_id ?? 'execution-bot-1'))
+        .maybeSingle();
+      if (bsErr) throw bsErr;
+
+      const curState = String((botState as any)?.current_state ?? 'exploiting');
+      const curDrawdown = Number((botState as any)?.current_drawdown ?? 0);
+
+      if (!['exploiting', 'cautious'].includes(curState)) {
+        return earlyExit('bot_not_in_tradeable_state', { current_state: curState });
+      }
+
+      // Guard: drawdown kill switch (> 0.20 means Kelly=0, no orders).
+      if (curDrawdown > 0.2) {
+        return earlyExit('halted_by_drawdown', { current_drawdown: curDrawdown });
+      }
+
+      // Guard 1: market conditions (only if fields provided)
+      if (
+        tInput.spread !== undefined &&
+        tInput.avg_spread !== undefined &&
+        tInput.hoursToResolution !== undefined
+      ) {
+        const cond = execIsTradeableMarket(tInput.spread, tInput.avg_spread, tInput.hoursToResolution);
+        if (!cond.tradeable) return earlyExit(cond.reason);
+      }
 
       // Guard 2: risk approval required
       if (tInput.riskApprovedSize === null || tInput.riskApprovedSize === undefined) {
-        return { action_taken, result: { placed: false, reason: 'missing_risk_approval' }, outcome_score: undefined };
+        return earlyExit('missing_risk_approval');
       }
 
-      const order = await placeOrder({
-        order_id: null as any,
-        bot_id: args.task.bot_id ?? 'execution-bot-1',
-        market_ticker: tInput.ticker,
-        order_type: 'limit' as any,
-        side: tInput.side,
-        size: tInput.riskApprovedSize,
-        limit_price: tInput.limit_price,
-        attempt_count: 1,
-        openInterest: tInput.openInterest,
+      const qty = Number(tInput.riskApprovedSize);
+      if (!Number.isFinite(qty) || qty <= 0) {
+        return earlyExit('halted_by_drawdown', { riskApprovedSize: tInput.riskApprovedSize });
+      }
+
+      // Place real Alpaca paper order. Tag with client_order_id = task.id for reconciliation.
+      const { placeOrder: alpacaPlaceOrder } = await import('../lib/alpaca');
+
+      const symbol = String(tInput.symbol ?? tInput.ticker ?? '').trim();
+      if (!symbol) return earlyExit('missing_symbol');
+
+      const limitPrice = Number(tInput.limitPrice ?? tInput.limit_price);
+      if (!Number.isFinite(limitPrice) || limitPrice <= 0) return earlyExit('missing_limit_price');
+
+      const side = String(tInput.side ?? '').toLowerCase();
+      if (side !== 'buy' && side !== 'sell') return earlyExit('invalid_side', { side });
+
+      const order = await alpacaPlaceOrder({
+        symbol,
+        qty: String(Math.floor(qty)),
+        side: side as any,
+        type: 'limit',
+        time_in_force: 'gtc',
+        limit_price: String(limitPrice),
+        client_order_id: String(args.task.id),
       });
 
-      // NOTE: Positions are opened AFTER the episode is stored (so we can link entry_episode_id to the episode UUID).
-      return { action_taken: { ...action_taken, order }, result: order as any, outcome_score: undefined };
+      return {
+        action_taken: {
+          ...action_taken,
+          order: {
+            order_id: order.id,
+            client_order_id: order.client_order_id,
+            approved_qty: Math.floor(qty),
+            status: order.status,
+            symbol: order.symbol,
+            side: order.side,
+            type: order.type,
+            time_in_force: order.time_in_force,
+            limit_price: order.limit_price ?? null,
+          },
+        },
+        result: { placed: true, order_id: order.id, client_order_id: order.client_order_id, approved_qty: Math.floor(qty) },
+        outcome_score: undefined,
+      };
     }
 
     if (args.task.agent_role === 'execution' && args.task.task_type === 'manage_open_position') {
