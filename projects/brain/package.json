@@ -44,7 +44,8 @@
     "dev:seed:gate1-preformalized-challenge": "tsx src/scripts/seed_gate1_preformalized_challenge.ts",
     "dev:seed:gate3-episodes": "tsx src/scripts/seed_gate3_episodes.ts",
     "dev:seed:gate3-poor-episodes": "tsx src/scripts/seed_gate3_poor_episodes.ts",
-    "dev:test:kelly-multiplier": "tsx src/scripts/test_kelly_multiplier.ts"
+    "dev:test:kelly-multiplier": "tsx src/scripts/test_kelly_multiplier.ts",
+    "dev:smoke:alpaca": "tsx src/scripts/smoke_alpaca.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.0",

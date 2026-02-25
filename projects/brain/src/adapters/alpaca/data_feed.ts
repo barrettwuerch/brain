@@ -1,13 +1,8 @@
 import 'dotenv/config';
 
-export type OHLCVBar = {
-  timestamp: string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-};
+import type { OHLCVBar } from './types';
+
+import { getCryptoBars, getLatestQuote } from '../../lib/alpaca';
 
 async function fetchJson(url: string): Promise<any> {
   const resp = await fetch(url);
@@ -16,54 +11,29 @@ async function fetchJson(url: string): Promise<any> {
   return JSON.parse(text);
 }
 
+export type { OHLCVBar };
+
 export async function getCryptoOHLCV(
   symbol: string,
   timeframe: '1h' | '4h' | '1d',
   limit: number,
 ): Promise<OHLCVBar[]> {
-  const url = new URL('https://data.alpaca.markets/v1beta3/crypto/us/bars');
-  url.searchParams.set('symbols', symbol);
-
-  // Alpaca accepts canonical strings like 1Hour/4Hour/1Day; keep our adapter shorthand.
-  const tf = timeframe === '1h' ? '1Hour' : timeframe === '4h' ? '4Hour' : '1Day';
-  url.searchParams.set('timeframe', tf);
-  url.searchParams.set('limit', String(limit));
-
-  const j = await fetchJson(url.toString());
-  const bars = (j?.bars?.[symbol] ?? []) as any[];
-
-  const out = bars
-    .map((b) => ({
-      timestamp: String(b.t ?? b.timestamp),
-      open: Number(b.o),
-      high: Number(b.h),
-      low: Number(b.l),
-      close: Number(b.c),
-      volume: Number(b.v),
-    }))
-    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-
-  return out;
+  const bars = await getCryptoBars(symbol, timeframe, limit);
+  return bars.map((b) => ({
+    timestamp: b.timestamp,
+    open: b.open,
+    high: b.high,
+    low: b.low,
+    close: b.close,
+    volume: b.volume,
+  }));
 }
 
 export async function getCryptoQuote(
   symbol: string,
 ): Promise<{ bid: number; ask: number; spread: number; timestamp: string }> {
-  const url = new URL('https://data.alpaca.markets/v1beta3/crypto/us/latest/quotes');
-  url.searchParams.set('symbols', symbol);
-
-  const j = await fetchJson(url.toString());
-  const q = (j?.quotes?.[symbol] ?? null) as any;
-  if (!q) throw new Error(`Missing quote for ${symbol}`);
-
-  const bid = Number(q.bp ?? q.bid_price);
-  const ask = Number(q.ap ?? q.ask_price);
-  return {
-    bid,
-    ask,
-    spread: ask - bid,
-    timestamp: String(q.t ?? q.timestamp),
-  };
+  const q = await getLatestQuote(symbol);
+  return q;
 }
 
 export async function getBTCDominanceProxy(): Promise<number> {
