@@ -48,12 +48,22 @@ export async function registerWatchConditions(approvedFindings: ResearchFinding[
       operator: wc.operator,
       value: wc.value,
       timeframe: wc.timeframe,
-      action_type: 'place_limit_order',
+      action_type: 'size_position',
       action_params: {
-        side: 'buy',
-        size: 10,
-        stop_level: 0.0,
-        profit_target: 0.0,
+        // Risk sizing inputs (drawdownPct/baseKellySize) are filled at fire time by the Scanner.
+        continuation: {
+          task_type: 'place_limit_order',
+          agent_role: 'execution',
+          bot_id,
+          desk: String((f as any).market_type) === 'crypto' ? 'crypto_markets' : 'prediction_markets',
+          task_input: {
+            symbol: ticker,
+            side: 'buy',
+            // Placeholder until we wire a proper price/limit model per strategy.
+            // For now we set limitPrice equal to the watch threshold value.
+            limitPrice: wc.value,
+          },
+        },
       },
       max_triggers_per_day: wc.max_triggers_per_day,
       cooldown_minutes: wc.cooldown_minutes,

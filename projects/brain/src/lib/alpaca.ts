@@ -265,3 +265,14 @@ export async function getLatestQuote(symbol: string): Promise<Quote> {
     timestamp: String(q.t ?? q.timestamp),
   };
 }
+
+export async function getLatestStockTradePrice(symbol: string): Promise<{ price: number; timestamp: string }> {
+  // Alpaca Data API v2 for stocks
+  const url = `${DATA_URL}/v2/stocks/${encodeURIComponent(symbol)}/trades/latest`;
+  const j = await fetchJson(url, { method: 'GET', headers: authHeaders() });
+  const t = (j?.trade ?? j?.data ?? j) as any;
+  const price = Number(t?.p ?? t?.price);
+  const timestamp = String(t?.t ?? t?.timestamp ?? '');
+  if (!Number.isFinite(price)) throw new Error(`Missing stock trade price for ${symbol}`);
+  return { price, timestamp };
+}

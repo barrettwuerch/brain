@@ -39,7 +39,7 @@ async function gate0MarketDataFreshness(conditions: any[]): Promise<{ ok: boolea
   const now = Date.now();
 
   const hasCrypto = (conditions ?? []).some((c: any) => String(c.market_type ?? '') === 'crypto');
-  const hasPrediction = (conditions ?? []).some((c: any) => String(c.market_type ?? '') !== 'crypto');
+  const hasPrediction = (conditions ?? []).some((c: any) => String(c.market_type ?? '') === 'prediction');
 
   // ── Crypto (Alpaca): bar.t freshness, threshold 5 minutes ────────────────
   if (hasCrypto) {
@@ -165,7 +165,9 @@ export async function runScannerCycle(): Promise<{ conditionsChecked: number; fi
 
     if (!result.fire) continue;
 
-    if ((c as any).action_type === 'size_position') {
+    if (c.action_type === 'size_position') {
+      console.log('[SCANNER] action=size_position branch taken for condition', c.id);
+
       // NOTE: drawdownPct must be fetched at *fire time* from bot_states.
       // Do not cache bot_state at cycle start; drawdown needs to reflect current risk posture.
       const { getAccount } = await import('../../lib/alpaca');

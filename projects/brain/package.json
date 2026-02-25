@@ -46,7 +46,8 @@
     "dev:seed:gate3-poor-episodes": "tsx src/scripts/seed_gate3_poor_episodes.ts",
     "dev:test:kelly-multiplier": "tsx src/scripts/test_kelly_multiplier.ts",
     "dev:smoke:alpaca": "tsx src/scripts/smoke_alpaca.ts",
-    "dev:seed:size-position-continuation": "tsx src/scripts/seed_size_position_with_continuation.ts"
+    "dev:seed:size-position-continuation": "tsx src/scripts/seed_size_position_with_continuation.ts",
+    "dev:seed:wc-size-position-aapl": "tsx src/scripts/seed_watch_condition_size_position_aapl.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.0",

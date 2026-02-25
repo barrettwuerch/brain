@@ -3,6 +3,7 @@ import 'dotenv/config';
 import type { WatchCondition } from '../../types';
 
 import { getCryptoOHLCV, getFundingRate } from '../../adapters/alpaca/data_feed';
+import { getLatestStockTradePrice } from '../../lib/alpaca';
 import {
   classifyVolatilityRegime,
   computeRealizedVol,
@@ -22,6 +23,11 @@ export async function fetchMetricValue(
 
   try {
     if (metric === 'price' || metric === 'close_price') {
+      if (String(condition.market_type) === 'equity') {
+        const { price } = await getLatestStockTradePrice(ticker);
+        return { current: price, previous: undefined };
+      }
+
       const bars = await getCryptoOHLCV(ticker, timeframe, 2);
       const previous = bars.length >= 2 ? bars[bars.length - 2].close : undefined;
       const current = bars.length ? bars[bars.length - 1].close : 0;

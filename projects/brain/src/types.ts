@@ -351,7 +351,7 @@ export interface WatchCondition {
   operator: ConditionOperator;
   value: number;
   timeframe: string;
-  action_type: 'place_limit_order' | 'alert_only';
+  action_type: 'place_limit_order' | 'size_position' | 'alert_only';
   action_params: Record<string, any>;
   max_triggers_per_day: number;
   cooldown_minutes: number;
