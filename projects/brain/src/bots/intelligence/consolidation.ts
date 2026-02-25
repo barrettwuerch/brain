@@ -123,6 +123,9 @@ async function extractSuccessFacts(episodes: Episode[]): Promise<{ stored: numbe
       status: 'active',
     };
 
+    // regime state lives in operational_state — see migration 0020
+    if (row.domain === 'regime_state') continue;
+
     const { error } = await supabaseAdmin.from('semantic_facts').insert(row);
     if (error) throw error;
 
@@ -267,13 +270,14 @@ export async function pruneExpiredMemories(): Promise<{ episodesPruned: number; 
   // Semantic facts: retire if confidence low OR violation ratio too high
   const { data: facts, error: factsErr } = await supabaseAdmin
     .from('semantic_facts')
-    .select('id,confidence,times_confirmed,times_violated,status')
+    .select('id,confidence,times_confirmed,times_violated,status,domain')
     .eq('status', 'active')
     .limit(5000);
   if (factsErr) throw factsErr;
 
+  // Regime state has moved to operational_state table — never in semantic_facts (migration 0020)
   const retireIds: string[] = [];
-  for (const f of facts ?? []) {
+  for (const f of (facts ?? []).filter((ff: any) => String(ff.domain ?? '') !== 'regime_state')) {
     const conf = Number((f as any).confidence ?? 0);
     const tc = Number((f as any).times_confirmed ?? 0);
     const tv = Number((f as any).times_violated ?? 0);

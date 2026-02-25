@@ -24,12 +24,15 @@ import {
   seedWeeklyMemoTask,
 } from './cos_tasks';
 
+import { seedMonthlyChallengeCalibrationTask } from '../intelligence/calibration_tasks';
+
 export const COS_CRON_SCHEDULES = {
   daily_brief: '45 12 * * *', // 6:45 AM CST = 12:45 UTC
   strategic_priorities: '0 23 * * 0', // 5:00 PM CST Sunday = 23:00 UTC
   weekly_memo: '45 23 * * 0', // 5:45 PM CST Sunday = 23:45 UTC
   regime_alignment: '0 13 * * 1', // 7:00 AM CST Monday = 13:00 UTC
   blind_spots: '0 23 1-7 * 0', // weekly, handler gates to first Sunday
+  challenge_calibration: '15 23 1-7 * 0', // monthly (first Sunday), 5:15 PM CST
 } as const;
 
 export function registerCosSchedules(cron: any): void {
@@ -89,6 +92,20 @@ export function registerCosSchedules(cron: any): void {
         await seedBlindSpotReviewTask();
       } catch (e: any) {
         console.error(`[CoS Scheduler] blind spots seed failed: ${e.message}`);
+      }
+    },
+    { timezone: 'America/Chicago' },
+  );
+
+  // FIX 5: monthly calibration aggregation task (Intelligence role)
+  cron.schedule(
+    COS_CRON_SCHEDULES.challenge_calibration,
+    async () => {
+      if (!isFirstSundayOfMonth()) return;
+      try {
+        await seedMonthlyChallengeCalibrationTask();
+      } catch (e: any) {
+        console.error(`[CoS Scheduler] challenge calibration seed failed: ${e.message}`);
       }
     },
     { timezone: 'America/Chicago' },

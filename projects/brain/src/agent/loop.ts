@@ -204,8 +204,8 @@ export class BrainLoop {
         const findingId = String(rep?.finding_id ?? '');
         const rec = String(rep?.recommendation ?? '');
         if (findingId) {
-          if (rec === 'approved_for_forward_test') {
-            await updateFindingStatus(findingId, 'in_backtest');
+          if (rec === 'approved_for_forward_test' || rec === 'approved_with_caveats') {
+            await supabaseAdmin.from('research_findings').update({ status: String(rec) }).eq('id', findingId);
             // For crypto, approved backtests should register watch conditions.
             try {
               const { data: frow } = await supabaseAdmin.from('research_findings').select('*').eq('id', findingId).maybeSingle();
@@ -741,6 +741,33 @@ export class BrainLoop {
     // Risk computations
     if (args.task.agent_role === 'risk' && args.task.task_type === 'monitor_positions') {
       const desk = String(args.task.desk ?? 'prediction_markets');
+
+      // FIX 2: Risk publishes regime every cycle (independent of Research Bot).
+      try {
+        if (desk === 'crypto_markets') {
+          const { getCryptoOHLCV } = await import('../adapters/alpaca/data_feed');
+          const { computeRealizedVol, classifyVolatilityRegime } = await import('../adapters/alpaca/compute');
+          const bars = await getCryptoOHLCV('BTC/USD', '1d', 31);
+          const closes = bars.map((b: any) => Number(b.close));
+          const vol = computeRealizedVol(closes);
+          const regime = classifyVolatilityRegime(vol);
+          const published_at = new Date().toISOString();
+
+          await supabaseAdmin.from('operational_state').upsert(
+            {
+              domain: 'regime_state',
+              key: 'vol_regime',
+              value: { vol_regime: regime, desk: 'crypto', published_at },
+              published_by: 'risk-bot-1',
+              published_at,
+              ttl_seconds: 7200,
+              expires_at: new Date(Date.now() + 7200 * 1000).toISOString(),
+            },
+            { onConflict: 'domain,key' },
+          );
+        }
+      } catch {}
+
       const positions = await getOpenPositions(desk);
 
       if (!positions.length) {
@@ -856,16 +883,18 @@ export class BrainLoop {
         const vol = computeRealizedVol(closes);
         regime = classifyVolatilityRegime(vol) as any;
 
-        await supabaseAdmin.from('semantic_facts').insert({
-          domain: 'regime_state',
-          fact: `current_vol_regime=${regime} desk=crypto as_of=${published_at}`,
-          fact_type: 'success_pattern',
-          confidence: 1.0,
-          supporting_episode_ids: [],
-          times_confirmed: 1,
-          times_violated: 0,
-          status: 'active',
-        });
+        await supabaseAdmin.from('operational_state').upsert(
+          {
+            domain: 'regime_state',
+            key: 'vol_regime',
+            value: { vol_regime: regime, desk: 'crypto', published_at },
+            published_by: 'risk-bot-1',
+            published_at,
+            ttl_seconds: 7200,
+            expires_at: new Date(Date.now() + 7200 * 1000).toISOString(),
+          },
+          { onConflict: 'domain,key' },
+        );
 
         console.log(`[REGIME] Published crypto regime=${regime} valid for 2h`);
         return { action_taken, result: { desk, regime, published_at, ttl_hours: 2 }, outcome_score: 1 };
@@ -873,16 +902,18 @@ export class BrainLoop {
 
       // prediction desk: default to normal (no live VIX data in test mode)
       regime = 'normal';
-      await supabaseAdmin.from('semantic_facts').insert({
-        domain: 'regime_state',
-        fact: `current_vol_regime=${regime} desk=prediction as_of=${published_at}`,
-        fact_type: 'success_pattern',
-        confidence: 1.0,
-        supporting_episode_ids: [],
-        times_confirmed: 1,
-        times_violated: 0,
-        status: 'active',
-      });
+      await supabaseAdmin.from('operational_state').upsert(
+        {
+          domain: 'regime_state',
+          key: 'vol_regime',
+          value: { vol_regime: regime, desk: 'prediction', published_at },
+          published_by: 'risk-bot-1',
+          published_at,
+          ttl_seconds: 7200,
+          expires_at: new Date(Date.now() + 7200 * 1000).toISOString(),
+        },
+        { onConflict: 'domain,key' },
+      );
 
       console.log('[REGIME] Published prediction regime=normal (default — no live VIX data in test mode)');
       return { action_taken, result: { desk, regime, published_at, ttl_hours: 2 }, outcome_score: 1 };
@@ -991,31 +1022,7 @@ export class BrainLoop {
 
     // Chief of Staff (CoS) computations
     if (args.task.agent_role === 'chief_of_staff') {
-      const wrapDb = (db: any) => ({
-        ...db,
-        from: (table: string) => {
-          const q = db.from(table);
-          if (table !== 'semantic_facts') return q;
-          return {
-            ...q,
-            insert: (row: any) => {
-              const r = { ...row };
-              if ('content' in r && !('fact' in r)) {
-                r.fact = r.content;
-                delete r.content;
-              }
-              if ('ttl_hours' in r && !('ttl_days' in r)) {
-                r.ttl_days = Number(r.ttl_hours) / 24;
-                delete r.ttl_hours;
-              }
-              if (r.fact_type === 'failure') r.fact_type = 'failure_pattern';
-              return db.from(table).insert(r);
-            },
-          };
-        },
-      });
-
-      const db = wrapDb(supabaseAdmin);
+      const db = supabaseAdmin;
 
       const r: any = await (async () => {
         switch (String(args.task.task_type)) {
@@ -1068,6 +1075,13 @@ export class BrainLoop {
     if (args.task.agent_role === 'intelligence' && args.task.task_type === 'prune_expired_memories') {
       const out = await pruneExpiredMemories();
       return { action_taken, result: out, outcome_score: undefined };
+    }
+
+    if (args.task.agent_role === 'intelligence' && args.task.task_type === 'aggregate_challenge_calibration') {
+      const { aggregateMonthlyChallengeCalibration } = await import('../bots/intelligence/challenge_calibration');
+      const report_month = String((tInput as any).report_month ?? '').trim();
+      const out = await aggregateMonthlyChallengeCalibration({ reportMonth: report_month || undefined });
+      return { action_taken, result: out as any, outcome_score: undefined };
     }
 
     if (args.task.agent_role === 'intelligence' && args.task.task_type === 'generate_weekly_report') {
@@ -1523,6 +1537,40 @@ export class BrainLoop {
         verdict: 'proceed',
         notes: 'Adversarial review passed in dev mode; proceed to backtest but monitor regime sensitivity.',
       };
+
+      // FIX 3: revision cycle limit + persist challenge notes.
+      if (findingId) {
+        const { data: finding } = await supabaseAdmin.from('research_findings').select('revision_count,max_revision_cycles').eq('id', findingId).maybeSingle();
+        const currentCount = Number((finding as any)?.revision_count ?? 0);
+        const maxCycles = Number((finding as any)?.max_revision_cycles ?? 2);
+
+        if (report.verdict === 'revise') {
+          if (currentCount >= maxCycles) {
+            report.verdict = 'abandon';
+            report.notes += ` [AUTO-ARCHIVED: max revision cycles (${maxCycles}) reached]`;
+            await supabaseAdmin
+              .from('research_findings')
+              .update({ status: 'archived', challenge_notes: `Auto-archived after ${maxCycles} revision cycles without passing challenge.` })
+              .eq('id', findingId);
+          } else {
+            await supabaseAdmin
+              .from('research_findings')
+              .update({
+                revision_count: currentCount + 1,
+                challenge_notes: `${report.weakest_assumption}: ${report.failure_regime}`,
+                status: 'needs_revision',
+              })
+              .eq('id', findingId);
+          }
+        }
+
+        if (report.verdict === 'proceed') {
+          await supabaseAdmin
+            .from('research_findings')
+            .update({ status: 'challenged', challenge_notes: `${report.weakest_assumption}: ${report.failure_regime}` })
+            .eq('id', findingId);
+        }
+      }
 
       if (report.verdict === 'proceed' && formalization) {
         const isCrypto = String(args.task.desk ?? '') === 'crypto_markets';

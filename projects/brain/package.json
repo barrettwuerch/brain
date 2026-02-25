@@ -17,6 +17,7 @@
     "dev:seed:crypto-research": "tsx src/adapters/alpaca/research_tasks.ts",
     "dev:seed:monitor-findings": "tsx src/bots/research/monitor_tasks.ts",
     "dev:check-findings": "tsx src/scripts/check_findings.ts",
+    "dev:seed:backtest-caveats": "tsx src/scripts/seed_backtest_with_caveats.ts",
     "dev:seed:strategy": "tsx src/bots/strategy/strategy_tasks.ts",
     "dev:seed:crypto-strategy": "tsx src/adapters/alpaca/strategy_tasks.ts",
     "dev:seed:risk": "tsx src/bots/risk/risk_tasks.ts",

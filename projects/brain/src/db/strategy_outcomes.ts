@@ -182,6 +182,79 @@ export async function reconcileSufficientOutcomes(limit: number = 25): Promise<v
   }
 }
 
+async function latestChallengeFailureProbability(strategyId: string): Promise<number | null> {
+  // Pull the most recent challenge episode for this strategy.
+  // NOTE: use a small window + in-memory match to avoid brittle JSONB filter syntax.
+  const { data, error } = await supabaseAdmin
+    .from('episodes')
+    .select('action_taken,task_input,created_at,task_type')
+    .in('task_type', ['challenge_strategy', 'challenge_crypto_strategy'])
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  if (error) throw error;
+
+  const ep = (data ?? []).find((e: any) => {
+    const fid = e?.task_input?.finding_id ?? e?.task_input?.formalization?.finding_id ?? e?.action_taken?.challenge?.finding_id;
+    return String(fid) === String(strategyId);
+  });
+
+  const p = Number((ep as any)?.action_taken?.challenge?.failure_probability);
+  return Number.isFinite(p) ? p : null;
+}
+
+async function updateChallengeCalibrationScore(params: {
+  strategyId: string;
+  desk: string;
+  regime: string;
+  total_trades: number;
+  losing_trades: number;
+}): Promise<void> {
+  // Brier score: (p_fail - y_fail)^2
+  // p_fail is the challenge's predicted failure probability.
+  // y_fail is observed failure frequency (losing_trades / total_trades).
+
+  const { strategyId, desk, regime } = params;
+
+  // Only compute calibration when we have at least 10 strategy outcomes for that desk/regime combination.
+  const { count, error: cErr } = await supabaseAdmin
+    .from('strategy_outcomes')
+    .select('id', { count: 'exact', head: true })
+    .eq('desk', desk)
+    .eq('dominant_regime', regime);
+  if (cErr) throw cErr;
+
+  if (Number(count ?? 0) < 10) {
+    const { error } = await supabaseAdmin
+      .from('strategy_outcomes')
+      .update({ challenge_calibration_score: null })
+      .eq('strategy_id', strategyId);
+    if (error) throw error;
+    console.log(`[CALIBRATION] insufficient data: desk=${desk} regime=${regime} outcomes=${count ?? 0} (<10) — wrote null`);
+    return;
+  }
+
+  const p = await latestChallengeFailureProbability(strategyId);
+  if (p === null) {
+    const { error } = await supabaseAdmin
+      .from('strategy_outcomes')
+      .update({ challenge_calibration_score: null })
+      .eq('strategy_id', strategyId);
+    if (error) throw error;
+    console.log(`[CALIBRATION] missing challenge failure_probability for strategy=${strategyId} — wrote null`);
+    return;
+  }
+
+  const y = params.total_trades > 0 ? params.losing_trades / params.total_trades : 0;
+  const brier = Math.pow(p - y, 2);
+
+  const { error } = await supabaseAdmin
+    .from('strategy_outcomes')
+    .update({ challenge_calibration_score: brier })
+    .eq('strategy_id', strategyId);
+  if (error) throw error;
+}
+
 export async function upsertStrategyOutcome(
   strategyId: string,
   trade: { pnl: number; won: boolean; regime?: string; market_type: 'prediction' | 'crypto' | 'equity' | 'options'; desk: string; watch_condition_id?: string | null },
@@ -214,6 +287,19 @@ export async function upsertStrategyOutcome(
       last_trade_at: nowIso,
     });
     if (error) throw error;
+
+    // FIX 5: compute and persist challenge calibration score (Brier), if enough data.
+    try {
+      await updateChallengeCalibrationScore({
+        strategyId,
+        desk: trade.desk,
+        regime,
+        total_trades: 1,
+        losing_trades: trade.won ? 0 : 1,
+      });
+    } catch (e: any) {
+      console.warn('[CALIBRATION] update failed (insert):', e?.message ?? e);
+    }
 
     await checkAndUpdateFindingStatus(strategyId);
     return;
@@ -274,6 +360,19 @@ export async function upsertStrategyOutcome(
     .eq('id', existing.id);
 
   if (error) throw error;
+
+  // FIX 5: compute and persist challenge calibration score (Brier), if enough data.
+  try {
+    await updateChallengeCalibrationScore({
+      strategyId,
+      desk: trade.desk,
+      regime,
+      total_trades,
+      losing_trades,
+    });
+  } catch (e: any) {
+    console.warn('[CALIBRATION] update failed (update):', e?.message ?? e);
+  }
 
   await checkAndUpdateFindingStatus(strategyId);
 }

@@ -146,15 +146,30 @@ export function runBacktest(
   if (report.overfitting_flags.includes('oos_divergence')) {
     report.recommendation = 'return_to_research';
     report.reason = 'Out-of-sample diverges materially from in-sample.';
-  } else if (of.overfit || report.overfitting_flags.includes('insufficient_trades')) {
-    report.recommendation = 'archived';
-    report.reason = 'Overfitting or insufficient data.';
-  } else if (report.overfitting_flags.length === 0 && report.out_sample_sharpe > 0.5) {
-    report.recommendation = 'approved_for_forward_test';
-    report.reason = 'Clean backtest with acceptable OOS Sharpe.';
   } else {
-    report.recommendation = 'return_to_research';
-    report.reason = 'Needs refinement / additional evidence.';
+    // FIX 4: if walk-forward was skipped, we can still approve WITH CAVEATS when performance is strong.
+    // Treat sample-size / walk-forward limitations as caveats, not fatal overfit.
+    const caveatFlags = new Set([
+      'insufficient_trades',
+      'trade_count_lt_100',
+      'walk_forward_skipped_insufficient_data',
+      'walk_forward_inconsistent',
+    ]);
+    const nonCaveatFlags = (report.overfitting_flags ?? []).filter((f) => !caveatFlags.has(f));
+
+    if (nonCaveatFlags.length === 0 && report.out_sample_sharpe > 0.5) {
+      const needsCaveats = Boolean(report.walk_forward_skipped) || (report.overfitting_flags ?? []).some((f) => caveatFlags.has(f));
+      report.recommendation = needsCaveats ? ('approved_with_caveats' as any) : 'approved_for_forward_test';
+      report.reason = needsCaveats
+        ? 'Approved with caveats: limited sample and/or walk-forward skipped; monitor regime sensitivity.'
+        : 'Clean backtest with acceptable OOS Sharpe.';
+    } else if (report.overfitting_flags.includes('insufficient_trades')) {
+      report.recommendation = 'archived';
+      report.reason = 'Insufficient data; unable to support approval.';
+    } else {
+      report.recommendation = 'return_to_research';
+      report.reason = 'Needs refinement / additional evidence.';
+    }
   }
 
   return report;

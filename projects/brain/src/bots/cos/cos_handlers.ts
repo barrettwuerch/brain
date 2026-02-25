@@ -49,7 +49,7 @@ export async function handleGenerateDailyBrief(task: any, db: any): Promise<any>
   const prioritiesAge = pf
     ? (Date.now() - new Date(String(pf.created_at)).getTime()) / (1000 * 60 * 60 * 24)
     : 999;
-  const prioritiesIsInvalidated = String(pf?.content ?? '').includes('"invalidated": true');
+  const prioritiesIsInvalidated = String(pf?.fact ?? pf?.content ?? '').includes('"invalidated": true');
   const stateChangedSinceAssessment = await detectStateChangeSince(db, pf?.created_at);
   const prioritiesAreStale = prioritiesAge > 3 && stateChangedSinceAssessment;
 
@@ -253,12 +253,24 @@ async function loadIsTrjectory(db: any, days: number) {
 }
 
 async function loadCurrentRegime(db: any) {
-  // NOTE: Block 3c Fix 1 will update this to read from operational_state table.
-  // For now reads semantic_facts as a stub (returns default if nothing found).
-  // SELECT content FROM semantic_facts
-  // WHERE domain = 'regime_state' AND created_at > NOW() - INTERVAL '2 hours'
-  // ORDER BY created_at DESC LIMIT 1
-  return { regime: 'normal', desk: 'crypto', age_days: 0 };
+  const { data } = await db
+    .from('operational_state')
+    .select('value,published_at,expires_at')
+    .eq('domain', 'regime_state')
+    .eq('key', 'vol_regime')
+    .gt('expires_at', new Date().toISOString())
+    .single();
+
+  if (!data) return { regime: 'normal', desk: 'unknown', age_days: 0 };
+  const publishedAt = new Date(data.published_at);
+  const ageDays = (Date.now() - publishedAt.getTime()) / (1000 * 60 * 60 * 24);
+
+  const v: any = (data as any).value ?? {};
+  return {
+    regime: v.vol_regime ?? 'normal',
+    desk: v.desk ?? 'unknown',
+    age_days: Math.floor(ageDays),
+  };
 }
 
 async function loadPipelineHealth(db: any) {
@@ -321,14 +333,17 @@ async function detectStateChangeSince(db: any, since: string | undefined): Promi
 export async function invalidateCosDeploymentThesis(db: any, reason: string): Promise<void> {
   await db.from('semantic_facts').insert({
     domain: 'cos_strategic_priorities',
-    fact_type: 'failure',
-    content: JSON.stringify({
+    fact_type: 'failure_pattern',
+    fact: JSON.stringify({
       invalidated: true,
       reason,
       invalidated_at: new Date().toISOString(),
     }),
     confidence: 1.0,
-    ttl_hours: 24,
+    supporting_episode_ids: [],
+    times_confirmed: 1,
+    times_violated: 0,
+    status: 'active',
   });
   console.log(`[CoS] Deployment thesis invalidated: ${reason}`);
 }
@@ -353,10 +368,13 @@ async function sendDailyBriefWithRetry(
 async function writeDeliveryFailedFlag(db: any, taskType: string, date: string, error: string): Promise<void> {
   await db.from('semantic_facts').insert({
     domain: 'cos_delivery_failure',
-    fact_type: 'failure',
-    content: JSON.stringify({ task_type: taskType, date, error, attempts: 3 }),
+    fact_type: 'failure_pattern',
+    fact: JSON.stringify({ task_type: taskType, date, error, attempts: 3 }),
     confidence: 1.0,
-    ttl_hours: 48,
+    supporting_episode_ids: [],
+    times_confirmed: 1,
+    times_violated: 0,
+    status: 'active',
   });
 }
 

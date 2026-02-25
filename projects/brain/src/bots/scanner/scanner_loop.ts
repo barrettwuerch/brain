@@ -10,12 +10,11 @@ async function getVolRegimeFallback(): Promise<string> {
   // Expect format: "current_vol_regime={regime} desk=crypto as_of={ISO}"
   try {
     const { data } = await supabaseAdmin
-      .from('semantic_facts')
-      .select('fact,created_at')
+      .from('operational_state')
+      .select('value,expires_at')
       .eq('domain', 'regime_state')
-      .ilike('fact', '%desk=crypto%')
-      .order('created_at', { ascending: false })
-      .limit(1)
+      .eq('key', 'vol_regime')
+      .gt('expires_at', new Date().toISOString())
       .maybeSingle();
 
     if (!data) {
@@ -23,20 +22,121 @@ async function getVolRegimeFallback(): Promise<string> {
       return 'normal';
     }
 
-    const ageMs = Date.now() - new Date(String((data as any).created_at)).getTime();
-    if (!Number.isFinite(ageMs) || ageMs > 2 * 60 * 60 * 1000) {
-      console.log('[SCANNER] WARNING: No fresh regime_state from Risk Bot — defaulting to normal');
-      return 'normal';
-    }
-
-    const fact = String((data as any).fact ?? '');
-    const m = fact.match(/current_vol_regime=(low|normal|elevated|extreme)/i);
-    if (!m) return 'normal';
-    return String(m[1]).toLowerCase();
+    const v: any = (data as any).value ?? {};
+    const r = String(v.vol_regime ?? 'normal').toLowerCase();
+    if (!['low', 'normal', 'elevated', 'extreme'].includes(r)) return 'normal';
+    return r;
   } catch {
     console.log('[SCANNER] WARNING: No fresh regime_state from Risk Bot — defaulting to normal');
     return 'normal';
   }
+}
+
+async function gate0MarketDataFreshness(conditions: any[]): Promise<{ ok: boolean; reason?: string }> {
+  // Gate 0: freshness check
+  // IMPORTANT: reads market data timestamp, NOT task creation time.
+
+  const now = Date.now();
+
+  const hasCrypto = (conditions ?? []).some((c: any) => String(c.market_type ?? '') === 'crypto');
+  const hasPrediction = (conditions ?? []).some((c: any) => String(c.market_type ?? '') !== 'crypto');
+
+  // ── Crypto (Alpaca): bar.t freshness, threshold 5 minutes ────────────────
+  if (hasCrypto) {
+    try {
+      const url = new URL('https://data.alpaca.markets/v1beta3/crypto/us/bars');
+      url.searchParams.set('symbols', 'BTC/USD');
+      url.searchParams.set('timeframe', '1Min');
+      url.searchParams.set('limit', '10');
+      // Request a narrow window so the returned bar.t reflects *recent* market data.
+      url.searchParams.set('start', new Date(Date.now() - 10 * 60 * 1000).toISOString());
+      url.searchParams.set('end', new Date().toISOString());
+
+      const resp = await fetch(url.toString());
+      const raw = await resp.text();
+      if (!resp.ok) throw new Error(`alpaca bars fetch failed ${resp.status}: ${raw.slice(0, 200)}`);
+      const j = JSON.parse(raw);
+      const arr = (j?.bars?.['BTC/USD'] ?? []) as any[];
+      const b = arr.length ? arr[arr.length - 1] : null;
+      const ts = String(b?.t ?? b?.timestamp ?? '');
+      const t = ts ? new Date(ts).getTime() : NaN;
+      const ageMin = (now - t) / (1000 * 60);
+
+      if (!Number.isFinite(ageMin)) {
+        const reason = `Gate 0 blocked: Alpaca bar.t missing/invalid (threshold: 5 min)`;
+        console.log(`[SCANNER] ${reason}`);
+        return { ok: false, reason };
+      }
+
+      if (ageMin > 5) {
+        const reason = `Gate 0 blocked: Alpaca bar.t=${new Date(t).toISOString()} is ${Math.round(ageMin)} min old (threshold: 5 min)`;
+        console.log(`[SCANNER] ${reason}`);
+        return { ok: false, reason };
+      }
+
+      console.log(`[SCANNER] Gate 0 passed: Alpaca bar.t=${new Date(t).toISOString()} age=${ageMin.toFixed(2)} min (threshold: 5 min)`);
+    } catch (e: any) {
+      const reason = `Gate 0 blocked: Alpaca freshness check failed (${e?.message ?? e})`;
+      console.log(`[SCANNER] ${reason}`);
+      return { ok: false, reason };
+    }
+  }
+
+  // ── Prediction (Kalshi): market.updated_time + volume_24h > 0, threshold 15 minutes ──
+  if (hasPrediction) {
+    // Choose a representative ticker from active conditions (if any)
+    const ticker = String((conditions ?? []).find((c: any) => String(c.market_type ?? '') !== 'crypto')?.ticker ?? '');
+
+    if (!ticker) {
+      const reason = `Gate 0 blocked: Kalshi freshness check missing market ticker (threshold: 15 min)`;
+      console.log(`[SCANNER] ${reason}`);
+      return { ok: false, reason };
+    }
+
+    try {
+      const base = 'https://api.elections.kalshi.com/trade-api/v2';
+      const url = new URL(base + `/markets/${encodeURIComponent(ticker)}`);
+
+      const resp = await fetch(url.toString());
+      const raw = await resp.text();
+      if (!resp.ok) throw new Error(`kalshi market fetch failed ${resp.status}: ${raw.slice(0, 200)}`);
+      const j = JSON.parse(raw);
+      const m = (j?.market ?? j) as any;
+
+      const updated = String(m?.updated_time ?? '');
+      const t = updated ? new Date(updated).getTime() : NaN;
+      const ageMin = (now - t) / (1000 * 60);
+      const vol24 = Number(m?.volume_24h ?? 0);
+
+      if (!Number.isFinite(ageMin)) {
+        const reason = `Gate 0 blocked: Kalshi market.updated_time missing/invalid (threshold: 15 min)`;
+        console.log(`[SCANNER] ${reason}`);
+        return { ok: false, reason };
+      }
+
+      if (!(vol24 > 0)) {
+        const reason = `Gate 0 blocked: Kalshi market.updated_time=${new Date(t).toISOString()} but volume_24h=${vol24} (threshold: 15 min)`;
+        console.log(`[SCANNER] ${reason}`);
+        return { ok: false, reason };
+      }
+
+      if (ageMin > 15) {
+        const reason = `Gate 0 blocked: Kalshi market.updated_time=${new Date(t).toISOString()} is ${Math.round(ageMin)} min old (threshold: 15 min)`;
+        console.log(`[SCANNER] ${reason}`);
+        return { ok: false, reason };
+      }
+
+      console.log(
+        `[SCANNER] Gate 0 passed: Kalshi market.updated_time=${new Date(t).toISOString()} age=${ageMin.toFixed(2)} min, volume_24h=${vol24} (threshold: 15 min)`,
+      );
+    } catch (e: any) {
+      const reason = `Gate 0 blocked: Kalshi freshness check failed (${e?.message ?? e})`;
+      console.log(`[SCANNER] ${reason}`);
+      return { ok: false, reason };
+    }
+  }
+
+  return { ok: true };
 }
 
 export async function runScannerCycle(): Promise<{ conditionsChecked: number; fired: number; tasksCreated: number }> {
@@ -44,6 +144,14 @@ export async function runScannerCycle(): Promise<{ conditionsChecked: number; fi
   if (expired) console.log('[SCANNER] expired conditions:', expired);
 
   const conditions = await getActiveWatchConditions();
+
+  // FIX 6: Gate 0 freshness check — blocks before any strategy evaluation attempt.
+  const gate0 = await gate0MarketDataFreshness(conditions as any);
+  if (!gate0.ok) {
+    // Explicitly return before we fetch any metrics or evaluate any conditions.
+    return { conditionsChecked: conditions.length, fired: 0, tasksCreated: 0 };
+  }
+
   const volRegime = await getVolRegimeFallback();
 
   let fired = 0;

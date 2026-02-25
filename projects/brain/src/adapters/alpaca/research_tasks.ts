@@ -117,21 +117,26 @@ async function main() {
   // 5) correlation_scan
   const btc14 = (await getCryptoOHLCV('BTC/USD', '1d', 14)).map((b) => b.close);
   const eth14 = (await getCryptoOHLCV('ETH/USD', '1d', 14)).map((b) => b.close);
-  const corr = computeRollingCorrelation(btc14, eth14);
-  await insertTask('correlation_scan', {
-    market_type: 'crypto',
-    btc_prices: btc14,
-    eth_prices: eth14,
-    expected_answer: { correlation: corr, divergence: corr < 0.5 },
-    edge_type: 'correlated_arbitrage',
-    description: 'BTC/ETH correlation scan for regime divergence.',
-    mechanism: 'Correlation breakdowns can indicate rotation or idiosyncratic drivers.',
-    failure_conditions: 'Short samples produce noisy correlation estimates.',
-    sample_size: btc14.length,
-    base_rate: 0.5,
-    draft_recommendation: 'investigate_further',
-    rqs_components: { statistical_rigor: 0.4, mechanism_clarity: 0.6, novelty: 0.4, cost_adjusted_edge: 0.4 },
-  });
+
+  if (btc14.length >= 5 && eth14.length >= 5) {
+    const corr = computeRollingCorrelation(btc14, eth14);
+    await insertTask('correlation_scan', {
+      market_type: 'crypto',
+      btc_prices: btc14,
+      eth_prices: eth14,
+      expected_answer: { correlation: corr, divergence: corr < 0.5 },
+      edge_type: 'correlated_arbitrage',
+      description: 'BTC/ETH correlation scan for regime divergence.',
+      mechanism: 'Correlation breakdowns can indicate rotation or idiosyncratic drivers.',
+      failure_conditions: 'Short samples produce noisy correlation estimates.',
+      sample_size: btc14.length,
+      base_rate: 0.5,
+      draft_recommendation: 'investigate_further',
+      rqs_components: { statistical_rigor: 0.4, mechanism_clarity: 0.6, novelty: 0.4, cost_adjusted_edge: 0.4 },
+    });
+  } else {
+    console.log('Skipping correlation_scan: insufficient bars', { btc: btc14.length, eth: eth14.length });
+  }
 
   // Useful context for risk snapshot later
   const q = await getCryptoQuote(symbol);

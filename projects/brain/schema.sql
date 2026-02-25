@@ -141,6 +141,22 @@ create index if not exists semantic_facts_domain_idx on public.semantic_facts (d
 create index if not exists semantic_facts_status_idx on public.semantic_facts (status);
 create index if not exists semantic_facts_updated_idx on public.semantic_facts (last_updated desc);
 
+-- 3b) Operational state: real-time state with TTL (migration 0020)
+create table if not exists public.operational_state (
+  id uuid primary key default gen_random_uuid(),
+  domain text not null,
+  key text not null,
+  value jsonb not null,
+  published_by text not null,
+  published_at timestamptz not null default now(),
+  ttl_seconds int not null,
+  expires_at timestamptz not null,
+  unique (domain, key)
+);
+
+create index if not exists idx_operational_state_domain_key on public.operational_state(domain, key);
+create index if not exists idx_operational_state_expires on public.operational_state(expires_at);
+
 -- 4) Procedural memory: learned playbooks per task type
 create table if not exists public.procedures (
   id uuid primary key default gen_random_uuid(),
@@ -290,8 +306,28 @@ create table if not exists public.research_findings (
   lift float,
   out_of_sample boolean default false,
 
+  revision_count int not null default 0,
+  challenge_notes text,
+  max_revision_cycles int not null default 2,
+
   status text not null default 'under_investigation'
-    check (status in ('preliminary','under_investigation','passed_to_backtest','in_backtest','approved_for_live','archived')),
+    check (
+      status in (
+        'under_investigation',
+        'formalized',
+        'challenged',
+        'backtested',
+        'approved_for_forward_test',
+        'approved_with_caveats',
+        'approved_for_live',
+        'underperforming',
+        'archived',
+        'needs_revision',
+        'preliminary',
+        'passed_to_backtest',
+        'in_backtest'
+      )
+    ),
   recommendation text
     check (recommendation in ('pass_to_backtest','investigate_further','archive') or recommendation is null),
   backtest_result text,
@@ -472,6 +508,8 @@ create table if not exists public.strategy_outcomes (
   status text not null default 'accumulating'
     check (status in ('accumulating','sufficient','approved','underperforming','retired')),
 
+  challenge_calibration_score numeric(6,5),
+
   watch_condition_id text,
   last_trade_at timestamptz,
   evaluated_at timestamptz
@@ -481,7 +519,34 @@ create index if not exists so_strategy_idx on public.strategy_outcomes (strategy
 create index if not exists so_status_idx on public.strategy_outcomes (status);
 create index if not exists so_market_type_idx on public.strategy_outcomes (market_type);
 
--- 12) Orchestrator
+-- 13) API cost tracking (migration 0024)
+create table if not exists public.api_cost_log (
+  id uuid primary key default gen_random_uuid(),
+  logged_at timestamptz not null default now(),
+  model text not null,
+  cost_usd numeric(8,6) not null,
+  task_type text,
+  bot_id text
+);
+
+create index if not exists idx_api_cost_log_logged_at on public.api_cost_log(logged_at desc);
+
+-- 14) Monthly challenge calibration reports (migration 0025)
+create table if not exists public.challenge_calibration_reports (
+  id uuid primary key default gen_random_uuid(),
+  report_month date not null,
+  desk text not null,
+  regime text not null,
+  n_strategies int not null,
+  mean_brier_score numeric(10,8),
+  created_at timestamptz not null default now(),
+  unique (report_month, desk, regime)
+);
+
+create index if not exists idx_calib_reports_month on public.challenge_calibration_reports(report_month);
+create index if not exists idx_calib_reports_desk on public.challenge_calibration_reports(desk);
+
+-- 15) Orchestrator
 -- No dedicated tables yet. Orchestrator coordinates tasks, reads bot states, and logs escalations.
 
 -- Phase 1 RLS posture (developer-friendly): public read; writes via service role.
