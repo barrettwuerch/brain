@@ -58,8 +58,12 @@ create table if not exists public.episodes (
   ttl_days int not null default 30,
 
   -- embeddings for retrieval
-  embedding vector(1536)
+  embedding vector(1536),
+
+  vol_regime text
 );
+
+comment on column public.episodes.vol_regime is 'Market regime at time episode was created. Values: low | normal | elevated | extreme | unknown. Populated at episode creation time from latest volatility_regime_detect semantic fact. NULL for legacy episodes created before this migration.';
 
 create index if not exists episodes_created_at_idx on public.episodes (created_at desc);
 create index if not exists episodes_task_type_idx on public.episodes (task_type);
@@ -293,8 +297,11 @@ create table if not exists public.research_findings (
   backtest_result text,
 
   supporting_episode_ids uuid[] default '{}',
-  notes text
+  notes text,
+  parent_finding_id uuid
 );
+
+comment on column public.research_findings.parent_finding_id is 'If this finding was generated as a next-generation hypothesis from a failed strategy, this references the parent finding that failed. NULL for original research findings.';
 
 create index if not exists rf_bot_id_idx on public.research_findings (bot_id);
 create index if not exists rf_market_type_idx on public.research_findings (market_type);

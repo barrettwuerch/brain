@@ -99,6 +99,75 @@ export async function attributePerformance(): Promise<{ byBot: Record<string, st
   return { byBot, highlights, warnings, strategyHighlights, strategyWarnings, strategySummary };
 }
 
+export async function computeLearningVelocity(): Promise<{
+  strategyApprovalRate: number | null;
+  falsePositiveRate: number | null;
+  avgDiscoveryCycleDays: number | null;
+  window_days: number;
+  note: string;
+}> {
+  const window_days = 90;
+  const cutoff = new Date(Date.now() - window_days * 24 * 60 * 60 * 1000).toISOString();
+
+  // strategyApprovalRate
+  const { data: evals, error: evalErr } = await supabaseAdmin
+    .from('strategy_outcomes')
+    .select('status,evaluated_at,strategy_id')
+    .gte('evaluated_at', cutoff)
+    .in('status', ['approved', 'underperforming']);
+  if (evalErr) throw evalErr;
+
+  const denom1 = (evals ?? []).length;
+  const num1 = (evals ?? []).filter((r: any) => String(r.status) === 'approved').length;
+  const strategyApprovalRate = denom1 >= 3 ? num1 / denom1 : null;
+
+  // falsePositiveRate
+  const under = (evals ?? []).filter((r: any) => String(r.status) === 'underperforming').length;
+  const denom2 = denom1;
+  const falsePositiveRate = denom2 >= 3 ? under / denom2 : null;
+
+  // avgDiscoveryCycleDays
+  // We do not have research_findings.updated_at in schema; use evaluated_at of the approved outcome as the end timestamp.
+  const { data: approved, error: apErr } = await supabaseAdmin
+    .from('strategy_outcomes')
+    .select('strategy_id,evaluated_at')
+    .gte('evaluated_at', cutoff)
+    .eq('status', 'approved');
+  if (apErr) throw apErr;
+
+  let avgDiscoveryCycleDays: number | null = null;
+  if ((approved ?? []).length >= 2) {
+    const ids = (approved ?? []).map((r: any) => String(r.strategy_id));
+    const { data: findings, error: fErr } = await supabaseAdmin
+      .from('research_findings')
+      .select('id,created_at')
+      .in('id', ids);
+    if (fErr) throw fErr;
+
+    const createdById = new Map<string, string>();
+    for (const f of findings ?? []) createdById.set(String((f as any).id), String((f as any).created_at));
+
+    const days: number[] = [];
+    for (const r of approved ?? []) {
+      const id = String((r as any).strategy_id);
+      const created = createdById.get(id);
+      const end = String((r as any).evaluated_at ?? '');
+      if (!created || !end) continue;
+      const ms = new Date(end).getTime() - new Date(created).getTime();
+      if (Number.isFinite(ms) && ms >= 0) days.push(ms / (24 * 60 * 60 * 1000));
+    }
+
+    if (days.length >= 2) avgDiscoveryCycleDays = days.reduce((a, b) => a + b, 0) / days.length;
+  }
+
+  const note =
+    strategyApprovalRate === null && falsePositiveRate === null && avgDiscoveryCycleDays === null
+      ? 'Insufficient data for velocity metrics — check back after 30+ strategy evaluations'
+      : 'Rolling 90-day window';
+
+  return { strategyApprovalRate, falsePositiveRate, avgDiscoveryCycleDays, window_days, note };
+}
+
 export async function detectCalibrationWarnings(): Promise<string[]> {
   const { data: eps, error } = await supabaseAdmin
     .from('episodes')

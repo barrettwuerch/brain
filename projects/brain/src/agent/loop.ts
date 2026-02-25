@@ -8,7 +8,7 @@ import { classifyMomentum, trendFromYesPrices, volumeAnomaly } from '../adapters
 import fs from 'node:fs/promises';
 import { embed } from '../lib/embeddings';
 import { supabaseAdmin } from '../lib/supabase';
-import { readSimilarEpisodes } from '../memory/episodic';
+import { readSimilarEpisodesRegimeAware } from './memory';
 import { readSemanticFacts } from '../memory/semantic';
 import { readProcedure } from '../memory/procedural';
 import { writeEpisode } from '../memory/episodic';
@@ -121,7 +121,7 @@ export class BrainLoop {
     let refOut: ReflectOutput;
 
     // Phase 4: retrieve memory context before reasoning.
-    const episodic = await readSimilarEpisodes({ task_type: task.task_type, task_input: task.task_input, limit: 5 });
+    const episodic = await readSimilarEpisodesRegimeAware({ task_type: task.task_type, task_input: task.task_input, limit: 5 });
     const semanticFacts = await readSemanticFacts({ domain: task.task_type, limit: 8 });
     const procedure = await readProcedure({ task_type: task.task_type });
 
@@ -377,6 +377,16 @@ export class BrainLoop {
   /** REASON: decide what to do given task + retrieved memory. */
   async reason(input: ReasonInput): Promise<ReasonOutput> {
     // Phase 2: ReAct-style reasoner.
+
+    const API_KEY_OPTIONAL_TASKS = ['propose_skill_update', 'generate_next_generation_hypothesis'];
+    if (API_KEY_OPTIONAL_TASKS.includes(String(input.task.task_type)) && !String(process.env.ANTHROPIC_API_KEY ?? '').trim()) {
+      return {
+        chain_of_thought: 'No API key present — skipping LLM reasoning.',
+        proposed_action: { type: String(input.task.task_type) },
+        confidence: 0,
+        uncertainty_flags: ['no_anthropic_key'],
+      } as any;
+    }
     // - MEMORY CONTEXT slot exists (empty for now)
     // - TASK injected
     // - INSTRUCTIONS enforce JSON-only output
@@ -478,7 +488,7 @@ export class BrainLoop {
 
     const memoryContext = recentFailuresBlock + parts.map((p) => p.text).join('\n\n');
 
-    const baseSystem = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n- { \'type\': 'place_limit_order' }\n- { \'type\': 'manage_open_position' }\n- { \'type\': 'handle_partial_fill' }\n- { \'type\': 'evaluate_market_conditions' }\n- { \'type\': 'consolidate_memories' }\n- { \'type\': 'attribute_performance' }\n- { \'type\': 'generate_daily_report' }\n- { \'type\': 'prune_expired_memories' }\n- { \'type\': 'route_research_findings' }\n- { \'type\': 'review_bot_states' }\n- { \'type\': 'generate_priority_map' }\n- { \'type\': 'register_watch_conditions' }\n- { \'type\': 'funding_rate_scan' }\n- { \'type\': 'volatility_regime_detect' }\n- { \'type\': 'correlation_scan' }\n\nDo not include Observation; Observation is produced by ACT.`;
+    const baseSystem = `You are THE BRAIN's REASON step. You must think before acting.\n\nReturn ONLY valid JSON with keys: chain_of_thought, proposed_action, confidence, uncertainty_flags.\n\nAllowed proposed_action shapes:\n- { \'type\': 'compute_max', dataset_url: string }\n- { \'type\': 'compute_max_mom_delta', dataset_url: string }\n- { \'type\': 'compute_trend_last_n', dataset_url: string, n: number }\n- { \'type\': 'scan_market_trend' }\n- { \'type\': 'detect_volume_anomaly' }\n- { \'type\': 'classify_price_momentum' }\n- { \'type\': 'score_rqs' }\n- { \'type\': 'monitor_positions' }\n- { \'type\': 'check_drawdown_limit' }\n- { \'type\': 'detect_concentration' }\n- { \'type\': 'evaluate_circuit_breakers' }\n- { \'type\': 'size_position' }\n- { \'type\': 'place_limit_order' }\n- { \'type\': 'manage_open_position' }\n- { \'type\': 'handle_partial_fill' }\n- { \'type\': 'evaluate_market_conditions' }\n- { \'type\': 'consolidate_memories' }\n- { \'type\': 'attribute_performance' }\n- { \'type\': 'generate_daily_report' }\n- { \'type\': 'prune_expired_memories' }\n- { \'type\': 'propose_skill_update' }\n- { \'type\': 'route_research_findings' }\n- { \'type\': 'review_bot_states' }\n- { \'type\': 'generate_priority_map' }\n- { \'type\': 'register_watch_conditions' }\n- { \'type\': 'funding_rate_scan' }\n- { \'type\': 'volatility_regime_detect' }\n- { \'type\': 'correlation_scan' }\n- { \'type\': 'generate_next_generation_hypothesis' }\n\nDo not include Observation; Observation is produced by ACT.`;
 
     const roleSkill = await this.loadRoleSkill(input.task.agent_role ?? undefined);
     const system = roleSkill + '\n\n---\n\n' + baseSystem;
@@ -486,6 +496,27 @@ export class BrainLoop {
     const user = `MEMORY CONTEXT\n${memoryContext}\n\nTASK\nTask type: ${input.task.task_type}\nTask input (JSON): ${JSON.stringify(input.task.task_input)}\n\nINSTRUCTIONS\nUse a ReAct-like structure internally: Thought -> Action (choose one).\nOutput must be JSON only.`;
 
     const testMode = String(process.env.BRAIN_TEST_MODE || '').toLowerCase() === 'true';
+
+    const hasAnthropicKey = String(process.env.ANTHROPIC_API_KEY ?? '').trim().length > 0;
+    if (!testMode && !hasAnthropicKey) {
+      // Allow non-LLM tasks to proceed deterministically in environments without ANTHROPIC_API_KEY.
+      if (input.task.task_type === 'propose_skill_update') {
+        return {
+          chain_of_thought: 'No ANTHROPIC_API_KEY; proceeding without LLM reasoning.',
+          proposed_action: { type: 'propose_skill_update' },
+          confidence: 0.5,
+          uncertainty_flags: ['no_anthropic_key'],
+        } as any;
+      }
+      if (input.task.task_type === 'generate_next_generation_hypothesis') {
+        return {
+          chain_of_thought: 'No ANTHROPIC_API_KEY; proceeding without LLM reasoning.',
+          proposed_action: { type: 'generate_next_generation_hypothesis' },
+          confidence: 0.5,
+          uncertainty_flags: ['no_anthropic_key'],
+        } as any;
+      }
+    }
 
     if (testMode) {
       // Hardcoded but realistic decision-making for Phase 3/6 test mode.
@@ -527,6 +558,8 @@ export class BrainLoop {
       if (input.task.task_type === 'attribute_performance') proposed_action = { type: 'attribute_performance' };
       if (input.task.task_type === 'generate_daily_report') proposed_action = { type: 'generate_daily_report' };
       if (input.task.task_type === 'prune_expired_memories') proposed_action = { type: 'prune_expired_memories' };
+      if (input.task.task_type === 'propose_skill_update') proposed_action = { type: 'propose_skill_update' };
+      if (input.task.task_type === 'generate_next_generation_hypothesis') proposed_action = { type: 'generate_next_generation_hypothesis' };
       if (input.task.task_type === 'route_research_findings') proposed_action = { type: 'route_research_findings' };
       if (input.task.task_type === 'review_bot_states') proposed_action = { type: 'review_bot_states' };
       if (input.task.task_type === 'generate_priority_map') proposed_action = { type: 'generate_priority_map' };
@@ -534,6 +567,7 @@ export class BrainLoop {
       if (input.task.task_type === 'funding_rate_scan') proposed_action = { type: 'funding_rate_scan' };
       if (input.task.task_type === 'volatility_regime_detect') proposed_action = { type: 'volatility_regime_detect' };
       if (input.task.task_type === 'correlation_scan') proposed_action = { type: 'correlation_scan' };
+      if (input.task.task_type === 'generate_next_generation_hypothesis') proposed_action = { type: 'generate_next_generation_hypothesis' };
 
       const skillPreview = roleSkill.split(/\r?\n/).slice(0, 5).join('\n');
       return {
@@ -845,6 +879,204 @@ export class BrainLoop {
       return { action_taken, result: out, outcome_score: undefined };
     }
 
+    if (args.task.agent_role === 'intelligence' && args.task.task_type === 'propose_skill_update') {
+      const fs = await import('node:fs/promises');
+      const path = await import('node:path');
+
+      const target_role = String((tInput as any).target_role ?? 'research');
+      const skill_file = String((tInput as any).skill_file ?? `skills/${target_role.toUpperCase()}_BOT_SKILL.md`);
+      const min_conf = Number((tInput as any).min_confidence_threshold ?? 0.75);
+      const min_facts = Number((tInput as any).min_facts_required ?? 5);
+
+      const skillPath = path.join(process.cwd(), skill_file);
+      const skillContent = await fs.readFile(skillPath, 'utf8');
+
+      const domains = Array.from(new Set([target_role, 'crypto', 'prediction_markets']));
+      const { data: facts, error } = await supabaseAdmin
+        .from('semantic_facts')
+        .select('fact,confidence,domain')
+        .gte('confidence', min_conf)
+        .in('domain', domains)
+        .order('confidence', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+
+      const topFacts = (facts ?? []).map((f: any) => String(f.fact));
+
+      if (topFacts.length < min_facts) {
+        return {
+          action_taken,
+          result: {
+            status: 'insufficient_facts',
+            facts_found: topFacts.length,
+            required: min_facts,
+            message: 'Not enough high-confidence facts to propose update. Check back later.',
+          },
+          outcome_score: undefined,
+        };
+      }
+
+      const prompt =
+        `You are reviewing the procedural instructions for the ${target_role} bot.\n\n` +
+        `Here is the current SKILL.md content:\n\n${skillContent}\n\n` +
+        `Here are the top semantic facts this bot has accumulated with high confidence:\n\n` +
+        `${topFacts.map((f) => `- ${f}`).join('\n')}\n\n` +
+        `Your job: identify any facts that (a) contradict current instructions, (b) significantly extend or refine current instructions, or (c) represent new knowledge not covered at all.\n` +
+        `For each: quote the relevant SKILL.md section, explain the conflict or extension, and write a proposed replacement or addition.\n` +
+        `Be surgical — only propose changes that are clearly supported by multiple high-confidence facts.\n` +
+        `If the SKILL.md already reflects the accumulated knowledge well, say so and propose no changes.\n\n` +
+        `Return ONLY valid JSON with keys: changes_proposed (boolean), proposals (array), no_changes_reason (string|null).\n` +
+        `Each proposal: { section: string, issue: 'contradiction'|'extension'|'new_knowledge', proposed_change: string, supporting_facts: string[] }.\n`;
+
+      const key = String(process.env.ANTHROPIC_API_KEY ?? '').trim();
+      if (!key) {
+        return {
+          action_taken,
+          result: {
+            status: 'no_api_key',
+            target_role,
+            skill_file,
+            facts_found: topFacts.length,
+            message: 'Missing env ANTHROPIC_API_KEY — cannot propose skill update in this environment.',
+          },
+          outcome_score: undefined,
+        };
+      }
+
+      const { claudeText, extractFirstJsonObject } = await import('../lib/anthropic.js');
+      const text = await claudeText({ system: 'You are a careful editor. Be conservative.', user: prompt, maxTokens: 1200 });
+      const parsed = extractFirstJsonObject(text) ?? {};
+
+      const proposals = Array.isArray((parsed as any).proposals) ? (parsed as any).proposals : [];
+      const changes_proposed = Boolean((parsed as any).changes_proposed) && proposals.length > 0;
+
+      const result = {
+        target_role,
+        skill_file,
+        changes_proposed,
+        proposal_count: proposals.length,
+        proposals,
+        no_changes_reason: (parsed as any).no_changes_reason ?? null,
+      };
+
+      if (changes_proposed) {
+        console.log('╔══════════════════════════════════╗');
+        console.log('║ SKILL UPDATE PROPOSED            ║');
+        console.log(`║ Role: ${target_role.padEnd(27)}║`);
+        console.log(`║ ${String(proposals.length).padEnd(2)} change(s) proposed           ║`);
+        console.log('║ Requires Managing Partner        ║');
+        console.log('║ review before any SKILL.md       ║');
+        console.log('║ is modified.                     ║');
+        console.log('╚══════════════════════════════════╝');
+      }
+
+      return { action_taken, result, outcome_score: undefined };
+    }
+
+    // Research computations (event-triggered)
+    if (args.task.agent_role === 'research' && args.task.task_type === 'generate_next_generation_hypothesis') {
+      const key = String(process.env.ANTHROPIC_API_KEY ?? '').trim();
+      const failedId = String(tInput.failed_finding_id ?? '');
+      if (!failedId) return { action_taken, result: { status: 'incomplete_finding', reason: 'missing_failed_finding_id', failed_finding_id: null }, outcome_score: 0.5 };
+
+      if (!key) {
+        return {
+          action_taken,
+          result: { status: 'no_api_key', failed_finding_id: failedId, message: 'Missing env ANTHROPIC_API_KEY — cannot generate next-gen hypothesis.' },
+          outcome_score: 0.5,
+        };
+      }
+
+      const { claudeText, extractFirstJsonObject } = await import('../lib/anthropic.js');
+      const { scoreRQS, validateSixQuestions } = await import('../bots/research/research_compute');
+
+      const { data: failed, error: fErr } = await supabaseAdmin.from('research_findings').select('*').eq('id', failedId).single();
+      if (fErr) throw fErr;
+
+      const domain = String((failed as any).market_type) === 'crypto' ? 'crypto' : 'prediction_markets';
+      const { data: facts } = await supabaseAdmin
+        .from('semantic_facts')
+        .select('fact,confidence,domain')
+        .or(`domain.eq.${domain},domain.eq.${String((failed as any).agent_role ?? 'research')}`)
+        .gte('confidence', 0.6)
+        .order('last_updated', { ascending: false })
+        .limit(10);
+
+      const prompt =
+        `The following trading strategy was tried and failed. Here is what we know about it:\n` +
+        `DESCRIPTION: ${String((failed as any).description ?? '')}\n` +
+        `MECHANISM: ${String((failed as any).mechanism ?? '')}\n` +
+        `FAILURE_CONDITIONS: ${String((failed as any).failure_conditions ?? '')}\n\n` +
+        `Here are the failure patterns we've accumulated about why it didn't work:\n` +
+        `${(facts ?? []).map((r: any) => `- ${String(r.fact)}`).join('\n')}\n\n` +
+        `Your job: propose a next-generation hypothesis that directly addresses the identified failure conditions.\n` +
+        `The new hypothesis must: (a) explain explicitly how it differs from the failed approach, (b) explain why the mechanism would survive the conditions that killed the parent strategy, (c) identify what new failure conditions to watch for.\n` +
+        `Format your output as JSON with keys: edge_type, description, mechanism, failure_conditions, market, regime_notes, rqs_components.\n` +
+        `Use the six-question standard (provide a complete narrative).\n`;
+
+      const text = await claudeText({ system: 'You are a research strategist. Be concrete and falsifiable.', user: prompt, maxTokens: 900 });
+      const parsed = extractFirstJsonObject(text) ?? {};
+
+      const draft: any = {
+        bot_id: String(args.task.bot_id ?? (String((failed as any).market_type) === 'crypto' ? 'crypto-research-bot-1' : 'research-bot-1')),
+        desk: String(args.task.desk ?? (String((failed as any).market_type) === 'crypto' ? 'crypto_markets' : 'prediction_markets')),
+        market_type: String(tInput.market_type ?? (failed as any).market_type ?? 'prediction'),
+        agent_role: 'research',
+
+        finding_type: 'preliminary',
+        edge_type: parsed.edge_type,
+
+        description: parsed.description,
+        mechanism: parsed.mechanism,
+        failure_conditions: parsed.failure_conditions,
+        market: parsed.market ?? (failed as any).market,
+        regime_notes: parsed.regime_notes ?? null,
+
+        rqs_components: parsed.rqs_components ?? null,
+        sample_size: null,
+        observed_rate: null,
+        base_rate: 0.5,
+        lift: null,
+        out_of_sample: false,
+
+        status: 'preliminary',
+        recommendation: 'investigate_further',
+        backtest_result: null,
+        supporting_episode_ids: [],
+        notes: `Next-gen hypothesis generated from failed finding ${failedId}.`,
+        parent_finding_id: failedId,
+      };
+
+      const v = validateSixQuestions(draft);
+      if (!v.valid) {
+        return {
+          action_taken,
+          result: { status: 'incomplete_finding', reason: 'LLM output missing required fields', failed_finding_id: failedId },
+          outcome_score: 0.5,
+        };
+      }
+
+      const rqs_score = draft.rqs_components ? scoreRQS(draft.rqs_components) : null;
+
+      const { data: created, error: cErr } = await supabaseAdmin
+        .from('research_findings')
+        .insert({
+          ...draft,
+          rqs_score,
+          parent_finding_id: failedId,
+        })
+        .select('id')
+        .single();
+      if (cErr) throw cErr;
+
+      console.log(`[NEXT-GEN] Created hypothesis ${String((created as any).id)} from failed strategy ${failedId}`);
+      return {
+        action_taken,
+        result: { status: 'created', new_finding_id: String((created as any).id), parent_finding_id: failedId },
+        outcome_score: 0.5,
+      };
+    }
+
     // Orchestrator computations
     if (args.task.agent_role === 'orchestrator' && args.task.task_type === 'route_research_findings') {
       const routed = await routeUnroutedFindings();
@@ -948,8 +1180,8 @@ export class BrainLoop {
     const actual = args.actOut.result;
 
     // Binary grading for Level 1.
-    const outcome_score = expected ? grade(expected, actual) : 0;
-    const outcome: EpisodeOutcome = outcome_score === 1 ? 'correct' : 'incorrect';
+    const outcome_score = expected ? grade(expected, actual) : (args.actOut.outcome_score ?? 0);
+    const outcome: EpisodeOutcome = expected ? (outcome_score === 1 ? 'correct' : 'incorrect') : (outcome_score > 0 ? 'partial' : 'incorrect');
 
     // Lightweight error typing.
     let error_type: string | undefined;
@@ -1005,6 +1237,19 @@ Return error_type as a field in your JSON response when OUTCOME is incorrect.
               'Before acting, restate the expected answer shape (keys/types) and ensure the proposed action will produce it.',
               'If CSV schema is unknown, inspect header row and handle missing/blank values explicitly.',
             ],
+        error_type: correct ? undefined : 'unknown',
+      };
+    }
+
+    const hasKey = String(process.env.ANTHROPIC_API_KEY ?? '').trim().length > 0;
+    if (!hasKey) {
+      const correct = args.obsOut.outcome === 'correct';
+      return {
+        reflection_text: correct
+          ? 'No ANTHROPIC_API_KEY; skipping LLM reflection. Outcome was correct.'
+          : 'No ANTHROPIC_API_KEY; skipping LLM reflection. Outcome was incorrect; review manually.',
+        reasoning_score: correct ? 0.5 : 0.3,
+        lessons: correct ? [] : ['No LLM reflection available in this environment.'],
         error_type: correct ? undefined : 'unknown',
       };
     }

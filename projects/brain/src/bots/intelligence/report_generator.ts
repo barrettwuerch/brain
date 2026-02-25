@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { supabaseAdmin } from '../../lib/supabase';
-import { attributePerformance, detectCalibrationWarnings } from './attribution';
+import { attributePerformance, computeLearningVelocity, detectCalibrationWarnings } from './attribution';
 
 function isoDate(d: Date) {
   return d.toISOString().slice(0, 10);
@@ -66,6 +66,7 @@ export async function generateFullDailyReport(): Promise<string> {
   if (cbErr) throw cbErr;
 
   const attribution = await attributePerformance();
+  const velocity = await computeLearningVelocity();
   const calib = await detectCalibrationWarnings();
 
   const lines: string[] = [];
@@ -110,6 +111,25 @@ export async function generateFullDailyReport(): Promise<string> {
     lines.push('');
     for (const w of attribution.strategyWarnings) lines.push(w);
   }
+  lines.push('');
+
+  lines.push(`LEARNING VELOCITY (${velocity.window_days}-day rolling)`);
+  lines.push('────────────────────────────────────────');
+  lines.push(
+    `Strategy approval rate: ${velocity.strategyApprovalRate === null ? 'null' : (velocity.strategyApprovalRate * 100).toFixed(1) + '%'} (target: >50%)`,
+  );
+  lines.push(
+    `False positive rate: ${velocity.falsePositiveRate === null ? 'null' : (velocity.falsePositiveRate * 100).toFixed(1) + '%'} (target: <30%)`,
+  );
+  lines.push(
+    `Avg discovery cycle: ${velocity.avgDiscoveryCycleDays === null ? 'null' : velocity.avgDiscoveryCycleDays.toFixed(1)} days (target: declining)`,
+  );
+  lines.push(velocity.note);
+  lines.push('');
+  lines.push('Interpretation:');
+  lines.push('- All three improving → system is learning');
+  lines.push('- Flat for 30+ days → investigate bottleneck');
+  lines.push('- False positives rising → backtest quality issue');
   lines.push('');
 
   lines.push('NEEDS ATTENTION');

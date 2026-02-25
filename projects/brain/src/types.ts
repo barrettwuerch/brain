@@ -59,6 +59,8 @@ export interface Episode {
 
   ttl_days: number;
 
+  vol_regime?: 'low' | 'normal' | 'elevated' | 'extreme' | 'unknown' | null;
+
   // Optional: embeddings stored in DB; represented as number[] in app code
   embedding?: number[] | null;
 }
@@ -214,6 +216,7 @@ export interface ResearchFinding {
   backtest_result: string | null;
   supporting_episode_ids: string[];
   notes: string | null;
+  parent_finding_id: string | null;
 }
 
 // ── Strategy Bot ─────────────────────────────────────────────────

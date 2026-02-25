@@ -37,11 +37,11 @@ export async function formatAndStoreFinding(
     finding_type: 'under_investigation' as any,
     edge_type: (asStr(ti.edge_type) ?? 'behavioral') as any,
 
-    description: asStr(ti.description) ?? '',
-    mechanism: asStr(ti.mechanism),
-    failure_conditions: asStr(ti.failure_conditions),
-    market: asStr(ti.market_ticker) ?? asStr(ti.market) ?? null,
-    regime_notes: asStr(ti.regime_notes),
+    description: asStr(ti.description) ?? asStr(rawOutput.description) ?? '',
+    mechanism: asStr(ti.mechanism) ?? asStr(rawOutput.mechanism),
+    failure_conditions: asStr(ti.failure_conditions) ?? asStr(rawOutput.failure_conditions),
+    market: asStr(ti.market_ticker) ?? asStr(ti.market) ?? asStr(rawOutput.market) ?? null,
+    regime_notes: asStr(ti.regime_notes) ?? asStr(rawOutput.regime_notes),
 
     rqs_components: components,
 
@@ -55,8 +55,10 @@ export async function formatAndStoreFinding(
     recommendation: draftRecommendation,
     backtest_result: null,
     supporting_episode_ids: [String(episode.id)],
-    notes: asStr(ti.notes),
+    notes: asStr(ti.notes) ?? asStr(rawOutput.notes),
   };
+
+  const parent_finding_id = asStr((ti as any).parent_finding_id) ?? asStr(rawOutput.parent_finding_id);
 
   const v = validateSixQuestions(draft);
   if (!v.valid) {
@@ -117,6 +119,7 @@ export async function formatAndStoreFinding(
 
     supporting_episode_ids: draft.supporting_episode_ids as string[],
     notes: draft.notes ?? null,
+    parent_finding_id: parent_finding_id,
   };
 
   const written = await writeResearchFinding(toWrite);

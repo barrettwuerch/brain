@@ -35,6 +35,7 @@
     "dev:nightly": "tsx src/scripts/nightly_intelligence.ts",
     "dev:prune": "tsx -e \"import('./src/bots/intelligence/consolidation.ts').then(m => m.pruneExpiredMemories()).then(r => console.log('pruned:', r))\"",
     "dev:seed:intelligence": "tsx src/bots/intelligence/intelligence_tasks.ts",
+    "dev:seed:skill-update": "tsx src/bots/intelligence/intelligence_tasks.ts skill_update",
     "dev:seed:orchestrator": "tsx src/bots/orchestrator/orchestrator_tasks.ts"
   },
   "dependencies": {

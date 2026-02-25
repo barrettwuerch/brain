@@ -127,6 +127,26 @@ export async function checkAndUpdateFindingStatus(strategyId: string): Promise<v
   if (out.status === 'underperforming') {
     await updateFindingStatus(strategyId, 'under_investigation');
     console.log(`[FEEDBACK] Strategy ${strategyId} returned to investigation — diverges from backtest`);
+
+    // Improvement 4: seed next-generation hypothesis task.
+    try {
+      const { data: finding } = await supabaseAdmin.from('research_findings').select('id,market_type').eq('id', strategyId).maybeSingle();
+      const market_type = String((finding as any)?.market_type ?? 'prediction') as any;
+      const { seedNextGenHypothesisTask } = await import('../adapters/kalshi/research_tasks');
+      const task = seedNextGenHypothesisTask(strategyId, market_type === 'crypto' ? 'crypto' : 'prediction');
+
+      const { error } = await supabaseAdmin.from('tasks').insert({
+        task_type: task.task_type,
+        task_input: task.task_input,
+        status: 'queued',
+        tags: ['research', 'next_gen'],
+        agent_role: task.agent_role,
+        desk: task.desk,
+        bot_id: task.bot_id,
+      });
+      if (!error) console.log(`[FEEDBACK] Seeded next-gen hypothesis task for failed strategy ${strategyId}`);
+    } catch {}
+
     return;
   }
 

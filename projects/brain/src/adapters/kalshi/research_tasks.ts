@@ -75,6 +75,25 @@ async function insertTask(task_type: string, task_input: Record<string, any>) {
   if (error) throw error;
 }
 
+export function seedNextGenHypothesisTask(
+  failedFindingId: string,
+  marketType: 'prediction' | 'crypto',
+): {
+  task_type: 'generate_next_generation_hypothesis';
+  task_input: { failed_finding_id: string; market_type: 'prediction' | 'crypto' };
+  agent_role: 'research';
+  bot_id: string;
+  desk: string;
+} {
+  return {
+    task_type: 'generate_next_generation_hypothesis',
+    task_input: { failed_finding_id: failedFindingId, market_type: marketType },
+    agent_role: 'research',
+    bot_id: marketType === 'crypto' ? 'crypto-research-bot-1' : 'research-bot-1',
+    desk: marketType === 'crypto' ? 'crypto_markets' : 'prediction_markets',
+  };
+}
+
 async function main() {
   const trades = await fetchRecentTrades(600);
   const byTicker = groupByTicker(trades);
@@ -160,7 +179,9 @@ async function main() {
   console.log('Inserted 3 research tasks into tasks queue.', { ticker: chosen.ticker });
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+if (process.argv[1]?.endsWith('research_tasks.ts')) {
+  main().catch((e) => {
+    console.error(e);
+    process.exit(1);
+  });
+}

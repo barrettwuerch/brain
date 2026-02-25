@@ -20,6 +20,23 @@ export async function writeEpisode(input: EpisodicWriteInput): Promise<{ id: str
   // PostgREST + pgvector: represent vector as string like '[1,2,3]'
   const embedding = `[${input.embedding.join(',')}]`;
 
+  // Regime tagging (best-effort): read most recent semantic fact mentioning a vol regime.
+  let vol_regime: 'low' | 'normal' | 'elevated' | 'extreme' | 'unknown' = 'unknown';
+  try {
+    const { data } = await supabaseAdmin
+      .from('semantic_facts')
+      .select('fact,last_updated,domain')
+      .in('domain', ['crypto', 'prediction_markets'])
+      .order('last_updated', { ascending: false })
+      .limit(10);
+
+    const text = (data ?? []).map((r: any) => String(r.fact ?? '')).join(' \n ').toLowerCase();
+    if (text.includes('extreme')) vol_regime = 'extreme';
+    else if (text.includes('elevated')) vol_regime = 'elevated';
+    else if (text.includes('normal')) vol_regime = 'normal';
+    else if (text.includes('low')) vol_regime = 'low';
+  } catch {}
+
   const row: any = {
     task_id: input.episode.task_id,
     task_type: input.episode.task_type,
@@ -41,6 +58,7 @@ export async function writeEpisode(input: EpisodicWriteInput): Promise<{ id: str
     error_type: input.episode.error_type,
     ttl_days: input.episode.ttl_days,
 
+    vol_regime,
     embedding,
   };
 
@@ -72,6 +90,15 @@ export async function readSimilarEpisodes(input: EpisodicReadInput): Promise<Epi
 
   if (error) throw error;
 
+  const ids = (data ?? []).map((r: any) => String(r.id));
+  const volById = new Map<string, any>();
+  try {
+    if (ids.length) {
+      const { data: rows, error: e2 } = await supabase.from('episodes').select('id,vol_regime').in('id', ids);
+      if (!e2) for (const rr of rows ?? []) volById.set(String((rr as any).id), (rr as any).vol_regime);
+    }
+  } catch {}
+
   return (data ?? []).map((r: any) => ({
     id: String(r.id),
     created_at: String(r.created_at),
@@ -94,6 +121,7 @@ export async function readSimilarEpisodes(input: EpisodicReadInput): Promise<Epi
     reasoning_score: Number(r.reasoning_score ?? 0),
     error_type: null,
     ttl_days: 30,
+    vol_regime: (volById.get(String(r.id)) ?? null) as any,
     embedding: null,
   })) as Episode[];
 }
