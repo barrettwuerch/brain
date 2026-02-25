@@ -71,6 +71,8 @@ export async function writeIntelligenceScore(task_type: string) {
   const computed = await computeIntelligenceScore(task_type);
 
   // Write one row to intelligence_scores
+  // NOTE (Gate 3): IS is computed per *task_type* from episode outcome_score/reasoning_score trends.
+  // It is not computed from strategy_outcomes; strategy attribution is a separate layer.
   const notes = JSON.stringify(
     {
       task_type: computed.task_type,
