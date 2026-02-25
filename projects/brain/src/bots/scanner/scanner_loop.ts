@@ -6,8 +6,37 @@ import { shouldFire } from './condition_evaluator';
 import { fetchMetricValue } from './metric_fetcher';
 
 async function getVolRegimeFallback(): Promise<string> {
-  // semantic_facts doesn't currently store structured vol regime; simple fallback.
-  return 'normal';
+  // Authoritative regime_state is published by Risk Bot.
+  // Expect format: "current_vol_regime={regime} desk=crypto as_of={ISO}"
+  try {
+    const { data } = await supabaseAdmin
+      .from('semantic_facts')
+      .select('fact,created_at')
+      .eq('domain', 'regime_state')
+      .ilike('fact', '%desk=crypto%')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!data) {
+      console.log('[SCANNER] WARNING: No fresh regime_state from Risk Bot — defaulting to normal');
+      return 'normal';
+    }
+
+    const ageMs = Date.now() - new Date(String((data as any).created_at)).getTime();
+    if (!Number.isFinite(ageMs) || ageMs > 2 * 60 * 60 * 1000) {
+      console.log('[SCANNER] WARNING: No fresh regime_state from Risk Bot — defaulting to normal');
+      return 'normal';
+    }
+
+    const fact = String((data as any).fact ?? '');
+    const m = fact.match(/current_vol_regime=(low|normal|elevated|extreme)/i);
+    if (!m) return 'normal';
+    return String(m[1]).toLowerCase();
+  } catch {
+    console.log('[SCANNER] WARNING: No fresh regime_state from Risk Bot — defaulting to normal');
+    return 'normal';
+  }
 }
 
 export async function runScannerCycle(): Promise<{ conditionsChecked: number; fired: number; tasksCreated: number }> {

@@ -86,12 +86,13 @@ async function main() {
   // 4) volatility_regime_detect
   const closes30 = bars30.map((b) => b.close);
   const rv = computeRealizedVol(closes30);
+  const regime = classifyVolatilityRegime(rv);
   await insertTask('volatility_regime_detect', {
     market_type: 'crypto',
     symbol,
     realized_vol: rv,
     prices: closes30,
-    expected_answer: classifyVolatilityRegime(rv),
+    expected_answer: regime,
     edge_type: 'behavioral',
     description: `Volatility regime detect on ${symbol}.`,
     mechanism: 'Risk premia and execution costs vary by volatility regime.',
@@ -100,6 +101,17 @@ async function main() {
     base_rate: 0.5,
     draft_recommendation: 'investigate_further',
     rqs_components: { statistical_rigor: 0.5, mechanism_clarity: 0.7, novelty: 0.3, cost_adjusted_edge: 0.5 },
+  });
+
+  // Also trigger authoritative regime publish via Risk Bot (Research detects → Risk publishes).
+  await supabaseAdmin.from('tasks').insert({
+    task_type: 'publish_regime_state',
+    task_input: { tickers: ['BTC/USD', 'ETH/USD'], desk: 'crypto' },
+    status: 'queued',
+    tags: ['risk', 'crypto', 'priority:1'],
+    agent_role: 'risk',
+    desk: 'crypto_markets',
+    bot_id: 'risk-bot-1',
   });
 
   // 5) correlation_scan

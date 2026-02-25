@@ -63,6 +63,11 @@ Not just total return or Sharpe. A strategy with a 40% maximum drawdown is not d
 **Rule 10: Distinguish bad strategy from wrong conditions.**
 If a strategy fails, identify whether it failed because the strategy is structurally unsound or because the test period was in a regime the strategy was not designed for. These have different implications for the Research Desk.
 
+**Rule 11: Walk-forward validation required.**
+Minimum 3 rolling windows. Strategy must show positive expectancy (win_rate > 0.5 AND avg_win > avg_loss) in at least 2 of 3 windows.
+If fewer than 90 outcomes exist, walk-forward is skipped and flagged — not failed.
+This requirement cannot be disabled or bypassed.
+
 ---
 
 ## Strategy Formalization Standard

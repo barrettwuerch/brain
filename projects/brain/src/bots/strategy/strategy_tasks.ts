@@ -55,21 +55,8 @@ async function main() {
   if (ins1) throw ins1;
 
   const { error: ins2 } = await supabaseAdmin.from('tasks').insert({
-    task_type: 'run_backtest',
-    task_input: {
-      formalization: {
-        finding_id: finding.id,
-        entry_conditions: 'stub',
-        exit_conditions: 'stub',
-        position_sizing_rule: 'Kelly 0.25x',
-        invalidation_criteria: 'IS drops below 0.05 for 2 consecutive evaluations',
-        market_scope: finding.market ?? 'general',
-        created_at: new Date().toISOString(),
-        created_by: 'strategy-bot-1',
-      },
-      outcomes,
-      slippage,
-    },
+    task_type: 'challenge_strategy',
+    task_input: { finding_id: finding.id },
     status: 'queued',
     tags: ['strategy', 'prediction_markets'],
     agent_role: 'strategy',
@@ -78,7 +65,7 @@ async function main() {
   });
   if (ins2) throw ins2;
 
-  console.log('Seeded 2 strategy tasks (formalize_strategy, run_backtest).', { finding_id: finding.id });
+  console.log('Seeded 2 strategy tasks (formalize_strategy, challenge_strategy).', { finding_id: finding.id });
 }
 
 main().catch((e) => {

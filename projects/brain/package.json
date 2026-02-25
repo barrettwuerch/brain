@@ -24,6 +24,7 @@
     "dev:seed:crypto-strategy": "tsx src/adapters/alpaca/strategy_tasks.ts",
 
     "dev:seed:risk": "tsx src/bots/risk/risk_tasks.ts",
+    "dev:seed:publish-regime": "tsx src/bots/risk/risk_tasks.ts publish_regime",
 
     "dev:seed:execution": "tsx src/bots/execution/execution_tasks.ts",
     "dev:seed:crypto-execution": "tsx src/adapters/alpaca/execution_tasks.ts",

@@ -106,39 +106,11 @@ export async function routeUnroutedFindings(): Promise<number> {
       bot_id: isCrypto ? 'crypto-strategy-bot-1' : 'strategy-bot-1',
     };
 
-    // Task 2: backtest (dev outcomes; variance present)
-    const outcomes = Array.from({ length: 120 }, (_, i) => {
-      const pattern = [1, 1, 0, 1, 0];
-      return pattern[i % pattern.length];
-    });
-
+    // Task 2: challenge (adversarial review) — seeds backtest ONLY if verdict=proceed
     const ins2: any = {
-      task_type: isCrypto ? 'run_crypto_backtest' : 'run_backtest',
+      task_type: isCrypto ? 'challenge_crypto_strategy' : 'challenge_strategy',
       task_input: {
-        formalization: {
-          finding_id: f.id,
-          entry_conditions: 'stub',
-          exit_conditions: 'stub',
-          position_sizing_rule: isCrypto ? 'fractional_kelly_0.20x' : 'Kelly 0.25x',
-          invalidation_criteria: 'IS drops below 0.05 for 2 consecutive evaluations',
-          market_scope: (f as any).market ?? (isCrypto ? 'BTC/USD' : 'general'),
-          created_at: new Date().toISOString(),
-          created_by: isCrypto ? 'crypto-strategy-bot-1' : 'strategy-bot-1',
-          watch_condition: isCrypto
-            ? {
-                metric: 'volume_ratio',
-                operator: '>=',
-                value: 2,
-                timeframe: '1d',
-                vol_regime_gate: 'elevated',
-                cooldown_minutes: 60,
-                max_triggers_per_day: 3,
-              }
-            : null,
-        },
-        outcomes,
-        slippage: isCrypto ? 0.001 : 0.0015,
-        priority: 1,
+        finding_id: f.id,
       },
       status: 'queued',
       tags: ['strategy', isCrypto ? 'crypto' : 'prediction_markets', 'priority:1'],

@@ -23,7 +23,10 @@ export async function getCryptoOHLCV(
 ): Promise<OHLCVBar[]> {
   const url = new URL('https://data.alpaca.markets/v1beta3/crypto/us/bars');
   url.searchParams.set('symbols', symbol);
-  url.searchParams.set('timeframe', timeframe);
+
+  // Alpaca accepts canonical strings like 1Hour/4Hour/1Day; keep our adapter shorthand.
+  const tf = timeframe === '1h' ? '1Hour' : timeframe === '4h' ? '4Hour' : '1Day';
+  url.searchParams.set('timeframe', tf);
   url.searchParams.set('limit', String(limit));
 
   const j = await fetchJson(url.toString());

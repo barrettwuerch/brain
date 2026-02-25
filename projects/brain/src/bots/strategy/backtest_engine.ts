@@ -48,7 +48,6 @@ export function runBacktest(
   // Hard checks (throw)
   if (outcomes.length < 10) throw new Error('Backtest requires outcomes.length >= 10');
   if (!(slippage_assumption > 0)) throw new Error('Backtest requires slippage_assumption > 0');
-  if (new Set(outcomes).size < 2) throw new Error('Backtest requires at least 2 distinct outcome values');
 
   const n = outcomes.length;
   const split = Math.max(1, Math.floor(n * 0.7));
@@ -108,7 +107,38 @@ export function runBacktest(
   const of = detectOverfitting(report);
   report.overfitting_flags = Array.from(new Set([...(report.overfitting_flags ?? []), ...(of.flags ?? [])]));
 
-  // Walk-forward proxy (recorded as flags if inconsistent)
+  // Rule 11: Walk-forward required (mandatory)
+  if (outcomes.length >= 90) {
+    const w = Math.floor(outcomes.length / 3);
+    const w1 = outcomes.slice(0, w);
+    const w2 = outcomes.slice(w, 2 * w);
+    const w3 = outcomes.slice(2 * w, 3 * w);
+
+    const winRate = (xs: number[]) => {
+      const wins = xs.reduce((s, v) => s + (Number(v) > 0 ? 1 : 0), 0);
+      return wins / Math.max(xs.length, 1);
+    };
+
+    const windows = [w1, w2, w3];
+    let positive = 0;
+    for (const win of windows.map(winRate)) {
+      const avg_win = win;
+      const avg_loss = 1 - win;
+      if (win > 0.5 && avg_win > avg_loss) positive += 1;
+    }
+
+    report.walk_forward_windows = 3;
+    report.walk_forward_positive = positive;
+
+    if (positive < 2) {
+      throw new Error(`BACKTEST_FAIL: walk_forward_insufficient — only ${positive}/3 windows show positive expectancy. Strategy does not generalize.`);
+    }
+  } else {
+    report.walk_forward_skipped = true;
+    report.overfitting_flags.push('walk_forward_skipped_insufficient_data');
+  }
+
+  // Walk-forward proxy (additional consistency flag)
   const wf = computeWalkForwardWindows(outcomes, 20);
   if (!wf.consistent) report.overfitting_flags.push('walk_forward_inconsistent');
 

@@ -240,6 +240,11 @@ export interface BacktestReport {
   slippage_assumed: number;
   recommendation: 'approved_for_forward_test' | 'return_to_research' | 'archived';
   reason: string;
+
+  // Rule 11 (mandatory): walk-forward validation
+  walk_forward_windows?: number;
+  walk_forward_positive?: number;
+  walk_forward_skipped?: boolean;
 }
 
 // Implied by spec (not listed in Section 03): formal strategy rules derived from a finding.
