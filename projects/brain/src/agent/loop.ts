@@ -1573,19 +1573,70 @@ export class BrainLoop {
         formalization = ep?.action_taken?.formalization ?? null;
       }
 
-      const report: {
+      // Use a real LLM adversarial challenge review (replaces deterministic stub).
+      const skillContent = await this.loadRoleSkill('strategy');
+
+      const challengePrompt = `You are the Strategy Bot performing an adversarial challenge review.
+
+STRATEGY FORMALIZATION:
+${JSON.stringify(formalization, null, 2)}
+
+Your task: challenge_strategy
+
+Apply the REASONING STRUCTURE from your SKILL exactly:
+1. Identify the single load-bearing assumption — what one assumption, if wrong, kills this strategy's expectancy entirely?
+2. Name the specific regime where that assumption fails (be precise — not just "high vol")
+3. Estimate failure probability (0.0–1.0) — probability this strategy underperforms its backtest by >30% in the first 30 trades
+4. Verdict: proceed | revise | abandon
+
+Respond with ONLY valid JSON, no other text:
+{
+  "weakest_assumption": "string",
+  "failure_regime": "string",
+  "failure_probability": number,
+  "verdict": "proceed" | "revise" | "abandon",
+  "notes": "string"
+}`;
+
+      let report: {
         weakest_assumption: string;
         failure_regime: string;
         failure_probability: number;
         verdict: 'proceed' | 'revise' | 'abandon';
         notes: string;
-      } = {
-        weakest_assumption: 'The strategy mechanism persists across volatility regimes without parameter drift.',
-        failure_regime: 'extreme volatility / liquidity shock',
-        failure_probability: 0.4,
-        verdict: 'proceed',
-        notes: 'Adversarial review passed in dev mode; proceed to backtest but monitor regime sensitivity.',
       };
+
+      try {
+        const { claudeText, extractFirstJsonObject } = await import('../lib/anthropic');
+        const raw = await claudeText({
+          system: skillContent,
+          user: challengePrompt,
+          maxTokens: 800,
+          temperature: 0.2,
+        });
+
+        const parsed = extractFirstJsonObject(raw);
+        const verdictRaw = String((parsed as any)?.verdict ?? 'revise');
+
+        report = {
+          weakest_assumption: String((parsed as any)?.weakest_assumption ?? ''),
+          failure_regime: String((parsed as any)?.failure_regime ?? ''),
+          failure_probability: Math.min(1, Math.max(0, Number((parsed as any)?.failure_probability ?? 0.5))),
+          verdict: (['proceed', 'revise', 'abandon'] as const).includes(verdictRaw as any) ? (verdictRaw as any) : 'revise',
+          notes: String((parsed as any)?.notes ?? ''),
+        };
+      } catch (e: any) {
+        console.warn('[CHALLENGE] Failed to parse LLM response, defaulting to revise:', e?.message ?? e);
+        report = {
+          weakest_assumption: 'Could not extract from LLM response',
+          failure_regime: 'unknown',
+          failure_probability: 0.5,
+          verdict: 'revise',
+          notes: 'Challenge parsing failed — strategy flagged for manual review.',
+        };
+      }
+
+      console.log('[CHALLENGE] report:', report);
 
       // FIX 3: revision cycle limit + persist challenge notes.
       if (findingId) {
@@ -1624,10 +1675,7 @@ export class BrainLoop {
       if (report.verdict === 'proceed' && formalization) {
         const isCrypto = String(args.task.desk ?? '') === 'crypto_markets';
 
-        const outcomes = Array.from({ length: 120 }, (_, i) => {
-          const pattern = [1, 1, 0, 1, 0];
-          return pattern[i % pattern.length];
-        });
+        const outcomes: number[] = [];
 
         const { error } = await supabaseAdmin.from('tasks').insert({
           task_type: isCrypto ? 'run_crypto_backtest' : 'run_backtest',
