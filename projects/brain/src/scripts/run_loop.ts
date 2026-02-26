@@ -28,8 +28,11 @@ async function main() {
   while (true) {
     const task = await fetchNextQueued();
     if (!task) {
-      console.log('Queue empty. Done.');
-      break;
+      // IMPORTANT: on Railway we want a long-running worker.
+      // Keep polling instead of exiting, otherwise the container will stop and "loop health" will go stale.
+      if (n % 30 === 0) console.log('Queue empty. Waiting...');
+      await sleep(5000);
+      continue;
     }
 
     // claim task
