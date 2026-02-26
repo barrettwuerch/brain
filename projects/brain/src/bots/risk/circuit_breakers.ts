@@ -120,3 +120,62 @@ export async function checkAndFireBreakers(
   }
   return breacheds;
 }
+
+// Gate 2 wiring: evaluate breakers from bot_states.current_drawdown, not from a single shared snapshot.
+// This matches how the Scanner uses bot_states at fire time.
+export async function checkAndFireBreakersFromBotStates(args: {
+  botIds: string[];
+  marketType?: 'prediction' | 'crypto';
+}): Promise<{ fired: Array<{ bot_id: string; breaches: string[] }>; recovered: string[] }> {
+  const { supabaseAdmin } = await import('../../lib/supabase');
+
+  const marketType = args.marketType ?? 'prediction';
+  const thresholds = marketType === 'crypto' ? CRYPTO_THRESHOLDS : DEFAULT_THRESHOLDS;
+
+  const fired: Array<{ bot_id: string; breaches: string[] }> = [];
+  const recovered: string[] = [];
+
+  for (const botId of args.botIds) {
+    const { data: bs, error } = await supabaseAdmin
+      .from('bot_states')
+      .select('bot_id,current_state,current_drawdown')
+      .eq('bot_id', botId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!bs) continue;
+
+    const dd = Number((bs as any).current_drawdown ?? 0);
+
+    // Recovery path: if paused and drawdown is cleared, step into RECOVERING.
+    // (Gate 2 expects: PAUSED → RECOVERING → CAUTIOUS)
+    if (String((bs as any).current_state) === 'paused' && dd <= 0.001) {
+      await transitionState(botId, 'recovering', 'circuit_breaker_recovery_start', { current_drawdown: dd });
+      recovered.push(botId);
+      continue;
+    }
+
+    const snapshot: RiskSnapshot = {
+      timestamp: new Date().toISOString(),
+      open_positions: 0,
+      unrealized_pnl: 0,
+      drawdown_from_peak: dd,
+      drawdown_velocity: 0,
+      kelly_multiplier: null as any,
+      enp: null as any,
+      active_breakers: [],
+      warnings: [],
+    } as any;
+
+    const { breacheds } = evaluateCircuitBreakers(snapshot, thresholds as any, marketType);
+    if (breacheds.length) {
+      // fireCircuitBreaker pauses affected bots (uses transitionState internally).
+      // Here we target a single bot at a time so bot_state_transitions is explicit.
+      for (const b of breacheds) {
+        await fireCircuitBreaker(b, [botId], { breach: b, snapshot, thresholds, value: dd, threshold: (thresholds as any).maxDrawdownFromPeak });
+      }
+      fired.push({ bot_id: botId, breaches: breacheds });
+    }
+  }
+
+  return { fired, recovered };
+}

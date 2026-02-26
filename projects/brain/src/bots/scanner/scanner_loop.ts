@@ -176,13 +176,21 @@ export async function runScannerCycle(): Promise<{ conditionsChecked: number; fi
       const account = await getAccount();
       const equity = Number(account.equity);
 
-      // Fetch current drawdown for the target execution bot.
+      // Fetch current state + drawdown for the target execution bot.
+      // Gate 2 requirement: do NOT seed new position sizing tasks while the bot is PAUSED/DIAGNOSTIC.
       const { data: bs, error: bsErr } = await supabaseAdmin
         .from('bot_states')
-        .select('current_drawdown')
+        .select('current_state,current_drawdown')
         .eq('bot_id', String(c.bot_id))
         .maybeSingle();
       if (bsErr) throw bsErr;
+
+      const curState = String((bs as any)?.current_state ?? 'exploiting');
+      if (curState === 'paused' || curState === 'diagnostic') {
+        console.log(`[SCANNER] Skipping seed for bot_id=${c.bot_id} because current_state=${curState}`);
+        continue;
+      }
+
       const dd = Number((bs as any)?.current_drawdown ?? 0);
 
       const BASE_POSITION_FRACTION = 0.02; // TODO: replace with edge.confidence when available

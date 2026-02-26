@@ -328,19 +328,19 @@ export class BrainLoop {
     }
 
     // Risk Bot: after evaluating circuit breakers, pause affected bots if any breach fired.
+    // Gate 2 wiring: circuit breaker evaluation should be based on bot_states (current_drawdown),
+    // because the Scanner also reads bot_states at fire time.
     if (task.agent_role === 'risk' && task.task_type === 'evaluate_circuit_breakers') {
       try {
-        const snapshot = (task.task_input as any)?.snapshot;
-        if (snapshot) {
-          const { data, error } = await supabaseAdmin
-            .from('bot_states')
-            .select('bot_id')
-            .neq('bot_id', 'risk-bot-1');
-          if (error) throw error;
-          const botIds = (data ?? []).map((r: any) => String(r.bot_id));
+        const { data, error } = await supabaseAdmin
+          .from('bot_states')
+          .select('bot_id')
+          .neq('bot_id', 'risk-bot-1');
+        if (error) throw error;
+        const botIds = (data ?? []).map((r: any) => String(r.bot_id));
 
-          await checkAndFireBreakers(snapshot, botIds);
-        }
+        const { checkAndFireBreakersFromBotStates } = await import('../bots/risk/circuit_breakers');
+        await checkAndFireBreakersFromBotStates({ botIds });
       } catch (e: any) {
         console.error('[risk] checkAndFireBreakers failed:', e?.message ?? e);
       }
@@ -981,8 +981,13 @@ export class BrainLoop {
     }
 
     if (args.task.agent_role === 'risk' && args.task.task_type === 'evaluate_circuit_breakers') {
-      const snapshot = tInput.snapshot;
-      const thresholds = tInput.thresholds ?? DEFAULT_THRESHOLDS;
+      // This task is now primarily a *trigger* for evaluating bot_states-driven breakers in the runner.
+      // Still support the legacy snapshot mode for ad-hoc testing.
+      const snapshot = (tInput as any)?.snapshot;
+      if (!snapshot) {
+        return { action_taken, result: { breacheds: [], actions: [] }, outcome_score: undefined };
+      }
+      const thresholds = (tInput as any)?.thresholds ?? DEFAULT_THRESHOLDS;
       const res = evaluateCircuitBreakers(snapshot, thresholds);
       return { action_taken, result: res, outcome_score: undefined };
     }
