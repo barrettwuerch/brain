@@ -148,6 +148,28 @@ export async function getPositions(): Promise<AlpacaPosition[]> {
   }));
 }
 
+// Part B naming: getPosition (single)
+export async function getPosition(symbol: string): Promise<AlpacaPosition> {
+  const j = await fetchJson(`${BASE_URL}/v2/positions/${encodeURIComponent(symbol)}`, {
+    method: 'GET',
+    headers: authHeaders(),
+  });
+  const p: any = j;
+  return {
+    asset_id: String(p.asset_id),
+    symbol: String(p.symbol),
+    exchange: String(p.exchange),
+    asset_class: String(p.asset_class),
+    qty: String(p.qty),
+    avg_entry_price: String(p.avg_entry_price),
+    current_price: String(p.current_price),
+    market_value: String(p.market_value),
+    unrealized_pl: String(p.unrealized_pl),
+    unrealized_plpc: String(p.unrealized_plpc),
+    side: String(p.side) === 'short' ? 'short' : 'long',
+  };
+}
+
 export async function getOpenOrders(): Promise<AlpacaOrder[]> {
   const j = await fetchJson(`${BASE_URL}/v2/orders?status=open&direction=desc&limit=500`, {
     method: 'GET',
@@ -155,6 +177,11 @@ export async function getOpenOrders(): Promise<AlpacaOrder[]> {
   });
   const rows = Array.isArray(j) ? j : [];
   return rows.map(toOrder);
+}
+
+// Part B naming: getOrders (alias for open orders)
+export async function getOrders(): Promise<AlpacaOrder[]> {
+  return await getOpenOrders();
 }
 
 export async function getOrder(orderId: string): Promise<AlpacaOrder> {
@@ -247,6 +274,12 @@ export async function getCryptoBars(symbol: string, timeframe: '1h' | '4h' | '1d
       volume: Number(b.v),
     }))
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+}
+
+// Part B naming: getBars (paper trading / market data)
+// For now this is an alias of getCryptoBars for crypto symbols.
+export async function getBars(symbol: string, timeframe: '1h' | '4h' | '1d', limit: number): Promise<Bar[]> {
+  return await getCryptoBars(symbol, timeframe, limit);
 }
 
 export async function getLatestQuote(symbol: string): Promise<Quote> {
