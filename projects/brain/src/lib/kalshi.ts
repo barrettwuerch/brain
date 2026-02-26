@@ -82,13 +82,19 @@ function privateKeyObject(): crypto.KeyObject {
   });
 }
 
-function signHeaders(method: string, fullPath: string): Record<string, string> {
-  const timestamp = Math.floor(Date.now() / 1000).toString();
-  const msg = timestamp + method.toUpperCase() + fullPath;
+function signHeaders(method: string, pathWithOptionalQuery: string): Record<string, string> {
+  // Kalshi expects timestamp in *milliseconds*.
+  const timestamp = Date.now().toString();
+
+  // Important: sign the path WITHOUT query parameters.
+  const path = pathWithOptionalQuery.split('?')[0];
+
+  const msg = timestamp + method.toUpperCase() + path;
 
   const signature = crypto.sign('sha256', Buffer.from(msg), {
     key: privateKeyObject(),
     padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
+    saltLength: crypto.constants.RSA_PSS_SALTLEN_DIGEST,
   });
 
   return {
