@@ -120,10 +120,16 @@ export async function attributePerformance(): Promise<{ byBot: Record<string, st
 
       const scores = (rows ?? []).map((r: any) => Number(r.value ?? 0));
       const decision = evaluateCautiousTransition(bot_id, scores);
+
+      // Gate scripts should not mutate bot states.
+      const gateMode = String(process.env.GATE_MODE ?? '').toLowerCase() === 'true' || String(process.env.GATE_MODE ?? '') === '1';
+
       if (decision !== 'stay') {
-        await transitionState(bot_id, decision as any, 'intelligence_cautious_evaluation');
-        if (decision === 'exploiting') highlights.push(`${bot_id} recovered from CAUTIOUS`);
-        if (decision === 'paused') warnings.push(`${bot_id} escalated CAUTIOUS → PAUSED`);
+        if (!gateMode) {
+          await transitionState(bot_id, decision as any, 'intelligence_cautious_evaluation');
+        }
+        if (decision === 'exploiting') highlights.push(`${bot_id} recovered from CAUTIOUS${gateMode ? ' (gate-mode: no state change written)' : ''}`);
+        if (decision === 'paused') warnings.push(`${bot_id} escalated CAUTIOUS → PAUSED${gateMode ? ' (gate-mode: no state change written)' : ''}`);
       }
     }
 

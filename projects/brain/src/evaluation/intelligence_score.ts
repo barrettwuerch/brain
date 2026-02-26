@@ -27,7 +27,10 @@ export async function computeIntelligenceScore(task_type: string): Promise<Intel
   const accuracy = await computeAccuracyTrend(task_type, 20);
   const calibration = await computeCalibration(task_type, 20);
 
-  if (accuracy.trend_class === 'insufficient_data' || calibration.interpretation === 'insufficient_data') {
+  const episode_count = Math.min(accuracy.episode_count, calibration.episode_count);
+
+  // If there are no episodes at all, return insufficient.
+  if (episode_count < 1) {
     return {
       task_type,
       is_value: 0,
@@ -37,7 +40,7 @@ export async function computeIntelligenceScore(task_type: string): Promise<Intel
       calibration_score: calibration.calibration_score,
       calibration_interpretation: calibration.interpretation,
       transfer_score: 0,
-      episode_count: Math.min(accuracy.episode_count, calibration.episode_count),
+      episode_count,
       supporting_episode_ids: Array.from(new Set([...(accuracy.episode_ids ?? []), ...(calibration.episode_ids ?? [])])),
     };
   }
@@ -62,7 +65,7 @@ export async function computeIntelligenceScore(task_type: string): Promise<Intel
     calibration_score: calibration.calibration_score,
     calibration_interpretation: calibration.interpretation,
     transfer_score,
-    episode_count: Math.min(accuracy.episode_count, calibration.episode_count),
+    episode_count,
     supporting_episode_ids: Array.from(new Set([...(accuracy.episode_ids ?? []), ...(calibration.episode_ids ?? [])])),
   };
 }

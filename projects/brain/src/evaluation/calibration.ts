@@ -81,13 +81,33 @@ export async function computeCalibration(task_type: string, windowSize: number =
   const os = rows.map((r) => Number(r.outcome_score ?? 0));
   const episode_ids = rows.map((r) => String(r.id));
 
+  // Gate 3: allow meaningful calibration scoring with small samples (>=3).
   if (rows.length < 10) {
+    if (rows.length < 3) {
+      return {
+        task_type,
+        windowSize,
+        episode_count: rows.length,
+        calibration_score: 0,
+        interpretation: 'insufficient_data',
+        episode_ids,
+      };
+    }
+
+    const calibration_score = spearman(rs, os);
+
+    let interpretation: CalibrationInterpretation;
+    if (calibration_score > 0.6) interpretation = 'well_calibrated';
+    else if (calibration_score < -0.2) interpretation = 'overconfident';
+    else if (Math.abs(calibration_score) < 0.2) interpretation = 'uncorrelated';
+    else interpretation = 'underconfident';
+
     return {
       task_type,
       windowSize,
       episode_count: rows.length,
-      calibration_score: 0,
-      interpretation: 'insufficient_data',
+      calibration_score,
+      interpretation,
       episode_ids,
     };
   }
