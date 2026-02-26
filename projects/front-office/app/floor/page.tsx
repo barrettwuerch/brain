@@ -1,8 +1,10 @@
-'use client'
+import dynamic from 'next/dynamic'
 
-import TradingOffice from '@/components/trading-office'
+const TradingOffice = dynamic(() => import('@/components/trading-office'), {
+  ssr: false,
+  loading: () => <div style={{ color: '#fff', padding: 40 }}>Loading trading floor...</div>,
+})
 
 export default function FloorPage() {
-  // Animated isometric trading floor (mock-driven for now; live wiring comes next).
   return <TradingOffice />
 }
