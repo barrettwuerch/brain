@@ -406,7 +406,9 @@ async function loadCapitalSnapshot(_db: any) {
   try {
     const { getAccount } = await import('../../lib/alpaca');
     const a = await getAccount();
-    const equity = Number(a.equity);
+    const equityRaw = Number(a.equity);
+    const { capAlpacaDeployableEquity } = await import('../../lib/simulation_capital');
+    const equity = await capAlpacaDeployableEquity(equityRaw);
     return { total_capital: Number.isFinite(equity) ? equity : 10000, today_pct: 0 };
   } catch {
     return { total_capital: 10000, today_pct: 0 };

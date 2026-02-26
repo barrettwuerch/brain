@@ -173,8 +173,11 @@ export async function runScannerCycle(): Promise<{ conditionsChecked: number; fi
       const { getAccount } = await import('../../lib/alpaca');
 
       // Cache equity once per scanner cycle.
+      // Simulation safety: cap deployable equity to simulation_capital_alpaca.
       const account = await getAccount();
-      const equity = Number(account.equity);
+      const equityRaw = Number(account.equity);
+      const { capAlpacaDeployableEquity } = await import('../../lib/simulation_capital');
+      const equity = await capAlpacaDeployableEquity(equityRaw);
 
       // Fetch current state + drawdown for the target execution bot.
       // Gate 2 requirement: do NOT seed new position sizing tasks while the bot is PAUSED/DIAGNOSTIC.

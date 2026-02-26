@@ -4,6 +4,7 @@ import type { WatchCondition } from '../../types';
 
 import { getCryptoOHLCV, getFundingRate } from '../../adapters/alpaca/data_feed';
 import { getLatestStockTradePrice } from '../../lib/alpaca';
+import { getMarket } from '../../lib/kalshi';
 import {
   classifyVolatilityRegime,
   computeRealizedVol,
@@ -22,6 +23,23 @@ export async function fetchMetricValue(
   const timeframe = (condition.timeframe as any) || '1h';
 
   try {
+    // Prediction markets (Kalshi)
+    if (String(condition.market_type) === 'prediction') {
+      if (metric === 'volume_24h' || metric === 'volume') {
+        const m: any = await getMarket(ticker);
+        const vol = Number(m?.volume_24h ?? m?.volume ?? 0);
+        return { current: vol, previous: undefined };
+      }
+
+      if (metric === 'yes_ask' || metric === 'yes_bid') {
+        const m: any = await getMarket(ticker);
+        const cur = metric === 'yes_ask' ? Number(m?.yes_ask ?? 0) : Number(m?.yes_bid ?? 0);
+        return { current: cur, previous: undefined };
+      }
+
+      // fallthrough to unknown metric warning
+    }
+
     if (metric === 'price' || metric === 'close_price') {
       if (String(condition.market_type) === 'equity') {
         const { price } = await getLatestStockTradePrice(ticker);
