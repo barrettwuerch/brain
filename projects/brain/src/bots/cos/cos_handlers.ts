@@ -246,10 +246,30 @@ export async function handleEvaluateBottlenecks(task: any, db: any): Promise<any
 // ── Data loaders (stubs — real queries wired in Block 5) ──────────────────────
 
 async function loadIsTrjectory(db: any, days: number) {
-  // SELECT bot_id, is_score, evaluated_at FROM intelligence_scores
-  // WHERE evaluated_at >= NOW() - INTERVAL '${days} days'
-  // ORDER BY bot_id, evaluated_at DESC
-  return [];
+  // NOTE: intelligence_scores is keyed by task_type (not bot_id) in current schema.
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await db
+    .from('intelligence_scores')
+    .select('task_type,value,created_at,notes')
+    .eq('metric', 'intelligence_score')
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(500);
+
+  if (error) throw error;
+
+  const latestByTask = new Map<string, any>();
+  for (const r of data ?? []) {
+    const tt = String((r as any).task_type ?? 'unknown');
+    if (!latestByTask.has(tt)) latestByTask.set(tt, r);
+  }
+
+  return Array.from(latestByTask.entries()).map(([task_type, r]) => ({
+    task_type,
+    latest_value: Number((r as any).value ?? 0),
+    latest_at: String((r as any).created_at ?? ''),
+    notes: String((r as any).notes ?? ''),
+  }));
 }
 
 async function loadCurrentRegime(db: any) {
@@ -274,59 +294,225 @@ async function loadCurrentRegime(db: any) {
 }
 
 async function loadPipelineHealth(db: any) {
-  return {};
+  // Basic counts over the last 7 days.
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await db
+    .from('tasks')
+    .select('status,agent_role,created_at')
+    .gte('created_at', since)
+    .limit(5000);
+  if (error) throw error;
+
+  const rows = (data ?? []) as any[];
+  const byStatus: Record<string, number> = {};
+  const byRole: Record<string, number> = {};
+
+  for (const r of rows) {
+    const s = String(r.status ?? 'unknown');
+    const role = String(r.agent_role ?? 'unknown');
+    byStatus[s] = (byStatus[s] ?? 0) + 1;
+    byRole[role] = (byRole[role] ?? 0) + 1;
+  }
+
+  return {
+    window_days: 7,
+    total_tasks: rows.length,
+    by_status: byStatus,
+    by_agent_role: byRole,
+  };
 }
 
 async function loadCircuitBreakerFacts(db: any, days: number) {
-  return [];
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+  // Primary source: state transition log.
+  const { data, error } = await db
+    .from('bot_state_transitions')
+    .select('created_at,bot_id,from_state,to_state,reason,metric_snapshot')
+    .ilike('reason', 'circuit_breaker%')
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(200);
+
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({
+    created_at: r.created_at,
+    bot_id: r.bot_id,
+    from_state: r.from_state,
+    to_state: r.to_state,
+    reason: r.reason,
+    metric_snapshot: r.metric_snapshot,
+  }));
 }
 
 async function loadStrategyOutcomesSummary(db: any, days: number) {
-  return {};
+  const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await db
+    .from('strategy_outcomes')
+    .select('status,total_trades,winning_trades,losing_trades,total_pnl,created_at')
+    .gte('created_at', since)
+    .limit(5000);
+  if (error) throw error;
+
+  const rows = (data ?? []) as any[];
+  const byStatus: Record<string, number> = {};
+  let total_pnl = 0;
+  let total_trades = 0;
+
+  for (const r of rows) {
+    const s = String(r.status ?? 'unknown');
+    byStatus[s] = (byStatus[s] ?? 0) + 1;
+    total_pnl += Number(r.total_pnl ?? 0);
+    total_trades += Number(r.total_trades ?? 0);
+  }
+
+  return {
+    window_days: days,
+    rows: rows.length,
+    by_status: byStatus,
+    total_pnl,
+    total_trades,
+  };
 }
 
 async function loadStrategicPrioritiesFact(db: any) {
-  // SELECT content, created_at FROM semantic_facts
-  // WHERE domain = 'cos_strategic_priorities_firm'
-  // ORDER BY created_at DESC LIMIT 1
+  // Prefer the firm-level fact but fall back to legacy domain.
+  const domains = ['cos_strategic_priorities_firm', 'cos_strategic_priorities'];
+  for (const d of domains) {
+    const { data, error } = await db
+      .from('semantic_facts')
+      .select('id,created_at,domain,fact,fact_type,confidence')
+      .eq('domain', d)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    if (data) return data;
+  }
   return null;
 }
 
 async function loadBotStates(db: any) {
-  // SELECT bot_id, current_state, updated_at FROM bot_states
-  return [];
+  const { data, error } = await db
+    .from('bot_states')
+    .select('bot_id,agent_role,desk,current_state,updated_at,reason,requires_manual_review,warm_up,warm_up_episodes_remaining,current_drawdown')
+    .order('bot_id', { ascending: true });
+  if (error) throw error;
+  return data ?? [];
 }
 
-async function loadCapitalSnapshot(db: any) {
-  return { total_capital: 10000, today_pct: 0 };
+async function loadCapitalSnapshot(_db: any) {
+  // Pull from Alpaca paper account (single source of truth for capital right now).
+  try {
+    const { getAccount } = await import('../../lib/alpaca');
+    const a = await getAccount();
+    const equity = Number(a.equity);
+    return { total_capital: Number.isFinite(equity) ? equity : 10000, today_pct: 0 };
+  } catch {
+    return { total_capital: 10000, today_pct: 0 };
+  }
 }
 
 async function loadYesterdayReportSummary(db: any) {
-  return '';
+  // Pull last daily brief episode if present.
+  const since = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await db
+    .from('episodes')
+    .select('created_at,observation,reflection')
+    .eq('task_type', 'generate_daily_brief')
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return '';
+  const ob = (data as any).observation;
+  return typeof ob === 'string' ? ob : JSON.stringify(ob).slice(0, 800);
 }
 
 async function loadWeeklyDailyReports(db: any, start: string, end: string) {
-  return [];
+  const { data, error } = await db
+    .from('episodes')
+    .select('created_at,observation')
+    .eq('task_type', 'generate_daily_brief')
+    .gte('created_at', start)
+    .lte('created_at', end)
+    .order('created_at', { ascending: true })
+    .limit(50);
+  if (error) throw error;
+  return data ?? [];
 }
 
 async function loadStrategyHealthForWeek(db: any, start: string, end: string) {
-  return {};
+  const { data, error } = await db
+    .from('strategy_outcomes')
+    .select('status,total_trades,win_rate,divergence_pct,evaluated_at')
+    .gte('evaluated_at', start)
+    .lte('evaluated_at', end)
+    .limit(2000);
+  if (error) throw error;
+
+  const rows = (data ?? []) as any[];
+  const byStatus: Record<string, number> = {};
+  for (const r of rows) byStatus[String(r.status ?? 'unknown')] = (byStatus[String(r.status ?? 'unknown')] ?? 0) + 1;
+  return { rows: rows.length, by_status: byStatus };
 }
 
-async function loadLearningVelocityMetrics(db: any) {
-  return {};
+async function loadLearningVelocityMetrics(_db: any) {
+  const { computeLearningVelocity } = await import('../intelligence/attribution');
+  return await computeLearningVelocity();
 }
 
 async function loadMinISScore(db: any): Promise<number> {
-  return 0.5;
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await db
+    .from('intelligence_scores')
+    .select('value')
+    .eq('metric', 'intelligence_score')
+    .gte('created_at', since)
+    .order('created_at', { ascending: true })
+    .limit(2000);
+  if (error) throw error;
+  const xs = (data ?? []).map((r: any) => Number(r.value ?? 0)).filter((n: number) => Number.isFinite(n));
+  if (!xs.length) return 0.5;
+  return Math.min(...xs);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 async function detectStateChangeSince(db: any, since: string | undefined): Promise<boolean> {
   if (!since) return true;
-  // Check for circuit breaker facts, bot state transitions to PAUSED/DIAGNOSTIC,
-  // or regime changes — all newer than 'since'. Returns true if any exist.
+
+  // 1) Bot state transitions
+  const { data: trans, error: tErr } = await db
+    .from('bot_state_transitions')
+    .select('created_at')
+    .gt('created_at', since)
+    .limit(1);
+  if (tErr) throw tErr;
+  if ((trans ?? []).length) return true;
+
+  // 2) Regime changes
+  const { data: regime, error: rErr } = await db
+    .from('operational_state')
+    .select('published_at')
+    .eq('domain', 'regime_state')
+    .eq('key', 'vol_regime')
+    .gt('published_at', since)
+    .limit(1);
+  if (rErr) throw rErr;
+  if ((regime ?? []).length) return true;
+
+  // 3) Risk semantic facts (e.g., breaker events written as facts)
+  const { data: facts, error: fErr } = await db
+    .from('semantic_facts')
+    .select('last_updated')
+    .eq('domain', 'risk')
+    .gt('last_updated', since)
+    .limit(1);
+  if (fErr) throw fErr;
+  if ((facts ?? []).length) return true;
+
   return false;
 }
 
