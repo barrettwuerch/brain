@@ -73,6 +73,9 @@ export async function attributePerformance(): Promise<{ byBot: Record<string, st
   const strategyWarnings: string[] = [];
   const strategySummary = { approved: 0, accumulating: 0, underperforming: 0, sufficientNotEvaluated: 0 };
 
+  // Prevent mass-pausing cascades (Fix 3). Collect candidates first.
+  const pauseCandidates: Array<{ bot_id: string; current_drawdown: number }> = [];
+
   for (const b of bots ?? []) {
     const bot_id = String((b as any).bot_id);
 
@@ -125,11 +128,21 @@ export async function attributePerformance(): Promise<{ byBot: Record<string, st
       const gateMode = String(process.env.GATE_MODE ?? '').toLowerCase() === 'true' || String(process.env.GATE_MODE ?? '') === '1';
 
       if (decision !== 'stay') {
-        if (!gateMode) {
-          await transitionState(bot_id, decision as any, 'intelligence_cautious_evaluation');
+        if (decision === 'paused') {
+          pauseCandidates.push({ bot_id, current_drawdown: Number((b as any).current_drawdown ?? 0) });
         }
-        if (decision === 'exploiting') highlights.push(`${bot_id} recovered from CAUTIOUS${gateMode ? ' (gate-mode: no state change written)' : ''}`);
-        if (decision === 'paused') warnings.push(`${bot_id} escalated CAUTIOUS → PAUSED${gateMode ? ' (gate-mode: no state change written)' : ''}`);
+
+        // Defer PAUSED transitions until we see how many bots would be paused.
+        if (decision !== 'paused') {
+          if (!gateMode) {
+            await transitionState(bot_id, decision as any, 'intelligence_cautious_evaluation');
+          }
+          if (decision === 'exploiting') highlights.push(`${bot_id} recovered from CAUTIOUS${gateMode ? ' (gate-mode: no state change written)' : ''}`);
+        }
+
+        if (decision === 'paused') {
+          warnings.push(`${bot_id} flagged CAUTIOUS → PAUSED${gateMode ? ' (gate-mode: no state change written)' : ''}`);
+        }
       }
     }
 
@@ -164,6 +177,30 @@ export async function attributePerformance(): Promise<{ byBot: Record<string, st
       }
     }
   } catch {}
+
+  // Apply PAUSED transitions with a cascade guard.
+  try {
+    const gateMode = String(process.env.GATE_MODE ?? '').toLowerCase() === 'true' || String(process.env.GATE_MODE ?? '') === '1';
+
+    if (pauseCandidates.length > 3) {
+      pauseCandidates.sort((a, b) => b.current_drawdown - a.current_drawdown);
+      const worst = pauseCandidates[0];
+      warnings.push(
+        `cautious_evaluation_guard: ${pauseCandidates.length} bots would be paused; pausing only worst=${worst.bot_id} (drawdown=${worst.current_drawdown})`,
+      );
+      if (!gateMode) {
+        await transitionState(worst.bot_id, 'paused' as any, 'intelligence_cautious_evaluation');
+      }
+    } else {
+      for (const c of pauseCandidates) {
+        if (!gateMode) {
+          await transitionState(c.bot_id, 'paused' as any, 'intelligence_cautious_evaluation');
+        }
+      }
+    }
+  } catch (e: any) {
+    warnings.push(`cautious_evaluation_guard_error: ${String(e?.message ?? e)}`);
+  }
 
   return { byBot, highlights, warnings, strategyHighlights, strategyWarnings, strategySummary };
 }

@@ -29,8 +29,8 @@ export async function GET(req: Request) {
     // research_findings panels
     const { data: findings, error: fErr } = await supabaseAdmin
       .from('research_findings')
-      .select('id,created_at,updated_at,status,description,mechanism,notes,rqs_score')
-      .order('updated_at', { ascending: false })
+      .select('id,created_at,status,description,mechanism,notes,rqs_score')
+      .order('created_at', { ascending: false })
       .limit(200)
 
     if (fErr) return jsonError(fErr.message, 500)

@@ -36,7 +36,7 @@ export default function PipelinePage() {
           <div className="mt-3 space-y-3">
             {(data?.dead_ends?.last5 ?? []).map((f: any) => (
               <div key={f.id} className="rounded-lg border border-zinc-800 p-3">
-                <div className="text-xs text-zinc-400">{f.updated_at}</div>
+                <div className="text-xs text-zinc-400">{f.created_at}</div>
                 <div className="mt-1 text-sm text-zinc-200 line-clamp-2">{f.description}</div>
               </div>
             ))}
