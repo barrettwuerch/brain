@@ -6,5 +6,6 @@ const TradingOffice = dynamic(() => import('@/components/trading-office'), {
 })
 
 export default function FloorPage() {
+  // client-only canvas floor
   return <TradingOffice />
 }
