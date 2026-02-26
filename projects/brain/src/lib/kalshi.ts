@@ -62,16 +62,41 @@ function reqEnv(name: string): string {
   return v;
 }
 
-const BASE_URL = (process.env.KALSHI_BASE_URL ?? 'https://demo-api.kalshi.co/trade-api/v2').replace(/\/$/, '');
+type KalshiEnv = 'demo' | 'prod';
 
-function privateKeyPem(): string {
+function kalshiEnv(): KalshiEnv {
+  const v = String(process.env.KALSHI_ENV ?? 'prod').trim().toLowerCase();
+  return v === 'demo' ? 'demo' : 'prod';
+}
+
+function baseUrl(): string {
+  // Allow explicit override, but otherwise pick a sensible default by env.
+  const override = String(process.env.KALSHI_BASE_URL ?? '').trim();
+  if (override) return override.replace(/\/$/, '');
+
+  if (kalshiEnv() === 'demo') return 'https://demo-api.kalshi.co';
+  // Current docs/examples for production use api.elections.kalshi.com.
+  return 'https://api.elections.kalshi.com';
+}
+
+function normalizePemFromEnvVar(name: string): string {
   // Stored in .env as a single line with \n escapes.
   // Normalize aggressively because PEM parsing is sensitive to BOM + whitespace + newline encoding.
-  const raw = String(process.env.KALSHI_PRIVATE_KEY ?? '');
+  const raw = String(process.env[name] ?? '');
   return raw
     .replace(/^\uFEFF/, '') // strip UTF-8 BOM if present
     .replace(/\\n/g, '\n') // convert literal "\\n" sequences into real newlines
     .trim(); // remove leading/trailing whitespace/newlines
+}
+
+function accessKeyId(): string {
+  return kalshiEnv() === 'demo' ? reqEnv('KALSHI_DEMO_KEY_ID') : reqEnv('KALSHI_KEY_ID');
+}
+
+function privateKeyPem(): string {
+  return kalshiEnv() === 'demo'
+    ? normalizePemFromEnvVar('KALSHI_DEMO_PRIVATE_KEY')
+    : normalizePemFromEnvVar('KALSHI_PRIVATE_KEY');
 }
 
 function privateKeyObject(): crypto.KeyObject {
@@ -98,7 +123,7 @@ function signHeaders(method: string, pathWithOptionalQuery: string): Record<stri
   });
 
   return {
-    'KALSHI-ACCESS-KEY': reqEnv('KALSHI_KEY_ID'),
+    'KALSHI-ACCESS-KEY': accessKeyId(),
     'KALSHI-ACCESS-SIGNATURE': signature.toString('base64'),
     'KALSHI-ACCESS-TIMESTAMP': timestamp,
     'content-type': 'application/json',
@@ -106,7 +131,11 @@ function signHeaders(method: string, pathWithOptionalQuery: string): Record<stri
 }
 
 async function fetchJson(method: string, path: string, body?: any): Promise<any> {
-  const fullUrl = `${BASE_URL}${path.startsWith('/') ? path : `/${path}`}`;
+  const apiPrefix = '/trade-api/v2';
+  const p0 = path.startsWith('/') ? path : `/${path}`;
+  const p = p0.startsWith('/trade-api/') ? p0 : `${apiPrefix}${p0}`;
+
+  const fullUrl = `${baseUrl()}${p}`;
   const url = new URL(fullUrl);
   const fullPath = url.pathname + url.search;
 
