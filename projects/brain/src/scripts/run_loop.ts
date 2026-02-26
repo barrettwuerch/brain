@@ -25,12 +25,46 @@ async function main() {
   const loop = new BrainLoop();
   let n = 0;
 
+  let lastHeartbeatAt = 0;
+
   while (true) {
     const task = await fetchNextQueued();
     if (!task) {
       // IMPORTANT: on Railway we want a long-running worker.
       // Keep polling instead of exiting, otherwise the container will stop and "loop health" will go stale.
       if (n % 30 === 0) console.log('Queue empty. Waiting...');
+
+      // Emit a lightweight heartbeat episode every ~5 minutes so the Front Office can prove the loop is alive
+      // even when there are no queued tasks.
+      const now = Date.now();
+      if (now - lastHeartbeatAt > 5 * 60 * 1000) {
+        lastHeartbeatAt = now;
+        try {
+          await supabaseAdmin.from('episodes').insert({
+            task_id: null,
+            task_type: 'loop_heartbeat',
+            task_input: { source: 'run_loop' },
+            agent_role: 'orchestrator',
+            desk: 'general',
+            bot_id: 'orchestrator-1',
+            reasoning: 'Loop heartbeat',
+            action_taken: { ok: true },
+            observation: { ok: true },
+            reflection: null,
+            lessons: [],
+            outcome: 'success',
+            outcome_score: 1,
+            reasoning_score: 1,
+            error_type: null,
+            ttl_days: 1,
+            embedding: null,
+            vol_regime: 'normal',
+          } as any);
+        } catch (e: any) {
+          console.warn('heartbeat insert failed:', e?.message ?? e);
+        }
+      }
+
       await sleep(5000);
       continue;
     }
