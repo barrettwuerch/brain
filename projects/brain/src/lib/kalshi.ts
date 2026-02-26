@@ -168,8 +168,9 @@ export async function getBalance(): Promise<KalshiBalance> {
 
 export async function getPositions(): Promise<KalshiPosition[]> {
   const j = await fetchJson('GET', '/portfolio/positions');
-  const rows = (j?.positions ?? j) as any[];
-  return (rows ?? []).map((p: any) => ({
+  const raw = (j?.positions ?? j) as any;
+  const rows = Array.isArray(raw) ? raw : [];
+  return rows.map((p: any) => ({
     ticker: String(p.ticker),
     position: Number(p.position ?? p.count ?? 0),
     avg_price: Number(p.avg_price ?? 0),
@@ -187,7 +188,8 @@ export async function getMarkets(params?: {
   status?: string;
   limit?: number;
 }): Promise<KalshiMarket[]> {
-  const url = new URL(`${BASE_URL}/markets`);
+  // Build path+query without assuming a global BASE_URL.
+  const url = new URL('http://local/markets');
   if (params?.series_ticker) url.searchParams.set('series_ticker', params.series_ticker);
   if (params?.status) url.searchParams.set('status', params.status);
   if (params?.limit) url.searchParams.set('limit', String(params.limit));
@@ -246,13 +248,13 @@ export async function placeOrder(params: KalshiOrderParams): Promise<KalshiOrder
   if (params.yes_price !== undefined) body.yes_price = params.yes_price;
   if (params.no_price !== undefined) body.no_price = params.no_price;
 
-  const j = await fetchJson('POST', '/orders', body);
+  const j = await fetchJson('POST', '/portfolio/orders', body);
   const o = (j?.order ?? j) as any;
   return toOrder(o);
 }
 
 export async function getOrders(params?: { ticker?: string; status?: string }): Promise<KalshiOrder[]> {
-  const url = new URL(`${BASE_URL}/orders`);
+  const url = new URL('http://local/portfolio/orders');
   if (params?.ticker) url.searchParams.set('ticker', params.ticker);
   if (params?.status) url.searchParams.set('status', params.status);
 
@@ -262,13 +264,13 @@ export async function getOrders(params?: { ticker?: string; status?: string }): 
 }
 
 export async function getOrder(orderId: string): Promise<KalshiOrder> {
-  const j = await fetchJson('GET', `/orders/${encodeURIComponent(orderId)}`);
+  const j = await fetchJson('GET', `/portfolio/orders/${encodeURIComponent(orderId)}`);
   const o = (j?.order ?? j) as any;
   return toOrder(o);
 }
 
 export async function cancelOrder(orderId: string): Promise<void> {
-  await fetchJson('DELETE', `/orders/${encodeURIComponent(orderId)}`);
+  await fetchJson('DELETE', `/portfolio/orders/${encodeURIComponent(orderId)}`);
 }
 
 function toOrder(o: any): KalshiOrder {
