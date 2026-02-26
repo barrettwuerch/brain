@@ -48,13 +48,17 @@ export async function getBTCDominanceProxy(): Promise<number> {
   }
 }
 
+function normalizeBinancePerpSymbol(symbol: string): string {
+  let s = symbol.replace('/', '').toUpperCase();
+  if (!s.endsWith('USDT')) s = s + 'USDT';
+  return s;
+}
+
 export async function getFundingRate(
   symbol: string,
 ): Promise<{ rate: number; direction: 'positive' | 'negative' | 'neutral' }> {
   try {
-    // Expect input like BTCUSDT; if given BTC/USD, normalize.
-    let s = symbol.replace('/', '').toUpperCase();
-    if (!s.endsWith('USDT')) s = s + 'USDT';
+    const s = normalizeBinancePerpSymbol(symbol);
 
     const url = new URL('https://fapi.binance.com/fapi/v1/fundingRate');
     url.searchParams.set('symbol', s);
@@ -63,11 +67,47 @@ export async function getFundingRate(
     const j = await fetchJson(url.toString());
     const r = Array.isArray(j) ? j[0] : null;
     const rate = r ? Number(r.fundingRate) : 0;
-    const direction: 'positive' | 'negative' | 'neutral' = Math.abs(rate) < 0.0001 ? 'neutral' : rate > 0 ? 'positive' : 'negative';
+    const direction: 'positive' | 'negative' | 'neutral' =
+      Math.abs(rate) < 0.0001 ? 'neutral' : rate > 0 ? 'positive' : 'negative';
     return { rate, direction };
   } catch (e: any) {
-    console.warn('[alpaca.data_feed] funding rate fetch failed; defaulting neutral:', e?.message ?? e);
+    const msg = String(e?.message ?? e);
+    // Binance sometimes blocks by region (HTTP 451). Don't spam logs.
+    if (msg.includes('451')) {
+      console.warn('[alpaca.data_feed] funding rate unavailable (restricted location)');
+    } else {
+      console.warn('[alpaca.data_feed] funding rate fetch failed; defaulting neutral:', msg);
+    }
     return { rate: 0, direction: 'neutral' };
+  }
+}
+
+export async function getFundingRateHistory(args: {
+  symbol: string;
+  limit?: number;
+}): Promise<Array<{ fundingTime: number; fundingRate: number }>> {
+  try {
+    const s = normalizeBinancePerpSymbol(args.symbol);
+    const url = new URL('https://fapi.binance.com/fapi/v1/fundingRate');
+    url.searchParams.set('symbol', s);
+    url.searchParams.set('limit', String(Math.max(1, Math.min(Number(args.limit ?? 90), 1000))));
+
+    const j = await fetchJson(url.toString());
+    const arr = Array.isArray(j) ? j : [];
+    return arr
+      .map((r: any) => ({
+        fundingTime: Number(r.fundingTime ?? r.funding_time ?? 0),
+        fundingRate: Number(r.fundingRate ?? 0),
+      }))
+      .filter((x) => Number.isFinite(x.fundingTime) && Number.isFinite(x.fundingRate));
+  } catch (e: any) {
+    const msg = String(e?.message ?? e);
+    if (msg.includes('451')) {
+      console.warn('[alpaca.data_feed] funding rate history unavailable (restricted location)');
+    } else {
+      console.warn('[alpaca.data_feed] funding rate history fetch failed; returning empty:', msg);
+    }
+    return [];
   }
 }
 

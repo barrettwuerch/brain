@@ -575,7 +575,19 @@ export class BrainLoop {
     const roleSkill = await this.loadRoleSkill(input.task.agent_role ?? undefined);
     const system = roleSkill + '\n\n---\n\n' + baseSystem;
 
-    const user = `MEMORY CONTEXT\n${memoryContext}\n\nTASK\nTask type: ${input.task.task_type}\nTask input (JSON): ${JSON.stringify(input.task.task_input)}\n\nINSTRUCTIONS\nUse a ReAct-like structure internally: Thought -> Action (choose one).\nOutput must be JSON only.`;
+    // Market context injection (Part B.4): only for Research Bot.
+    let marketContextBlock = '';
+    try {
+      if (String(input.task.agent_role ?? '') === 'research') {
+        const { computeResearchMarketContext } = await import('../bots/research/market_context');
+        const ctx = await computeResearchMarketContext(input.task.task_input ?? {});
+        marketContextBlock = `MARKET CONTEXT (derived metrics)\n${JSON.stringify(ctx)}\n\n`;
+      }
+    } catch (e: any) {
+      console.warn('[research] market context injection failed:', e?.message ?? e);
+    }
+
+    const user = `${marketContextBlock}MEMORY CONTEXT\n${memoryContext}\n\nTASK\nTask type: ${input.task.task_type}\nTask input (JSON): ${JSON.stringify(input.task.task_input)}\n\nINSTRUCTIONS\nUse a ReAct-like structure internally: Thought -> Action (choose one).\nOutput must be JSON only.`;
 
     const testMode = String(process.env.BRAIN_TEST_MODE || '').toLowerCase() === 'true';
 
