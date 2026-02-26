@@ -46,6 +46,13 @@ projects/kalshi/market_snapshots/
 
 # reports / artifacts
 projects/brain/reports/
+projects/brain/logs/
+
+# large/generated datasets
+projects/kalshi/nba/data_*/
+
+# build outputs
+projects/marketlens/worker/dist/
 
 # temp
 /tmp/
