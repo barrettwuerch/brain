@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 
 // ─── CANVAS ───────────────────────────────────────────────────────
 const CW = 780, CH = 560
@@ -85,16 +85,6 @@ const TASK_MESSAGES: Record<string, string> = {
   generate_next_generation_hypothesis: '✨ New hypothesis!',
 }
 
-const EV: Record<string, string[]> = {
-  cos:       ['👑 Daily brief: ALL CLEAR', '📋 Priorities set', '🔍 Blind spot detected!', '📬 Decision packet sent'],
-  research:  ['🔍 Scanning markets...', '📊 Vol anomaly check', '✨ RQS computed', '🔬 Validating mechanism'],
-  strategy:  ['♟ Formalizing edge...', '⚔ Challenge running...', '📋 Backtest queued', '✅ Strategy approved!'],
-  risk:      ['📡 Regime: NORMAL', '💰 Kelly sizing...', '⚠ ENP check', '✅ Portfolio nominal'],
-  execution: ['⚡ Placing order...', '✅ Filled!', '📍 Managing position', '💰 Position closed'],
-  intel:     ['🦉 Consolidating...', '📊 IS scores computed', '📝 Report ready', '💡 SKILL update!'],
-  orch:      ['🎯 Routing finding...', '🗺 Priority map updated', '⚡ All bots healthy', '🔄 Watch condition set'],
-  scanner:   ['📡 Scanning...', '🔍 Vol regime: OK', '⚡ Condition fired!', '✅ Gate check pass'],
-}
 
 const REGIMES: Record<string, any> = {
   low:      { label: 'LOW VOL',     bd: '#22c55e', tx: '#4ade80', bg: 'rgba(34,197,94,0.12)' },
