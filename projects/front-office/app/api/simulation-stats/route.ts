@@ -32,16 +32,16 @@ export async function GET() {
     // Closed positions for win rate + P&L
     const { data: positions, error: pErr } = await supabase
       .from('positions')
-      .select('pnl,closed_at')
+      .select('realized_pnl,closed_at')
       .not('closed_at', 'is', null)
       .order('closed_at', { ascending: false })
       .limit(100)
     if (pErr) throw pErr
 
     const rows = (positions ?? []) as any[]
-    const wins = rows.filter((p) => Number(p.pnl ?? 0) > 0).length
+    const wins = rows.filter((p) => Number(p.realized_pnl ?? 0) > 0).length
     const total = rows.length
-    const totalPnl = rows.reduce((s, p) => s + Number(p.pnl ?? 0), 0)
+    const totalPnl = rows.reduce((s, p) => s + Number(p.realized_pnl ?? 0), 0)
     const winRate = total > 0 ? (wins / total) * 100 : 0
 
     // Open positions count
