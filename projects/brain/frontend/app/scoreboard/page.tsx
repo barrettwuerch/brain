@@ -51,7 +51,7 @@ export default function ScoreboardPage() {
   }, [])
 
   const equity = Number(prices?.equity ?? 5000)
-  const positions = Array.isArray(prices?.positions) ? prices.positions : []
+  const positions = useMemo(() => Array.isArray(prices?.positions) ? prices.positions : [], [prices])
 
   const deployedCapital = useMemo(() =>
     positions.map((p: any) => Math.abs(Number(p.market_value ?? 0))).filter(Number.isFinite).reduce((s: number, n: number) => s + n, 0)

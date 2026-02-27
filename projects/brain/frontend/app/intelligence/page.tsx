@@ -51,7 +51,6 @@ function EpisodeCard({ ep, expanded, onToggle }: { ep: any; expanded: boolean; o
   const action = ep.action_taken as any
   const symbol = input?.symbol ?? input?.ticker ?? input?.market_ticker ?? null
   const side = input?.side ?? action?.side ?? null
-  const actionType = action?.type ?? null
 
   return (
     <div style={{ borderRadius: 8, border: `1px solid ${expanded ? CYAN + '44' : BORDER}`, background: CARD_BG, marginBottom: 8, overflow: 'hidden', transition: 'border-color 0.2s' }}>
