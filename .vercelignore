@@ -1,15 +1,14 @@
-# Deploy only the Front Office app when deploying from repo root via Vercel CLI.
-
-# Ignore everything by default
+# Ignore everything except brain/frontend
 **
 
-# Allow config needed for build
+# Allow config
 !vercel.json
 !package.json
 !package-lock.json
 !.npmrc
 
-# Allow the front-office directory and everything under it
+# Allow brain frontend
 !projects/
-!projects/front-office/
-!projects/front-office/**
+!projects/brain/
+!projects/brain/frontend/
+!projects/brain/frontend/**
