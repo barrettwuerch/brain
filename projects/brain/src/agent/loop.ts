@@ -694,7 +694,7 @@ export class BrainLoop {
     }
 
     const { claudeText, extractFirstJsonObject } = await import('../lib/anthropic.js');
-    const raw = await claudeText({ system, user, maxTokens: 700, temperature: 0.2 });
+    const raw = await claudeText({ system, user, maxTokens: 1200, temperature: 0.2 });
 
     try {
       const parsed = extractFirstJsonObject(raw);
