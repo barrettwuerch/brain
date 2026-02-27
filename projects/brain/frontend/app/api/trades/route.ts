@@ -81,6 +81,10 @@ export async function GET() {
 
         trades.push({
           id: p.id,
+          position_id: p.id,
+          exit_reason: p.exit_reason ?? null,
+          stop_level: p.stop_level ?? null,
+          profit_target: p.profit_target ?? null,
           desk: desk === 'crypto_markets' ? 'crypto' : 'prediction',
           symbol: ticker,
           side: normalizeSide(String(p.side ?? 'buy')),
