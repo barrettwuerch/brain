@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 // ─── CANVAS CONSTANTS ─────────────────────────────────────────────
 const CW = 900, CH = 620;
