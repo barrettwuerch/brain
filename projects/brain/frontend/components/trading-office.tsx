@@ -493,10 +493,42 @@ export default function TradingOffice() {
         </div>
       </div>
 
+      {/* Mobile activity feed */}
+      <div className="md:hidden" style={{ borderTop: '1px solid rgba(60,100,200,0.15)', background: 'rgba(0,0,0,0.6)' }}>
+        {/* Mobile bot strip */}
+        <div style={{ display: 'flex', overflowX: 'auto', gap: 8, padding: '8px 12px', borderBottom: '1px solid rgba(60,100,200,0.1)' }}>
+          {BOTS.map((bot) => {
+            const st = SS[states[bot.id] || 'exploiting']
+            const isAct = active[bot.id]
+            return (
+              <div key={bot.id} style={{ flexShrink: 0, padding: '5px 10px', borderRadius: 20, border: `1px solid ${isAct ? bot.hex : st.bd + '44'}`, background: isAct ? bot.hex + '22' : 'transparent', display: 'flex', alignItems: 'center', gap: 5, position: 'relative', overflow: 'hidden' }}>
+                {isAct && <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(90deg,transparent,${bot.hex}22,transparent)`, animation: 'shimmer 1.2s infinite' }} />}
+                <span style={{ fontSize: 12 }}>{bot.e}</span>
+                <span style={{ fontSize: 9, color: isAct ? bot.hex : st.fg, fontFamily: "'Courier New', monospace", whiteSpace: 'nowrap', fontWeight: isAct ? 'bold' : 'normal' }}>
+                  {bot.label.split(' ')[0]}
+                </span>
+                {isAct && <span style={{ width: 5, height: 5, borderRadius: '50%', background: bot.hex, flexShrink: 0, animation: 'blink 0.6s infinite' }} />}
+              </div>
+            )
+          })}
+        </div>
+        {/* Mobile log */}
+        <div style={{ padding: '6px 12px', maxHeight: 120, overflowY: 'auto' }}>
+          {log.length === 0 && <div style={{ fontSize: 9, color: '#1e3a5f', fontFamily: "'Courier New', monospace", padding: '4px 0' }}>Waiting for activity...</div>}
+          {log.slice(0, 8).map((entry: any, i: number) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+              <span style={{ fontSize: 9, color: '#334155', fontFamily: "'Courier New', monospace", flexShrink: 0 }}>{entry.time}</span>
+              <span style={{ width: 5, height: 5, borderRadius: '50%', background: entry.hex, flexShrink: 0 }} />
+              <span style={{ fontSize: 9, color: entry.outcome === 'correct' || entry.outcome === 'partial' ? '#4ade80' : '#94a3b8', fontFamily: "'Courier New', monospace", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.msg}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Bottom bar */}
       <div style={{ padding: '5px 16px', borderTop: '1px solid rgba(60,100,200,0.12)', background: 'rgba(0,0,0,0.4)', display: 'flex', gap: 20, fontSize: 8, color: '#1e3a5f', letterSpacing: 1 }}>
-        <span>BLOCKS COMPLETE: 1–6 · SIMULATION RUNNING · ALPACA PAPER · {lastUpdated}</span>
-        <span style={{ marginLeft: 'auto' }}>CLICK BOT TO INSPECT · LIVE DATA</span>
+        <span>SIMULATION RUNNING · ALPACA PAPER · {lastUpdated}</span>
+        <span style={{ marginLeft: 'auto' }}>CLICK BOT TO INSPECT</span>
       </div>
 
       <style>{`
