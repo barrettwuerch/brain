@@ -35,7 +35,7 @@ async function main() {
   while (true) {
     const now = Date.now();
     // ── Position manager: every 30 min ────────────────────────────────────────
-    if (now - lastPositionCheckAt > 30 * 60 * 1000) {
+    if (now - lastPositionCheckAt > 10 * 60 * 1000) {
       lastPositionCheckAt = now;
       try {
         const { data: openPos } = await supabaseAdmin.from('positions').select('*').is('closed_at', null).eq('desk', 'crypto_markets');
