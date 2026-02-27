@@ -1220,7 +1220,6 @@ export class BrainLoop {
             contracts: parseFloat(orderQty),
             stop_level: stopLevel,
             profit_target: profitTarget,
-            alpaca_order_id: order.id,
             status: 'open',
           } as any);
           console.log(`[EXECUTION] Position opened: ${symbol} entry=${limitPrice} stop=${stopLevel.toFixed(2)} target=${profitTarget.toFixed(2)}`);
