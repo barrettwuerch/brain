@@ -1244,7 +1244,7 @@ export class BrainLoop {
           },
         },
         result: { placed: true, order_id: order.id, client_order_id: order.client_order_id, approved_qty: Math.floor(qty) },
-        outcome_score: undefined,
+        outcome_score: 1,
       };
     }
 
