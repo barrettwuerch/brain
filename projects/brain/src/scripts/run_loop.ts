@@ -30,6 +30,7 @@ async function main() {
   let lastScannerAt = 0
   let lastPositionCheckAt = 0;
   let lastStuckTaskCheckAt = 0;
+  let lastCapitalSyncAt = 0;
 
   console.log('[LOOP] Starting Brain loop with scanner integration');
 
@@ -151,6 +152,25 @@ async function main() {
       } catch (e: any) {
         console.warn('[LOOP] Heartbeat insert failed:', e?.message ?? e);
       }
+    }
+
+    // ── Capital sync: every 15 min ────────────────────────────────────────
+    if (now - lastCapitalSyncAt > 15 * 60 * 1000) {
+      lastCapitalSyncAt = now;
+      try {
+        const { getAccount } = await import('../lib/alpaca');
+        const account = await getAccount();
+        const currentEquity = Number(account.equity);
+        const startingEquity = 100000; // Alpaca paper starting equity
+        const startingCap = 40000;     // Our sim cap at launch
+        const newCap = Math.round((currentEquity / startingEquity) * startingCap);
+        await supabaseAdmin
+          .from('operational_state')
+          .update({ value: { amount: newCap } })
+          .eq('domain', 'simulation')
+          .eq('key', 'simulation_capital_alpaca');
+        console.log(`[CAPITAL] Synced sim cap: $${newCap} (equity=$${currentEquity.toFixed(2)})`);
+      } catch (e: any) { console.error('[CAPITAL] Sync error:', e?.message); }
     }
 
     // ── Task processing ─────────────────────────────────────────────────────
