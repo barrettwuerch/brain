@@ -469,7 +469,7 @@ export class BrainLoop {
   async reason(input: ReasonInput): Promise<ReasonOutput> {
     // Phase 2: ReAct-style reasoner.
 
-    const API_KEY_OPTIONAL_TASKS = ['propose_skill_update', 'generate_next_generation_hypothesis'];
+    const API_KEY_OPTIONAL_TASKS = ['propose_skill_update', 'generate_next_generation_hypothesis', 'generate_research_finding'];
     if (API_KEY_OPTIONAL_TASKS.includes(String(input.task.task_type)) && !String(process.env.ANTHROPIC_API_KEY ?? '').trim()) {
       return {
         chain_of_thought: 'No API key present — skipping LLM reasoning.',
@@ -722,6 +722,7 @@ export class BrainLoop {
       if (input.task.task_type === 'prune_expired_memories') proposed_action = { type: 'prune_expired_memories' };
       if (input.task.task_type === 'propose_skill_update') proposed_action = { type: 'propose_skill_update' };
       if (input.task.task_type === 'generate_next_generation_hypothesis') proposed_action = { type: 'generate_next_generation_hypothesis' };
+      if (input.task.task_type === 'generate_research_finding') proposed_action = { type: 'generate_research_finding' };
       if (input.task.task_type === 'route_research_findings') proposed_action = { type: 'route_research_findings' };
       if (input.task.task_type === 'review_bot_states') proposed_action = { type: 'review_bot_states' };
       if (input.task.task_type === 'generate_priority_map') proposed_action = { type: 'generate_priority_map' };
@@ -731,6 +732,7 @@ export class BrainLoop {
       if (input.task.task_type === 'volatility_regime_detect') proposed_action = { type: 'volatility_regime_detect' };
       if (input.task.task_type === 'correlation_scan') proposed_action = { type: 'correlation_scan' };
       if (input.task.task_type === 'generate_next_generation_hypothesis') proposed_action = { type: 'generate_next_generation_hypothesis' };
+      if (input.task.task_type === 'generate_research_finding') proposed_action = { type: 'generate_research_finding' };
       if (input.task.task_type === 'validate_edge_mechanism') proposed_action = { type: 'validate_edge_mechanism' };
       if (input.task.task_type === 'monitor_approved_findings') proposed_action = { type: 'monitor_approved_findings' };
       if (input.task.task_type === 'generate_weekly_report') proposed_action = { type: 'generate_weekly_report' };
@@ -825,6 +827,7 @@ export class BrainLoop {
         volatility_regime_detect: { type: 'volatility_regime_detect' },
         correlation_scan: { type: 'correlation_scan' },
         generate_next_generation_hypothesis: { type: 'generate_next_generation_hypothesis' },
+        generate_research_finding: { type: 'generate_research_finding' },
         validate_edge_mechanism: { type: 'validate_edge_mechanism' },
         monitor_approved_findings: { type: 'monitor_approved_findings' },
 
@@ -1596,6 +1599,104 @@ export class BrainLoop {
     }
 
     // Research computations (event-triggered)
+
+    // ── generate_research_finding ─────────────────────────────────────────────
+    // Receives raw market data only. Bot generates finding from scratch.
+    // No pre-filled description, mechanism, or RQS scores.
+    if (args.task.agent_role === 'research' && args.task.task_type === 'generate_research_finding') {
+      const key = String(process.env.ANTHROPIC_API_KEY ?? '').trim();
+      if (!key) return { action_taken, result: { status: 'no_api_key' }, outcome_score: 0.5 };
+
+      const { claudeText, extractFirstJsonObject } = await import('../lib/anthropic.js');
+      const { scoreRQS, validateSixQuestions } = await import('../bots/research/research_compute');
+
+      const ticker = String(tInput.market_ticker ?? '');
+      const rawData = tInput.raw_data ?? {};
+
+      const GATE1_EXAMPLE = {
+        edge_type: 'microstructure',
+        description: 'Mean-reversion after volume-led dislocation in liquid Kalshi market. Entry: if 30m volume z-score>2.5 AND price moved >6c in 60m AND spread<3c; enter opposite direction as maker at mid-1c. Exit: TP at 3c mean reversion or time stop 12h; SL at additional 8c adverse move.',
+        mechanism: 'In liquid Kalshi markets, sudden volume-led dislocations often reflect uninformed flow and temporary inventory imbalance. Makers overreact prices; when volume spike exhausts and spread normalizes, implied probability partially mean-reverts.',
+        failure_conditions: 'Fails on genuine news shocks, within 72h of resolution (compression), or when spread>5c / liquidity thin. Avoid if volume_24h=0.',
+        regime_notes: 'Normal vol regime only; avoid transition periods.',
+        rqs_components: { novelty: 0.7, mechanism_clarity: 0.55, statistical_rigor: 0.75, cost_adjusted_edge: 0.8 },
+      };
+
+      const prompt = `You are a quantitative research bot analyzing a live prediction market. You have been given raw market data. Your job is to generate a genuine trading edge hypothesis — NOT a template, NOT a hedge.
+
+RAW MARKET DATA for ${ticker}:
+${JSON.stringify(rawData, null, 2)}
+
+You must apply the six-question standard:
+1. WHAT is the pattern? (specific, numeric thresholds)
+2. WHY does it exist? (falsifiable mechanism — name the market participants and their behavior)
+3. WHEN does it fail? (specific conditions that invalidate the mechanism)
+4. HOW BIG is the edge? (estimate lift over base rate with honest confidence)
+5. WHY hasn't it been arbitraged away? (second-order reasoning required)
+6. WHAT would increase your confidence? (what data or tests would you need)
+
+RULES:
+- If the data shows nothing tradeable, say so with edge_type: "no_edge" and explain why.
+- Do NOT write "continuation/reversion may emerge" — commit to a direction or say there is none.
+- mechanism_clarity must reflect whether you can answer question 5. If you cannot, cap it at 0.50.
+- statistical_rigor reflects evidence quality: in-sample snapshot only = max 0.50.
+
+POSITIVE EXAMPLE (quality bar, do not copy):
+${JSON.stringify(GATE1_EXAMPLE, null, 2)}
+
+Return ONLY valid JSON with keys: edge_type, description, mechanism, failure_conditions, market, regime_notes, rqs_components (novelty, mechanism_clarity, statistical_rigor, cost_adjusted_edge).`;
+
+      const text = await claudeText({
+        system: 'You are a quantitative research strategist. Be concrete, falsifiable, and honest about evidence quality. Never hedge when you can commit.',
+        user: prompt,
+        maxTokens: 1200,
+      });
+
+      const parsed = extractFirstJsonObject(text) ?? {};
+      if (!parsed.edge_type || !parsed.description || !parsed.mechanism) {
+        return { action_taken, result: { status: 'incomplete_finding', reason: 'LLM missing required fields', raw: text.slice(0, 300) }, outcome_score: 0.5 };
+      }
+
+      const draft: any = {
+        bot_id: String(args.task.bot_id ?? 'research-bot-1'),
+        desk: String(args.task.desk ?? 'prediction_markets'),
+        market_type: 'prediction',
+        agent_role: 'research',
+        finding_type: 'preliminary',
+        edge_type: parsed.edge_type,
+        description: parsed.description,
+        mechanism: parsed.mechanism,
+        failure_conditions: parsed.failure_conditions ?? null,
+        market: parsed.market ?? ticker,
+        regime_notes: parsed.regime_notes ?? null,
+        rqs_components: parsed.rqs_components ?? null,
+        sample_size: rawData.sample_size ?? null,
+        observed_rate: null,
+        base_rate: 0.5,
+        lift: null,
+        out_of_sample: false,
+        status: 'under_investigation',
+        recommendation: 'investigate_further',
+        backtest_result: null,
+        supporting_episode_ids: [],
+        notes: \`Generated from raw market data for \${ticker}. No pre-filled fields.\`,
+        parent_finding_id: null,
+      };
+
+      const v = validateSixQuestions(draft);
+      if (!v.valid) {
+        return { action_taken, result: { status: 'incomplete_finding', reason: v.missing.join(', ') }, outcome_score: 0.5 };
+      }
+
+      if (draft.rqs_components) draft.rqs_score = scoreRQS(draft.rqs_components);
+
+      const { error: insErr } = await supabaseAdmin.from('research_findings').insert(draft);
+      if (insErr) throw insErr;
+
+      console.log(\`[RESEARCH] generate_research_finding: saved \${ticker} edge=\${parsed.edge_type} rqs=\${draft.rqs_score?.toFixed(3)}\`);
+      return { action_taken, result: { status: 'finding_saved', ticker, edge_type: parsed.edge_type, rqs_score: draft.rqs_score }, outcome_score: 1 };
+    }
+
     if (args.task.agent_role === 'research' && args.task.task_type === 'generate_next_generation_hypothesis') {
       const key = String(process.env.ANTHROPIC_API_KEY ?? '').trim();
       const failedId = String(tInput.failed_finding_id ?? '');
