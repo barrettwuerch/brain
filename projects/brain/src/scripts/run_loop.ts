@@ -33,6 +33,7 @@ async function main() {
   console.log('[LOOP] Starting Brain loop with scanner integration');
 
   while (true) {
+    const now = Date.now();
     // ── Position manager: every 30 min ────────────────────────────────────────
     if (now - lastPositionCheckAt > 30 * 60 * 1000) {
       lastPositionCheckAt = now;
@@ -49,7 +50,7 @@ async function main() {
     }
 
     // ── Scanner: run every 60 seconds ──────────────────────────────────────
-    const now = Date.now();
+
     if (now - lastScannerAt > 60 * 1000) {
       lastScannerAt = now;
       try {
