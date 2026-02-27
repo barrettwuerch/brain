@@ -2062,7 +2062,7 @@ Respond with ONLY valid JSON, no other text:
 
     // Binary grading for Level 1.
     const outcome_score = expected ? grade(expected, actual) : (args.actOut.outcome_score ?? 0);
-    const outcome: EpisodeOutcome = expected ? (outcome_score === 1 ? 'correct' : 'incorrect') : (outcome_score > 0 ? 'partial' : 'incorrect');
+    const outcome: EpisodeOutcome = expected ? (outcome_score === 1 ? 'correct' : 'incorrect') : (args.actOut.outcome_score != null ? (args.actOut.outcome_score > 0 ? 'partial' : 'incorrect') : 'partial');
 
     // Lightweight error typing.
     let error_type: string | undefined;
