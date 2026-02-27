@@ -1203,6 +1203,32 @@ export class BrainLoop {
         client_order_id: String(args.task.id),
       });
 
+      // Write position row so manage_crypto_position can track it
+      if (isCrypto) {
+        try {
+          const { openPosition } = await import('../db/positions');
+          const stopLevel = limitPrice * (side === 'buy' ? 0.95 : 1.05);   // -5% stop
+          const profitTarget = limitPrice * (side === 'buy' ? 1.10 : 0.90); // +10% target
+          await openPosition({
+            bot_id: String(args.task.bot_id ?? 'crypto-execution-bot-1'),
+            desk: 'crypto_markets',
+            market_ticker: symbol,
+            symbol,
+            side: side as any,
+            entry_price: limitPrice,
+            remaining_size: parseFloat(orderQty),
+            contracts: parseFloat(orderQty),
+            stop_level: stopLevel,
+            profit_target: profitTarget,
+            alpaca_order_id: order.id,
+            status: 'open',
+          } as any);
+          console.log(`[EXECUTION] Position opened: ${symbol} entry=${limitPrice} stop=${stopLevel.toFixed(2)} target=${profitTarget.toFixed(2)}`);
+        } catch (e: any) {
+          console.error('[EXECUTION] Failed to write position row:', e?.message);
+        }
+      }
+
       return {
         action_taken: {
           ...action_taken,

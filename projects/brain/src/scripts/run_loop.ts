@@ -4,7 +4,8 @@ import 'dotenv/config';
 
 import { supabaseAdmin } from '../lib/supabase';
 import { BrainLoop } from '../agent/loop';
-import { runScannerCycle } from '../bots/scanner/scanner_loop';
+import { runScannerCycle } from '../bots/scanner/scanner_loop'
+import { getLatestQuote } from '../lib/alpaca'
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -26,11 +27,27 @@ async function main() {
   const loop = new BrainLoop();
   let n = 0;
   let lastHeartbeatAt = 0;
-  let lastScannerAt = 0;
+  let lastScannerAt = 0
+  let lastPositionCheckAt = 0;
 
   console.log('[LOOP] Starting Brain loop with scanner integration');
 
   while (true) {
+    // ── Position manager: every 30 min ────────────────────────────────────────
+    if (now - lastPositionCheckAt > 30 * 60 * 1000) {
+      lastPositionCheckAt = now;
+      try {
+        const { data: openPos } = await supabaseAdmin.from('positions').select('*').is('closed_at', null).eq('desk', 'crypto_markets');
+        for (const pos of openPos ?? []) {
+          const p = pos as any;
+          let currentPrice = Number(p.entry_price);
+          try { const q = await getLatestQuote(String(p.symbol ?? p.market_ticker)); currentPrice = (q.bid + q.ask) / 2; } catch {}
+          await supabaseAdmin.from('tasks').insert({ task_type: 'manage_crypto_position', agent_role: 'execution', bot_id: 'crypto-execution-bot-1', desk: 'crypto_markets', status: 'queued', task_input: { symbol: p.symbol ?? p.market_ticker, market_ticker: p.symbol ?? p.market_ticker, market_type: 'crypto', current_price: currentPrice, max_hold_days: 7, order: { market_ticker: p.symbol ?? p.market_ticker, fill_price: Number(p.entry_price), side: String(p.side ?? 'buy') }, stop_level: Number(p.stop_level), profit_target: Number(p.profit_target), position_id: p.id } } as any);
+          console.log(`[LOOP] Position check queued: ${p.symbol} cur=${currentPrice.toFixed(2)}`);
+        }
+      } catch (e: any) { console.error('[LOOP] Position manager error:', e?.message); }
+    }
+
     // ── Scanner: run every 60 seconds ──────────────────────────────────────
     const now = Date.now();
     if (now - lastScannerAt > 60 * 1000) {
