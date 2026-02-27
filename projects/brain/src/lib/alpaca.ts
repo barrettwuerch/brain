@@ -260,6 +260,10 @@ export async function getCryptoBars(symbol: string, timeframe: '1h' | '4h' | '1d
   const tf = timeframe === '1h' ? '1Hour' : timeframe === '4h' ? '4Hour' : '1Day';
   url.searchParams.set('timeframe', tf);
   url.searchParams.set('limit', String(limit));
+  // Set start date to ensure we get enough historical bars
+  const daysBack = timeframe === '1d' ? limit * 2 : timeframe === '4h' ? Math.ceil(limit / 6) * 2 : Math.ceil(limit / 24) * 2;
+  const start = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
+  url.searchParams.set('start', start);
 
   const j = await fetchJson(url.toString(), { method: 'GET' });
   const bars = (j?.bars?.[symbol] ?? []) as any[];
