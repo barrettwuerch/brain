@@ -1084,20 +1084,32 @@ export class BrainLoop {
           if (!task_type || !bot_id || !task_input?.symbol || !task_input?.side) {
             console.error('size_position continuation malformed, skipping', cont);
           } else {
-            const { error: insErr } = await supabaseAdmin.from('tasks').insert({
-              task_type,
-              task_input: {
-                ...task_input,
-                riskApprovedSize: approved_size,
-              },
-              status: 'queued',
-              tags: ['risk', 'continuation', 'sized'],
-              agent_role,
-              desk,
-              bot_id,
-            });
-            if (insErr) throw insErr;
-            console.log('[RISK] Seeded continuation task', { task_type, bot_id, approved_size });
+            // Deduplication: skip if open position already exists for this ticker
+            const posTicker = task_input?.symbol ?? task_input?.ticker;
+            const { data: existingPos } = await supabaseAdmin
+              .from('positions')
+              .select('id')
+              .is('closed_at', null)
+              .eq('market_ticker', String(posTicker).replace('/', ''))
+              .maybeSingle();
+            if (existingPos) {
+              console.log('[RISK] Skipping continuation - open position already exists for', posTicker);
+            } else {
+              const { error: insErr } = await supabaseAdmin.from('tasks').insert({
+                task_type,
+                task_input: {
+                  ...task_input,
+                  riskApprovedSize: approved_size,
+                },
+                status: 'queued',
+                tags: ['risk', 'continuation', 'sized'],
+                agent_role,
+                desk,
+                bot_id,
+              });
+              if (insErr) throw insErr;
+              console.log('[RISK] Seeded continuation task', { task_type, bot_id, approved_size });
+            }
           }
         }
       } catch (e: any) {

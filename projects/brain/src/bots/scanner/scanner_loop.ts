@@ -232,14 +232,38 @@ export async function runScannerCycle(): Promise<{ conditionsChecked: number; fi
       const BASE_POSITION_FRACTION = 0.02;
       const baseKellySize = equity * BASE_POSITION_FRACTION;
 
+      const livePrice = c.market_type === 'crypto' ? await getLivePrice(ticker) : null;
+      const stopLevel = livePrice ? parseFloat((livePrice * 0.97).toFixed(4)) : null;
+      const profitTarget = livePrice ? parseFloat((livePrice * 1.10).toFixed(4)) : null;
+      const side = String((c.action_params as any)?.side ?? 'buy');
+      const symbol = ticker;
+
       const { error } = await supabaseAdmin.from('tasks').insert({
         task_type: 'size_position',
         task_input: {
           ...(c.action_params ?? {}),
           ticker,
+          symbol,
+          side,
           market_type: c.market_type,
           drawdownPct: dd,
           baseKellySize,
+          continuation: {
+            task_type: 'place_limit_order',
+            agent_role: 'execution',
+            bot_id: c.bot_id,
+            desk: c.market_type === 'crypto' ? 'crypto_markets' : 'prediction_markets',
+            task_input: {
+              symbol,
+              ticker,
+              side,
+              market_type: c.market_type,
+              limitPrice: null,
+              useMarketPrice: true,
+              stop_level: stopLevel,
+              profit_target: profitTarget,
+            },
+          },
         },
         status: 'queued',
         tags: ['scanner', 'risk'],
