@@ -42,7 +42,7 @@ async function main() {
         for (const pos of openPos ?? []) {
           const p = pos as any;
           let currentPrice = Number(p.entry_price);
-          try { const q = await getLatestQuote(String(p.market_ticker)); currentPrice = (q.bid + q.ask) / 2; } catch (e: any) { console.warn(`[LOOP] Quote failed for ${p.market_ticker}:`, e?.message); }
+          try { const ticker = String(p.market_ticker).replace(/USD$/, "/USD"); const q = await getLatestQuote(ticker); currentPrice = (q.bid + q.ask) / 2; } catch (e: any) { console.warn(`[LOOP] Quote failed for ${p.market_ticker}:`, e?.message); }
           await supabaseAdmin.from('tasks').insert({ task_type: 'manage_crypto_position', agent_role: 'execution', bot_id: 'crypto-execution-bot-1', desk: 'crypto_markets', status: 'queued', task_input: { symbol: p.symbol ?? p.market_ticker, market_ticker: p.symbol ?? p.market_ticker, market_type: 'crypto', current_price: currentPrice, max_hold_days: 7, order: { market_ticker: p.symbol ?? p.market_ticker, fill_price: Number(p.entry_price), side: String(p.side ?? 'buy') }, stop_level: Number(p.stop_level), profit_target: Number(p.profit_target), position_id: p.id } } as any);
           console.log(`[LOOP] Position check queued: ${p.market_ticker} cur=${currentPrice.toFixed(2)}`);
         }
