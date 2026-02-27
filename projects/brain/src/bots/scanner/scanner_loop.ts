@@ -201,6 +201,34 @@ export async function runScannerCycle(): Promise<{ conditionsChecked: number; fi
 
     if (!result.fire) continue;
 
+    // ── Dedup: block new entry if open position or pending close exists ───────
+    if (c.action_type === 'size_position' && c.market_type === 'crypto') {
+      const normalizedTicker = ticker.replace('/', '');
+      const { data: openPos } = await supabaseAdmin
+        .from('positions')
+        .select('id')
+        .eq('market_ticker', normalizedTicker)
+        .is('closed_at', null);
+      if (openPos && openPos.length >= 3) {
+        console.log(`[SCANNER] ${ticker} skipped — ${openPos.length} open positions already (max 3)`);
+        continue;
+      }
+      // Check Alpaca for any pending sell/close orders on this ticker
+      try {
+        const { getOrders } = await import('../../lib/alpaca');
+        const openOrders = await getOrders();
+        const pendingClose = openOrders.some((o: any) =>
+          o.symbol === normalizedTicker && String(o.side) === 'sell'
+        );
+        if (pendingClose) {
+          console.log(`[SCANNER] ${ticker} skipped — pending close order on Alpaca`);
+          continue;
+        }
+      } catch (e: any) {
+        console.warn(`[SCANNER] Could not check Alpaca orders for dedup: ${e?.message}`);
+      }
+    }
+
     // ── size_position ────────────────────────────────────────────────────────
     if (c.action_type === 'size_position') {
       const { getAccount } = await import('../../lib/alpaca');
