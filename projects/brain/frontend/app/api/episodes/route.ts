@@ -9,12 +9,15 @@ export async function GET(req: Request) {
     const url = new URL(req.url)
     const limit = Math.min(Number(url.searchParams.get('limit') ?? '50'), 200)
     const desk = url.searchParams.get('desk') ?? null
+    const hours = Number(url.searchParams.get('hours') ?? '24')
+    const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString()
     const supabase = getSupabaseAdmin()
 
     let q = supabase
       .from('episodes')
       .select('id,created_at,task_type,agent_role,desk,bot_id,reasoning,action_taken,observation,reflection,lessons,outcome,outcome_score,reasoning_score,error_type,task_input')
       .order('created_at', { ascending: false })
+      .gte('created_at', since)
       .limit(limit)
       .neq('task_type', 'loop_heartbeat')
 

@@ -166,10 +166,11 @@ export default function IntelligencePage() {
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [filter, setFilter] = useState<FilterKey>('all')
+  const [hours, setHours] = useState(24)
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch('/api/episodes?limit=100', { cache: 'no-store' })
+      const res = await fetch(`/api/episodes?limit=100&hours=${hours}`, { cache: 'no-store' })
       const j = await res.json()
       if (j.ok) setEpisodes(j.episodes)
     } catch {}
@@ -180,7 +181,7 @@ export default function IntelligencePage() {
     load()
     const t = setInterval(load, 30000)
     return () => clearInterval(t)
-  }, [load])
+  }, [load, hours])
 
   const filtered = episodes.filter(ep => {
     if (filter === 'all') return true
@@ -229,6 +230,17 @@ export default function IntelligencePage() {
       </div>
 
       <div style={{ padding: '20px 24px 0' }}>
+        {/* Time range */}
+        <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+          {[6, 24, 48, 168].map(h => (
+            <button key={h} onClick={() => setHours(h)} style={{
+              fontSize: 11, fontWeight: 500, padding: '4px 10px', borderRadius: 20, cursor: 'pointer',
+              background: hours === h ? 'rgba(255,255,255,0.08)' : 'transparent',
+              border: `1px solid ${hours === h ? 'rgba(255,255,255,0.2)' : BORDER}`,
+              color: hours === h ? TEXT : DIM, fontFamily: FONT,
+            }}>{h === 168 ? '7d' : h === 24 ? '24h' : `${h}h`}</button>
+          ))}
+        </div>
         {/* Filters */}
         <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
           {FILTERS.map(f => (
