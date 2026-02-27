@@ -438,7 +438,7 @@ export default function TradingOffice() {
           {/* Bot list */}
           <div style={{ flex: 1, overflow: 'auto', padding: '8px 10px' }}>
             {BOTS.map(bot => {
-              // state unused
+              const st = SS[states[bot.id] || 'exploiting']
               const isAct = active[bot.id]
               const isSel = selected === bot.id
               return (
