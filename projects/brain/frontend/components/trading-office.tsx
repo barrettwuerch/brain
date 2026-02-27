@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { usePrices } from '@/hooks/use-prices';
 
 // ─── CANVAS CONSTANTS ─────────────────────────────────────────────
 const CW = 900, CH = 620;
@@ -400,14 +401,14 @@ export default function TradingOffice() {
       {!isMobile && (
         <div style={{ borderBottom: "1px solid rgba(255,255,255,0.055)", padding: "12px 16px 14px" }}>
           <div style={{ fontSize: 9, fontWeight: 600, color: "#3a4460", letterSpacing: "0.14em", textTransform: "uppercase", fontFamily: "'DM Mono', monospace", marginBottom: 8 }}>Portfolio</div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#f0f2f8", letterSpacing: "-0.5px", lineHeight: 1 }}>$5,000.00</div>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#00d68f", fontFamily: "'DM Mono', monospace", marginTop: 3 }}>+$3.64 <span style={{ fontSize: 10, color: "#6b7a99" }}>(+0.07%)</span></div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#f0f2f8", letterSpacing: "-0.5px", lineHeight: 1 }}>${totalCapital.toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: pnl >= 0 ? "#00d68f" : "#ff4d6a", fontFamily: "'DM Mono', monospace", marginTop: 3 }}>{pnlSign}${Math.abs(pnl).toFixed(2)} <span style={{ fontSize: 10, color: "#6b7a99" }}>({pnlSign}{totalCapital > 0 ? ((pnl/50000)*100).toFixed(2) : "0.00"}%)</span></div>
           <div style={{ marginTop: 10, height: 3, background: "rgba(255,255,255,0.05)", borderRadius: 2, overflow: "hidden" }}>
-            <div style={{ height: "100%", width: "12.8%", background: "linear-gradient(90deg, #00e5ff, #00d68f)", borderRadius: 2 }} />
+            <div style={{ height: "100%", width: `${deployedPct.toFixed(1)}%`, background: "linear-gradient(90deg, #00e5ff, #00d68f)", borderRadius: 2 }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
-            <span style={{ color: "#00e5ff" }}>$639 deployed</span>
-            <span style={{ color: "#6b7a99" }}>$4,361 free</span>
+            <span style={{ color: "#00e5ff" }}>${deployedCapital.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} deployed</span>
+            <span style={{ color: "#6b7a99" }}>${freeCapital.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})} free</span>
           </div>
         </div>
       )}
@@ -484,11 +485,11 @@ export default function TradingOffice() {
         {!isMobile && <>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 11, color: "#6b7a99", fontFamily: "'DM Mono', monospace" }}>Capital</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "#00e5ff", fontFamily: "'DM Mono', monospace" }}>$5,000.00</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#00e5ff", fontFamily: "'DM Mono', monospace" }}>${totalCapital.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}</span>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ fontSize: 11, color: "#6b7a99", fontFamily: "'DM Mono', monospace" }}>P&L</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: "#00d68f", fontFamily: "'DM Mono', monospace" }}>+$3.64</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: pnl >= 0 ? "#00d68f" : "#ff4d6a", fontFamily: "'DM Mono', monospace" }}>{pnlSign}${Math.abs(pnl).toFixed(2)}</span>
           </div>
         </>}
         <div style={{ flex: 1 }} />
