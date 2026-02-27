@@ -787,8 +787,8 @@ export default function TradingOffice() {
 
       {/* Main */}
       <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-        {/* Canvas — desktop only */}
-        <div className="hidden md:block relative flex-1">
+        {/* Canvas wrapper — visible on all screens, scales to fit */}
+        <div className="relative w-full overflow-hidden md:flex-1" style={{ aspectRatio: `${CW}/${CH}` }}>
           <canvas
             ref={cvs}
             width={CW}
@@ -821,8 +821,8 @@ export default function TradingOffice() {
                   background: 'rgba(6,9,18,0.96)',
                   border: `1px solid ${bot.hex}`,
                   borderRadius: 5,
-                  padding: '5px 10px',
-                  fontSize: 10,
+                  padding: '4px 8px',
+                  fontSize: 9,
                   whiteSpace: 'nowrap',
                   pointerEvents: 'none',
                   zIndex: 20,
@@ -851,39 +851,8 @@ export default function TradingOffice() {
           })}
         </div>
 
-        {/* Mobile bot grid — shown instead of canvas on small screens */}
-        <div className="md:hidden p-4 grid grid-cols-2 gap-3">
-          {(BOTS as any[]).map((bot) => {
-            const st = SS[states[bot.id] || 'exploiting']
-            const isAct = active[bot.id]
-            return (
-              <div
-                key={bot.id}
-                className="rounded-lg p-3 border"
-                style={{ borderColor: st.bd + '55', background: st.bg }}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-lg">{bot.e}</span>
-                  <span className="text-xs font-bold text-white truncate">{bot.label}</span>
-                  {isAct ? (
-                    <span
-                      className="w-2 h-2 rounded-full ml-auto flex-shrink-0 animate-pulse"
-                      style={{ background: bot.hex }}
-                    />
-                  ) : null}
-                </div>
-                <div className="text-xs font-bold" style={{ color: st.fg }}>
-                  {st.lb}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-
-        {/* Right Panel — full width on mobile, sidebar on desktop */}
-        <div
-          className="w-full md:w-[210px] border-t md:border-t-0 md:border-l border-zinc-800/60 flex flex-col flex-shrink-0"
-        >
+        {/* Right Panel — hide on mobile, show on desktop */}
+        <div className="hidden md:flex w-[210px] border-l border-zinc-800/60 flex-col flex-shrink-0">
           {/* Bot Status */}
           <div
             style={{
