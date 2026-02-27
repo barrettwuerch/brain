@@ -1,62 +1,49 @@
 import 'dotenv/config';
 import { createClient } from '@supabase/supabase-js';
 
-const sb = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+async function main() {
+  const sb = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
-function authHeaders() {
-  return {
-    'APCA-API-KEY-ID': process.env.ALPACA_API_KEY!,
-    'APCA-API-SECRET-KEY': process.env.ALPACA_SECRET_KEY!,
-  };
-}
-
-async function run() {
-  const BASE = (process.env.ALPACA_BASE_URL ?? 'https://paper-api.alpaca.markets').replace(/\/$/, '');
-  const res = await fetch(`${BASE}/v2/positions`, { headers: authHeaders() });
-  const positions = await res.json() as any[];
-  console.log(`Found ${positions.length} open Alpaca positions`);
-
-  for (const p of positions) {
-    const ticker = String(p.symbol);
-    const entry = Number(p.avg_entry_price);
-    const qty = Number(p.qty);
-    const side = String(p.side) === 'long' ? 'yes' : 'no';
-    const stop = entry * (side === 'buy' ? 0.95 : 1.05);
-    const target = entry * (side === 'buy' ? 1.10 : 0.90);
-
-    const { data: existing } = await sb
-      .from('positions')
-      .select('id')
-      .eq('market_ticker', ticker)
-      .is('closed_at', null)
-      .maybeSingle();
-
-    if (existing) {
-      console.log(`SKIP ${ticker} — already tracked`);
-      continue;
-    }
-
-    const { data, error } = await sb.from('positions').insert({
+  const positions = [
+    {
       bot_id: 'crypto-execution-bot-1',
       desk: 'crypto_markets',
-      market_ticker: ticker,
+      market_ticker: 'ETHUSD',
       market_type: 'crypto',
-      side,
-      entry_price: entry,
-      size: Math.round(qty * 1e8),
-      remaining_size: Math.round(qty * 1e8),
-      stop_level: stop,
-      profit_target: target,
-      status: "open",
-      slippage_assumed: 0,
-    }).select('id').single();
+      side: 'yes',
+      entry_price: 2031.62,
+      current_price: 2031.62,
+      size: 160,
+      remaining_size: 160,
+      stop_level: 2031.62 * 0.95,
+      profit_target: 2031.62 * 1.10,
+      slippage_assumed: 0.001,
+      status: 'open',
+    },
+    {
+      bot_id: 'crypto-execution-bot-1',
+      desk: 'crypto_markets',
+      market_ticker: 'SOLUSD',
+      market_type: 'crypto',
+      side: 'yes',
+      entry_price: 87.22,
+      current_price: 87.22,
+      size: 320,
+      remaining_size: 320,
+      stop_level: 87.22 * 0.95,
+      slippage_assumed: 0.001,
+      profit_target: 87.22 * 1.10,
+      status: 'open',
+    },
+  ];
 
-    if (error) {
-      console.error(`ERROR ${ticker}:`, error.message);
-    } else {
-      console.log(`OK ${ticker} — entry=${entry} qty=${qty} stop=${stop.toFixed(2)} target=${target.toFixed(2)}`);
-    }
+  for (const p of positions) {
+    const { data: existing } = await sb.from('positions')
+      .select('id').eq('market_ticker', p.market_ticker).eq('status', 'open').maybeSingle();
+    if (existing) { console.log('Already tracked:', p.market_ticker); continue; }
+    const { error } = await sb.from('positions').insert(p);
+    if (error) console.error('Failed:', p.market_ticker, error.message);
+    else console.log('Backfilled:', p.market_ticker, 'stop=' + p.stop_level.toFixed(2), 'target=' + p.profit_target.toFixed(2));
   }
 }
-
-run().catch(console.error);
+main().catch(console.error);

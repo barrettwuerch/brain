@@ -1,0 +1,15 @@
+# Deploy only the Front Office app when deploying from repo root via Vercel CLI.
+
+# Ignore everything by default
+**
+
+# Allow config needed for build
+!vercel.json
+!package.json
+!package-lock.json
+!.npmrc
+
+# Allow the front-office directory and everything under it
+!projects/
+!projects/front-office/
+!projects/front-office/**

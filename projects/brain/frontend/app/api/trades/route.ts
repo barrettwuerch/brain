@@ -52,7 +52,7 @@ export async function GET() {
           entry_price: o.filled_avg_price != null ? Number(o.filled_avg_price) : null,
           exit_price: null,
           pnl: null,
-          status: 'filled',
+          status: 'open',
           opened_at: o.submitted_at,
           closed_at: o.filled_at ?? o.updated_at ?? null,
           source: 'alpaca',

@@ -57,7 +57,7 @@ export default function ScoreboardPage() {
     positions.map((p: any) => Math.abs(Number(p.market_value ?? 0))).filter(Number.isFinite).reduce((s: number, n: number) => s + n, 0)
   , [positions])
   const availableCapital = Math.max(0, equity - deployedCapital)
-  const closedTrades = trades.filter(t => t.status === 'closed' || t.status === 'filled')
+  const closedTrades = trades.filter(t => t.pnl != null && t.status === 'closed')
   const totalPnl = closedTrades.reduce((s, t) => s + Number(t.pnl ?? 0), 0)
   const wins = closedTrades.filter(t => Number(t.pnl ?? 0) > 0).length
   const losses = closedTrades.filter(t => Number(t.pnl ?? 0) < 0).length

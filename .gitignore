@@ -56,3 +56,4 @@ projects/marketlens/worker/dist/
 
 # temp
 /tmp/
+.vercel
