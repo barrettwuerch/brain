@@ -550,8 +550,8 @@ export class BrainLoop {
       }
 
       let klText = lines.join('\n');
-      // Enforce a budget for knowledge injection.
-      while (estimateTokens(klText) > 1200) {
+      const klBudget = ['place_limit_order', 'place_kalshi_order', 'manage_open_position', 'size_position'].includes(String(input.task.task_type)) ? 400 : 1200;
+      while (estimateTokens(klText) > klBudget) {
         // drop the last chunk
         const idx = klText.lastIndexOf('\n- ');
         if (idx <= 0) break;
@@ -1016,7 +1016,7 @@ export class BrainLoop {
         const cont = (tInput as any)?.continuation;
         if (cont && approved_size > 0) {
           const { task_type, agent_role, bot_id, desk, task_input } = cont;
-          if (!task_type || !bot_id || !task_input?.symbol || !task_input?.side || !task_input?.limitPrice) {
+          if (!task_type || !bot_id || !task_input?.symbol || !task_input?.side) {
             console.error('size_position continuation malformed, skipping', cont);
           } else {
             const { error: insErr } = await supabaseAdmin.from('tasks').insert({
@@ -1168,15 +1168,34 @@ export class BrainLoop {
       const symbol = String(tInput.symbol ?? tInput.ticker ?? '').trim();
       if (!symbol) return earlyExit('missing_symbol');
 
-      const limitPrice = Number(tInput.limitPrice ?? tInput.limit_price);
+      let limitPrice = Number(tInput.limitPrice ?? tInput.limit_price);
+      const isCrypto = String(tInput.market_type ?? '').toLowerCase() === 'crypto';
+
+      if (isCrypto && (tInput.useMarketPrice || !Number.isFinite(limitPrice) || limitPrice <= 0)) {
+        try {
+          const { getLatestQuote } = await import('../lib/alpaca');
+          const q = await getLatestQuote(symbol);
+          limitPrice = parseFloat(((q.bid + q.ask) / 2 * 0.999).toFixed(2));
+          console.log(`[EXECUTION] Live price for ${symbol}: bid=${q.bid} ask=${q.ask} limit=${limitPrice}`);
+        } catch (e: any) {
+          return earlyExit('live_price_fetch_failed', { error: e?.message });
+        }
+      }
+
       if (!Number.isFinite(limitPrice) || limitPrice <= 0) return earlyExit('missing_limit_price');
 
       const side = String(tInput.side ?? '').toLowerCase();
       if (side !== 'buy' && side !== 'sell') return earlyExit('invalid_side', { side });
 
+      const orderQty = isCrypto
+        ? String(Math.max(0.0001, parseFloat((qty / limitPrice).toFixed(4))))
+        : String(Math.floor(qty));
+
+      console.log(`[EXECUTION] ${symbol} isCrypto=${isCrypto} approvedSize=${qty.toFixed(2)} limitPrice=${limitPrice} qty=${orderQty}`);
+
       const order = await alpacaPlaceOrder({
         symbol,
-        qty: String(Math.floor(qty)),
+        qty: orderQty,
         side: side as any,
         type: 'limit',
         time_in_force: 'gtc',
