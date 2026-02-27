@@ -95,7 +95,7 @@ export function identifyUnroutedFindings(findings: ResearchFinding[], existingSt
 
   return findings.filter((f) => {
     const rqs = Number((f as any).rqs_score ?? 0);
-    const ok = rqs >= 0.65 && f.status === 'under_investigation';
+    const ok = rqs >= 0.45 && f.status === 'under_investigation';
     return ok && !routedIds.has(String(f.id));
   });
 }
