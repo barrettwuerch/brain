@@ -504,6 +504,22 @@ export default function TradingOffice() {
   const [time, setTime] = useState<string>('')
   const [scoreMode, setScoreMode] = useState<'pnl' | 'winrate'>('pnl')
 
+  const [simStats, setSimStats] = useState<any>(null)
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/simulation-stats', { cache: 'no-store' })
+        if (res.ok) setSimStats(await res.json())
+      } catch {
+        // ignore
+      }
+    }
+    fetchStats()
+    const iv = setInterval(fetchStats, 30000)
+    return () => clearInterval(iv)
+  }, [])
+
   const stats = useMemo(() => {
     const wins = ALL_TRADES.filter((t: any) => t.win)
     const totalPnl = ALL_TRADES.reduce((s: number, t: any) => s + t.pnl, 0)
@@ -669,7 +685,7 @@ export default function TradingOffice() {
                 letterSpacing: -0.5,
               }}
             >
-              ${CURRENT_CAP.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ${(simStats?.currentCapital ?? CURRENT_CAP).toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
           {/* Toggle metric */}
@@ -693,15 +709,15 @@ export default function TradingOffice() {
                 letterSpacing: -0.5,
                 color:
                   scoreMode === 'pnl'
-                    ? stats.totalPnl >= 0
+                    ? (simStats?.totalPnl ?? stats.totalPnl) >= 0
                       ? '#00ff9f'
                       : '#ff3c6e'
-                    : stats.winRate >= 55
+                    : (simStats?.winRate ?? stats.winRate) >= 55
                       ? '#00ff9f'
                       : '#ffe600',
                 textShadow: `0 0 12px ${
                   scoreMode === 'pnl'
-                    ? stats.totalPnl >= 0
+                    ? (simStats?.totalPnl ?? stats.totalPnl) >= 0
                       ? '#00ff9f'
                       : '#ff3c6e'
                     : '#00ff9f'
@@ -709,8 +725,11 @@ export default function TradingOffice() {
               }}
             >
               {scoreMode === 'pnl'
-                ? `${stats.totalPnl >= 0 ? '+' : ''}$${Math.abs(stats.totalPnl).toFixed(0)}`
-                : `${stats.winRate.toFixed(1)}%`}
+                ? (() => {
+                    const pnl = Number(simStats?.totalPnl ?? stats.totalPnl)
+                    return `${pnl >= 0 ? '+' : ''}$${Math.abs(pnl).toFixed(0)}`
+                  })()
+                : `${Number(simStats?.winRate ?? stats.winRate).toFixed(1)}%`}
             </div>
           </div>
           {/* Toggle buttons */}

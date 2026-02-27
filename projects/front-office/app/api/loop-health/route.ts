@@ -15,9 +15,15 @@ export async function GET() {
 
     const last = data?.created_at ? new Date(data.created_at).getTime() : null
     const now = Date.now()
-    const secondsSince = last ? Math.floor((now - last) / 1000) : null
+    const minutesAgo = last ? Math.floor((now - last) / (1000 * 60)) : null
+    const healthy = minutesAgo !== null && minutesAgo < 10
 
-    return json({ ok: true, last_episode_at: data?.created_at ?? null, seconds_since_last_episode: secondsSince })
+    return json({
+      ok: true,
+      lastEpisodeAt: data?.created_at ?? null,
+      minutesAgo,
+      healthy,
+    })
   } catch (e: any) {
     return jsonError(String(e?.message ?? e))
   }

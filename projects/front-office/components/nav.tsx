@@ -5,10 +5,10 @@ import { useRegime } from '@/hooks/use-regime'
 import { usePoll } from '@/hooks/use-poll'
 import { RegimeBadge } from './regime-badge'
 
-function HealthDot({ seconds }: { seconds: number | null }) {
-  const ok = seconds !== null && seconds < 600
+function HealthDot({ minutes }: { minutes: number | null }) {
+  const ok = minutes !== null && minutes < 10
   const cls = ok ? 'bg-emerald-500' : 'bg-rose-500'
-  const label = seconds === null ? '—' : `${Math.floor(seconds / 60)}m ago`
+  const label = minutes === null ? '—' : `${minutes}m ago`
   return (
     <div className="flex items-center gap-2">
       <span className={`inline-block h-2 w-2 rounded-full ${cls}`} />
@@ -44,7 +44,7 @@ export function Nav() {
 
         <div className="flex items-center gap-3">
           <RegimeBadge regime={regime} />
-          <HealthDot seconds={health?.seconds_since_last_episode ?? null} />
+          <HealthDot minutes={health?.minutesAgo ?? null} />
         </div>
       </div>
     </div>
