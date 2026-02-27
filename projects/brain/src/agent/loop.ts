@@ -417,6 +417,7 @@ export class BrainLoop {
       const FINDING_TASK_TYPES = new Set([
         'market_trend_scan',
         'volume_anomaly_detect',
+        'generate_research_finding',
         'price_momentum_classify',
         'crypto_trend_scan',
         'crypto_volume_profile',
@@ -424,7 +425,7 @@ export class BrainLoop {
         'volatility_regime_detect',
         'correlation_scan',
         'generate_next_generation_hypothesis',
-      ]);
+      ]); // generate_research_finding writes its own finding in ACT handler
 
       if (FINDING_TASK_TYPES.has(String(task.task_type))) {
         try {
