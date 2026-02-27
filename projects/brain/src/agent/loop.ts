@@ -1108,7 +1108,7 @@ export class BrainLoop {
       return {
         action_taken,
         result: { approved_size, kelly_fraction: k, reason: k > 0 ? 'ok' : 'halted_by_drawdown' },
-        outcome_score: undefined,
+        outcome_score: 1,
       };
     }
 
@@ -1357,11 +1357,11 @@ export class BrainLoop {
 
       if (holdPct >= 0.8 && unrealized > 0) {
         console.log(`[EXECUTION] Approaching max hold (${holdDays.toFixed(2)}d / ${maxHoldDays}d), pnl positive — taking profit`);
-        return { action_taken, result: { action: 'exit', reason: 'max_hold_approaching_take_profit' }, outcome_score: undefined };
+        return { action_taken, result: { action: 'exit', reason: 'max_hold_approaching_take_profit' }, outcome_score: 1 };
       }
 
       const res = evaluateExit(fill, cur, Number(tInput.stop_level), Number(tInput.profit_target), side as any);
-      return { action_taken, result: res, outcome_score: undefined };
+      return { action_taken, result: res, outcome_score: 1 };
     }
 
     if (args.task.agent_role === 'execution' && args.task.task_type === 'handle_partial_fill') {
