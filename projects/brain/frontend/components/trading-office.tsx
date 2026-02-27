@@ -286,6 +286,13 @@ export default function TradingOffice() {
   const [time, setTime] = useState("");
   const [isMobile, setIsMobile] = useState(false);
   const [mobileTab, setMobileTab] = useState<"floor"|"bots"|"activity">("floor");
+  const { data: prices } = usePrices();
+  const totalCapital = prices?.equity ?? 50000;
+  const pnl = prices ? (prices.equity - 50000) : 0;
+  const pnlSign = pnl >= 0 ? "+" : "";
+  const deployedCapital = Array.isArray(prices?.positions) ? prices.positions.reduce((s: number, p: any) => s + Math.abs(Number(p.market_value ?? 0)), 0) : 0;
+  const freeCapital = Math.max(0, totalCapital - deployedCapital);
+  const deployedPct = totalCapital > 0 ? (deployedCapital / totalCapital) * 100 : 0;
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
