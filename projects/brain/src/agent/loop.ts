@@ -1288,13 +1288,22 @@ export class BrainLoop {
           await openPosition({
             bot_id: String(args.task.bot_id ?? 'crypto-execution-bot-1'),
             desk: 'crypto_markets',
+            market_type: 'crypto',
+            strategy_id: null,
             market_ticker: symbol,
             side: (side === 'buy' ? 'yes' : 'no') as any,
             entry_price: limitPrice,
+            current_price: limitPrice,
+            size: parseFloat(orderQty),
             remaining_size: parseFloat(orderQty),
-            stop_level: stopLevel,
-            profit_target: profitTarget,
+            unrealized_pnl: 0,
+            realized_pnl: 0,
+            peak_price: limitPrice,
+            stop_level: tInput.stop_level ?? stopLevel,
+            profit_target: tInput.profit_target ?? profitTarget,
+            slippage_assumed: 0,
             status: 'open',
+            closed_at: null,
           } as any);
           console.log(`[EXECUTION] Position opened: ${symbol} entry=${limitPrice} stop=${stopLevel.toFixed(2)} target=${profitTarget.toFixed(2)}`);
         } catch (e: any) {
