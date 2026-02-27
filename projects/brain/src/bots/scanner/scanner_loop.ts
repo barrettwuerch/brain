@@ -1,6 +1,25 @@
 import 'dotenv/config';
 
 import { supabaseAdmin } from '../../lib/supabase';
+
+async function logGateBlock(
+  gate: 'gate_0' | 'gate_1' | 'gate_2' | 'gate_3',
+  ticker: string,
+  reason: string,
+  extras: { edge?: number; score?: number } = {},
+) {
+  try {
+    await supabaseAdmin.from('scanner_gate_events').insert({
+      gate,
+      ticker,
+      reason,
+      edge: extras.edge ?? null,
+      score: extras.score ?? null,
+    } as any);
+  } catch {
+    // never throw from logging
+  }
+}
 import { getActiveWatchConditions, updateAfterTrigger, expireStaleConditions } from '../../db/watch_conditions';
 import { shouldFire } from './condition_evaluator';
 import { fetchMetricValue } from './metric_fetcher';

@@ -2,9 +2,27 @@
 
 import { PipelineFunnel } from '@/components/pipeline-funnel'
 import { usePipeline } from '@/hooks/use-pipeline'
+import { useEffect, useState } from 'react'
 
 export default function PipelinePage() {
   const { data, error, loading } = usePipeline()
+  const [gateStats, setGateStats] = useState<any>(null)
+
+  useEffect(() => {
+    const fetchGateStats = async () => {
+      try {
+        const res = await fetch('/api/gate-stats', { cache: 'no-store' })
+        const j = await res.json()
+        if (res.ok && j.ok) setGateStats(j)
+      } catch {
+        // ignore
+      }
+    }
+
+    fetchGateStats()
+    const iv = setInterval(fetchGateStats, 30000)
+    return () => clearInterval(iv)
+  }, [])
 
   return (
     <div>
@@ -14,6 +32,35 @@ export default function PipelinePage() {
 
       <div className="mt-6">
         <PipelineFunnel funnel={data?.funnel} />
+      </div>
+
+      <div className="mt-6 rounded-lg border border-zinc-800 bg-zinc-900/50 p-5">
+        <h2 className="text-sm font-semibold text-white mb-4">Scanner Gate Blocks (24h)</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {['gate_0', 'gate_1', 'gate_2', 'gate_3'].map((gate) => (
+            <div key={gate} className="rounded-lg bg-zinc-800/50 p-3 text-center">
+              <div className="text-xs text-zinc-500 uppercase mb-1">{gate.replace('_', ' ').toUpperCase()}</div>
+              <div className="text-2xl font-bold text-white">{gateStats?.gateCounts?.[gate] ?? 0}</div>
+              <div className="text-xs text-zinc-600 mt-1">blocks</div>
+            </div>
+          ))}
+        </div>
+
+        {gateStats?.recent?.length > 0 ? (
+          <div className="mt-4">
+            <div className="text-xs text-zinc-500 uppercase mb-2">Recent blocks</div>
+            <div className="space-y-1">
+              {gateStats.recent.slice(0, 5).map((b: any, i: number) => (
+                <div key={i} className="text-xs text-zinc-400 flex gap-2">
+                  <span className="text-zinc-600">{new Date(b.created_at).toLocaleTimeString()}</span>
+                  <span className="text-yellow-500">{b.gate}</span>
+                  <span className="font-mono truncate max-w-[120px]">{b.ticker ?? '—'}</span>
+                  <span className="text-zinc-500 truncate">{b.reason}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
