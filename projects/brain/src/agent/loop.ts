@@ -1084,16 +1084,15 @@ export class BrainLoop {
           if (!task_type || !bot_id || !task_input?.symbol || !task_input?.side) {
             console.error('size_position continuation malformed, skipping', cont);
           } else {
-            // Deduplication: skip if open position already exists for this ticker
+            // Deduplication: skip if 3+ open positions already exist for this ticker
             const posTicker = task_input?.symbol ?? task_input?.ticker;
-            const { data: existingPos } = await supabaseAdmin
+            const { data: existingPositions } = await supabaseAdmin
               .from('positions')
               .select('id')
               .is('closed_at', null)
-              .eq('market_ticker', String(posTicker).replace('/', ''))
-              .maybeSingle();
-            if (existingPos) {
-              console.log('[RISK] Skipping continuation - open position already exists for', posTicker);
+              .eq('market_ticker', String(posTicker).replace('/', ''));
+            if (existingPositions && existingPositions.length >= 3) {
+              console.log('[RISK] Skipping continuation - 3 open positions already exist for', posTicker);
             } else {
               const { error: insErr } = await supabaseAdmin.from('tasks').insert({
                 task_type,
