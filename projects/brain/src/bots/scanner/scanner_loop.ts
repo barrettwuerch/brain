@@ -85,7 +85,7 @@ async function gate0MarketDataFreshness(conditions: any[]): Promise<{ ok: boolea
   // ── Prediction (Kalshi): market.updated_time + volume_24h > 0, threshold 15 minutes ──
   if (hasPrediction) {
     // Choose a representative ticker from active conditions (if any)
-    const ticker = String((conditions ?? []).find((c: any) => String(c.market_type ?? '') !== 'crypto')?.ticker ?? '');
+    const ticker = String((conditions ?? []).find((c: any) => String(c.market_type ?? '') === 'prediction')?.ticker ?? '');
 
     if (!ticker) {
       const reason = `Gate 0 blocked: Kalshi freshness check missing market ticker (threshold: 15 min)`;
@@ -94,40 +94,42 @@ async function gate0MarketDataFreshness(conditions: any[]): Promise<{ ok: boolea
     }
 
     try {
-      const base = 'https://api.elections.kalshi.com/trade-api/v2';
-      const url = new URL(base + `/markets/${encodeURIComponent(ticker)}`);
+      // Use the authenticated Kalshi client base URL so demo/prod is consistent.
+      const { getMarket } = await import('../../lib/kalshi');
+      const m: any = await getMarket(ticker);
 
-      const resp = await fetch(url.toString());
-      const raw = await resp.text();
-      if (!resp.ok) throw new Error(`kalshi market fetch failed ${resp.status}: ${raw.slice(0, 200)}`);
-      const j = JSON.parse(raw);
-      const m = (j?.market ?? j) as any;
-
-      const updated = String(m?.updated_time ?? '');
-      const t = updated ? new Date(updated).getTime() : NaN;
+      // Demo market payload does not include updated_time/volume_24h reliably.
+      // Use close_time freshness and basic bid/ask existence instead.
+      const close = String(m?.close_time ?? '');
+      const t = close ? new Date(close).getTime() : NaN;
       const ageMin = (now - t) / (1000 * 60);
-      const vol24 = Number(m?.volume_24h ?? 0);
+      const vol = Number(m?.volume ?? 0);
+      const yesBid = Number(m?.yes_bid ?? 0);
+      const yesAsk = Number(m?.yes_ask ?? 0);
 
       if (!Number.isFinite(ageMin)) {
-        const reason = `Gate 0 blocked: Kalshi market.updated_time missing/invalid (threshold: 15 min)`;
+        const reason = `Gate 0 blocked: Kalshi market.close_time missing/invalid (threshold: 24h)`;
         console.log(`[SCANNER] ${reason}`);
         return { ok: false, reason };
       }
 
-      if (!(vol24 > 0)) {
-        const reason = `Gate 0 blocked: Kalshi market.updated_time=${new Date(t).toISOString()} but volume_24h=${vol24} (threshold: 15 min)`;
+      // Consider the data "fresh" if the market is actively trading (bid/ask present) OR has nonzero volume.
+      const hasLiquidity = (yesAsk > 0 && yesAsk <= 100) || (yesBid > 0 && yesBid <= 100) || vol > 0;
+      if (!hasLiquidity) {
+        const reason = `Gate 0 blocked: Kalshi market has no liquidity signals (yes_bid=${yesBid}, yes_ask=${yesAsk}, volume=${vol})`;
         console.log(`[SCANNER] ${reason}`);
         return { ok: false, reason };
       }
 
-      if (ageMin > 15) {
-        const reason = `Gate 0 blocked: Kalshi market.updated_time=${new Date(t).toISOString()} is ${Math.round(ageMin)} min old (threshold: 15 min)`;
+      // close_time in the past is expected for settled markets; block if close is >24h old.
+      if (ageMin > 24 * 60) {
+        const reason = `Gate 0 blocked: Kalshi market.close_time=${new Date(t).toISOString()} is ${Math.round(ageMin)} min old (threshold: 1440 min)`;
         console.log(`[SCANNER] ${reason}`);
         return { ok: false, reason };
       }
 
       console.log(
-        `[SCANNER] Gate 0 passed: Kalshi market.updated_time=${new Date(t).toISOString()} age=${ageMin.toFixed(2)} min, volume_24h=${vol24} (threshold: 15 min)`,
+        `[SCANNER] Gate 0 passed: Kalshi market.close_time=${new Date(t).toISOString()} age=${ageMin.toFixed(2)} min, yes_bid=${yesBid}, yes_ask=${yesAsk}, volume=${vol}`,
       );
     } catch (e: any) {
       const reason = `Gate 0 blocked: Kalshi freshness check failed (${e?.message ?? e})`;

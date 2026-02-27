@@ -37,15 +37,10 @@ async function main() {
     value: 0.0,
     timeframe: '1h',
 
-    action_type: 'place_limit_order',
+    action_type: 'alert_only',
     action_params: {
-      // Execution handler expects order params; keep it tiny and safe.
-      side: 'yes',
-      action: 'buy',
-      type: 'limit',
-      count: 1,
-      yes_price: 1,
       note: 'seed_watch_conditions',
+      market_ticker: String(m.ticker),
     },
 
     max_triggers_per_day: 3,
@@ -68,16 +63,12 @@ async function main() {
     condition_type: 'threshold',
     metric: 'volume_ratio',
     operator: '>',
-    value: 0.0,
+    value: 1.5,
     timeframe: '1h',
 
-    action_type: 'place_limit_order',
+    action_type: 'alert_only',
     action_params: {
       symbol,
-      side: 'buy',
-      // absurdly low limit price so it won't fill, but still exercises the pipeline
-      limitPrice: 1,
-      size: 0.0001,
       note: 'seed_watch_conditions',
     },
 
