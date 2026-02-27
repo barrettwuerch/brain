@@ -87,7 +87,7 @@ export async function registerWatchConditions(approvedFindings: ResearchFinding[
 
 export async function routeUnroutedFindings(): Promise<number> {
   const findings = await getFindingsByStatus('under_investigation');
-  const candidates = findings.filter((f) => Number((f as any).rqs_score ?? 0) >= 0.65);
+  const candidates = findings.filter((f) => Number((f as any).rqs_score ?? 0) >= 0.45);
 
   const { data: existingTasks, error } = await supabaseAdmin
     .from('tasks')

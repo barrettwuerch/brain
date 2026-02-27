@@ -74,7 +74,7 @@ export async function formatAndStoreFinding(
   let recommendation: any = null;
 
   if (typeof rqs_score === 'number') {
-    if (rqs_score >= 0.65) {
+    if (rqs_score >= 0.45) {
       finding_type = 'live_edge';
       recommendation = 'pass_to_backtest';
     } else if (rqs_score >= 0.4) {
