@@ -1,25 +1,31 @@
 'use client'
 
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { useRegime } from '@/hooks/use-regime'
 import { usePoll } from '@/hooks/use-poll'
-import { RegimeBadge } from './regime-badge'
 import { useState } from 'react'
 
-function HealthDot({ minutes }: { minutes: number | null }) {
-  const ok = minutes !== null && minutes < 10
-  const cls = ok ? 'bg-emerald-500' : 'bg-rose-500'
-  const label = minutes === null ? '—' : `${minutes}m ago`
-  return (
-    <div className="flex items-center gap-2">
-      <span className={`inline-block h-2 w-2 rounded-full ${cls}`} />
-      <span className="hidden sm:inline text-xs text-zinc-400">{label}</span>
-    </div>
-  )
+const PAGES = [
+  { href: '/floor', label: 'Floor' },
+  { href: '/scoreboard', label: 'Scoreboard' },
+  { href: '/pipeline', label: 'Pipeline' },
+  { href: '/intelligence', label: 'Intelligence' },
+]
+
+function regimeColor(r: string) {
+  if (r === 'low') return '#00c896'
+  if (r === 'normal') return '#60a5fa'
+  if (r === 'elevated') return '#f5a623'
+  if (r === 'extreme') return '#ff3c6e'
+  return '#6b7280'
 }
 
 export function Nav() {
+  const pathname = usePathname()
   const { data: regime } = useRegime()
+  const [menuOpen, setMenuOpen] = useState(false)
+
   const { data: health } = usePoll(async () => {
     const res = await fetch('/api/loop-health', { cache: 'no-store' })
     const j = await res.json()
@@ -27,61 +33,101 @@ export function Nav() {
     return j as any
   }, 5000)
 
-  const [menuOpen, setMenuOpen] = useState(false)
+  const minutesAgo = health?.minutesAgo ?? null
+  const isHealthy = minutesAgo !== null && minutesAgo < 10
+  const rColor = regimeColor(String(regime ?? 'unknown'))
+  const rLabel = String(regime ?? 'unknown').toUpperCase()
 
   return (
-    <div className="w-full border-b border-zinc-800 bg-zinc-950/60 backdrop-blur relative">
-      <div className="mx-auto max-w-6xl px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href="/floor" className="font-semibold tracking-wide">
-            BRAIN
-          </Link>
+    <>
+      {/* Nav bar */}
+      <div style={{
+        width: '100%',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        background: 'rgba(7,9,15,0.97)',
+        backdropFilter: 'blur(12px)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 9999,
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif",
+      }}>
+        <div style={{ padding: '0 20px', height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          {/* Left */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
+            <Link href="/floor" style={{ fontSize: 15, fontWeight: 700, color: '#f0f0f0', textDecoration: 'none', letterSpacing: '-0.3px' }}>
+              BRAIN
+            </Link>
 
-          {/* Desktop links */}
-          <div className="hidden md:flex items-center gap-6 text-sm text-zinc-300">
-            <Link className="hover:text-white" href="/floor">Floor</Link>
-            <Link className="hover:text-white" href="/scoreboard">Scoreboard</Link>
-            <Link className="hover:text-white" href="/pipeline">Pipeline</Link>
-            <Link className="hover:text-white" href="/brief">Brief</Link>
-            <Link className="hover:text-white" href="/intelligence">Intelligence</Link>
+            {/* Desktop links */}
+            <div style={{ display: 'flex', gap: 4 }} className="hide-on-mobile">
+              {PAGES.map(p => {
+                const active = pathname === p.href
+                return (
+                  <Link key={p.href} href={p.href} style={{
+                    fontSize: 13, fontWeight: 500, padding: '5px 12px', borderRadius: 6,
+                    textDecoration: 'none',
+                    color: active ? '#f0f0f0' : 'rgba(255,255,255,0.4)',
+                    background: active ? 'rgba(255,255,255,0.08)' : 'transparent',
+                    transition: 'all 0.15s',
+                  }}>
+                    {p.label}
+                  </Link>
+                )
+              })}
+            </div>
           </div>
 
-          {/* Mobile hamburger */}
-          <button
-            className="md:hidden h-11 w-11 inline-flex items-center justify-center rounded-md border border-zinc-800 text-zinc-200"
-            onClick={() => setMenuOpen(!menuOpen)}
-            aria-label="Toggle menu"
-          >
-            ☰
-          </button>
-        </div>
+          {/* Right */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Regime */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 20, background: `${rColor}18`, border: `1px solid ${rColor}44` }}>
+              <div style={{ width: 5, height: 5, borderRadius: '50%', background: rColor, boxShadow: `0 0 6px ${rColor}` }} />
+              <span style={{ fontSize: 11, fontWeight: 600, color: rColor }}>{rLabel}</span>
+            </div>
 
-        <div className="flex items-center gap-2 text-xs">
-          <span className="hidden sm:inline">
-            <RegimeBadge regime={regime} />
-          </span>
-          <span className="sm:hidden">
-            <RegimeBadge regime={regime} />
-          </span>
-          <HealthDot minutes={health?.minutesAgo ?? null} />
+            {/* Health */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ width: 6, height: 6, borderRadius: '50%', background: isHealthy ? '#00c896' : '#ff3c6e', boxShadow: isHealthy ? '0 0 8px #00c896' : 'none' }} />
+            </div>
+
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setMenuOpen(o => !o)}
+              className="show-on-mobile"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)', width: 34, height: 34, borderRadius: 8, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              {menuOpen ? '✕' : '☰'}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Mobile dropdown */}
-      {menuOpen ? (
-        <div className="md:hidden absolute top-full left-0 right-0 bg-zinc-900 border-b border-zinc-800 z-50">
-          {['floor', 'scoreboard', 'pipeline', 'brief', 'intelligence'].map((screen) => (
-            <Link
-              key={screen}
-              href={`/${screen}`}
-              className="block px-6 py-4 text-sm capitalize border-b border-zinc-800"
+      {/* Mobile dropdown — fixed, above everything */}
+      {menuOpen && (
+        <div style={{
+          position: 'fixed', top: 52, left: 0, right: 0,
+          background: 'rgba(7,9,15,0.99)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          zIndex: 99999,
+          backdropFilter: 'blur(20px)',
+          boxShadow: '0 16px 48px rgba(0,0,0,0.8)',
+        }}>
+          {PAGES.map(p => (
+            <Link key={p.href} href={p.href}
               onClick={() => setMenuOpen(false)}
-            >
-              {screen}
+              style={{
+                display: 'block', padding: '16px 24px',
+                fontSize: 15, fontWeight: 500,
+                color: pathname === p.href ? '#f0f0f0' : 'rgba(255,255,255,0.5)',
+                textDecoration: 'none',
+                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                background: pathname === p.href ? 'rgba(255,255,255,0.04)' : 'transparent',
+              }}>
+              {p.label}
             </Link>
           ))}
         </div>
-      ) : null}
-    </div>
+      )}
+    </>
   )
 }
