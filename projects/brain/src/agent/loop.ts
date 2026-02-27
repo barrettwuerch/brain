@@ -287,16 +287,45 @@ export class BrainLoop {
             // Place the actual closing order on Alpaca
             try {
               const closeSide = String(pos.side) === 'yes' ? 'sell' : 'buy';
-              const closeSymbol = String(pos.market_ticker); // e.g. BTCUSD or BTC/USD
-              const closeQty = String(pos.remaining_size);
-              await alpacaPlaceOrder({
-                symbol: closeSymbol,
-                qty: closeQty,
-                side: closeSide as any,
-                type: 'market',
-                time_in_force: 'gtc',
-              });
-              console.log(`[EXECUTION] Closing order placed: ${closeSide} ${closeQty} ${closeSymbol} reason=${exitReason}`);
+              const closeSymbol = String(pos.market_ticker);
+              // Fetch actual qty from Alpaca — DB remaining_size may be dollar value not coin qty
+              let closeQty: string | undefined;
+              try {
+                const alpacaSymbol = closeSymbol.replace('/', ''); // BTCUSD, ETHUSD, SOLUSD
+                const posRes = await fetch(`https://paper-api.alpaca.markets/v2/positions/${alpacaSymbol}`, {
+                  headers: {
+                    'APCA-API-KEY-ID': process.env.ALPACA_KEY ?? '',
+                    'APCA-API-SECRET-KEY': process.env.ALPACA_SECRET ?? '',
+                  }
+                });
+                if (posRes.ok) {
+                  const alpacaPos = await posRes.json() as any;
+                  closeQty = String(Math.abs(parseFloat(alpacaPos.qty)));
+                  console.log(`[EXECUTION] Alpaca qty for ${closeSymbol}: ${closeQty}`);
+                }
+              } catch {}
+              if (!closeQty) {
+                // Fallback: close entire position by notional
+                console.log(`[EXECUTION] Could not fetch Alpaca qty, using closePosition API`);
+                const alpacaSymbol = closeSymbol.replace('/', '');
+                await fetch(`https://paper-api.alpaca.markets/v2/positions/${alpacaSymbol}`, {
+                  method: 'DELETE',
+                  headers: {
+                    'APCA-API-KEY-ID': process.env.ALPACA_KEY ?? '',
+                    'APCA-API-SECRET-KEY': process.env.ALPACA_SECRET ?? '',
+                  }
+                });
+                console.log(`[EXECUTION] Position closed via DELETE: ${closeSymbol} reason=${exitReason}`);
+              } else {
+                await alpacaPlaceOrder({
+                  symbol: closeSymbol,
+                  qty: closeQty,
+                  side: closeSide as any,
+                  type: 'market',
+                  time_in_force: 'gtc',
+                });
+                console.log(`[EXECUTION] Closing order placed: ${closeSide} ${closeQty} ${closeSymbol} reason=${exitReason}`);
+              }
             } catch (e: any) {
               console.error('[EXECUTION] Failed to place closing order on Alpaca:', e?.message);
             }
