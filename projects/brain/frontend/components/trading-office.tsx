@@ -10,51 +10,43 @@ function sc(c: number, r: number) {
   return { x: OX + ((c - r) * TW) / 2, y: OY + ((c + r) * TH) / 2 }
 }
 
-// ─── COLORS ───────────────────────────────────────────────────────
 const P = {
-  bg: '#07090f', fl0: '#0c1422', fl1: '#101928', flG: 'rgba(60,100,220,0.06)',
+  bg: '#07090f', fl0: '#0c1422', fl1: '#101928',
   wT: '#13203a', wL: '#0a1628', wR: '#0d1c32',
   dT: '#1b3526', dL: '#112218', dR: '#152c1e',
   ptT: '#1a3c10', ptL: '#112608', ptR: '#162e0c',
 }
 
-// ─── BOTS ─────────────────────────────────────────────────────────
 const BOTS = [
-  { id: 'cos',       dbId: 'cos-bot-1',                label: 'Chief of Staff',   e: '👑', hex: '#f472b6', c: 4, r: 0, isCoS: true },
-  { id: 'research',  dbId: 'research-bot-1',           label: 'Research Bot',     e: '🔬', hex: '#22d3ee', c: 1, r: 2 },
-  { id: 'strategy',  dbId: 'strategy-bot-1',           label: 'Strategy Bot',     e: '♟',  hex: '#a78bfa', c: 4, r: 2 },
-  { id: 'risk',      dbId: 'risk-bot-1',               label: 'Risk Bot',         e: '⚠',  hex: '#f87171', c: 7, r: 2 },
-  { id: 'execution', dbId: 'crypto-execution-bot-1',   label: 'Execution Bot',    e: '⚡', hex: '#fbbf24', c: 1, r: 6 },
-  { id: 'intel',     dbId: 'intelligence-bot-1',       label: 'Intelligence Bot', e: '🦉', hex: '#34d399', c: 4, r: 6 },
-  { id: 'orch',      dbId: 'orchestrator-1',           label: 'Orchestrator',     e: '🎯', hex: '#e879f9', c: 7, r: 6 },
-  { id: 'scanner',   dbId: 'scanner-bot-1',            label: 'Scanner Bot',      e: '📡', hex: '#fb923c', c: 4, r: 9 },
+  { id: 'cos',       dbId: 'cos-bot-1',              label: 'Chief of Staff',   e: '👑', hex: '#f472b6', c: 4, r: 0, isCoS: true },
+  { id: 'research',  dbId: 'research-bot-1',         label: 'Research',         e: '🔬', hex: '#22d3ee', c: 1, r: 2 },
+  { id: 'strategy',  dbId: 'strategy-bot-1',         label: 'Strategy',         e: '♟',  hex: '#a78bfa', c: 4, r: 2 },
+  { id: 'risk',      dbId: 'risk-bot-1',             label: 'Risk',             e: '⚠',  hex: '#f87171', c: 7, r: 2 },
+  { id: 'execution', dbId: 'crypto-execution-bot-1', label: 'Execution',        e: '⚡', hex: '#fbbf24', c: 1, r: 6 },
+  { id: 'intel',     dbId: 'intelligence-bot-1',     label: 'Intelligence',     e: '🦉', hex: '#34d399', c: 4, r: 6 },
+  { id: 'orch',      dbId: 'orchestrator-1',         label: 'Orchestrator',     e: '🎯', hex: '#e879f9', c: 7, r: 6 },
+  { id: 'scanner',   dbId: 'scanner-bot-1',          label: 'Scanner',          e: '📡', hex: '#fb923c', c: 4, r: 9 },
 ]
 
-// Map DB bot_id → component id
-const DB_TO_BOT: Record<string, string> = Object.fromEntries(
-  BOTS.map(b => [b.dbId, b.id])
-)
-// Also handle alternate IDs
+const DB_TO_BOT: Record<string, string> = Object.fromEntries(BOTS.map(b => [b.dbId, b.id]))
 const EXTRA_MAP: Record<string, string> = {
   'execution-bot-1': 'execution',
   'crypto-research-bot-1': 'research',
   'crypto-strategy-bot-1': 'strategy',
   'scanner-bot-1': 'scanner',
 }
-
 function resolveBotId(dbId: string): string | null {
   return DB_TO_BOT[dbId] ?? EXTRA_MAP[dbId] ?? null
 }
 
-// Task type → speech bubble message
 const TASK_MESSAGES: Record<string, string> = {
   place_limit_order:              '⚡ Order placed ✓',
   place_crypto_limit_order:       '⚡ Crypto order placed ✓',
   manage_open_position:           '📍 Managing position',
-  manage_crypto_position:         '📍 Crypto position check',
+  manage_crypto_position:         '📍 Position check',
   size_position:                  '💰 Sizing position...',
   evaluate_circuit_breakers:      '🚨 Checking breakers',
-  monitor_positions:              '📊 Monitoring positions',
+  monitor_positions:              '📊 Monitoring',
   check_drawdown_limit:           '⚠ Drawdown check',
   publish_regime_state:           '📡 Regime published',
   market_trend_scan:              '🔍 Scanning trends...',
@@ -73,24 +65,23 @@ const TASK_MESSAGES: Record<string, string> = {
   generate_priority_map:          '🗺 Priority map updated',
   register_watch_conditions:      '✅ Watch conditions set',
   assess_strategic_priorities:    '👑 Setting priorities',
-  generate_daily_brief:           '📋 Daily brief ready',
-  generate_weekly_memo:           '📝 Weekly memo done',
+  generate_daily_brief:           '📋 Brief ready',
+  generate_weekly_memo:           '📝 Memo done',
   detect_systematic_blind_spots:  '🔍 Blind spot scan',
   evaluate_bottlenecks:           '⚙ Bottleneck review',
   consolidate_memories:           '🦉 Consolidating...',
   attribute_performance:          '📊 Attribution done',
-  generate_daily_report:          '📝 Daily report ready',
+  generate_daily_report:          '📝 Report ready',
   loop_heartbeat:                 '💓 Heartbeat',
   validate_edge_mechanism:        '🔬 Validating edge',
   generate_next_generation_hypothesis: '✨ New hypothesis!',
 }
 
-
 const REGIMES: Record<string, any> = {
-  low:      { label: 'LOW VOL',     bd: '#22c55e', tx: '#4ade80', bg: 'rgba(34,197,94,0.12)' },
-  normal:   { label: 'NORMAL',      bd: '#3b82f6', tx: '#93c5fd', bg: 'rgba(59,130,246,0.12)' },
-  elevated: { label: 'ELEVATED VOL',bd: '#eab308', tx: '#fde047', bg: 'rgba(234,179,8,0.12)' },
-  extreme:  { label: 'EXTREME VOL', bd: '#ef4444', tx: '#fca5a5', bg: 'rgba(239,68,68,0.12)' },
+  low:      { label: 'Low Vol',      color: '#00c896', bg: 'rgba(0,200,150,0.1)',    border: 'rgba(0,200,150,0.3)' },
+  normal:   { label: 'Normal',       color: '#60a5fa', bg: 'rgba(96,165,250,0.1)',   border: 'rgba(96,165,250,0.3)' },
+  elevated: { label: 'Elevated Vol', color: '#f5a623', bg: 'rgba(245,166,35,0.1)',   border: 'rgba(245,166,35,0.3)' },
+  extreme:  { label: 'Extreme Vol',  color: '#ff3c6e', bg: 'rgba(255,60,110,0.1)',   border: 'rgba(255,60,110,0.3)' },
 }
 
 const SS: Record<string, any> = {
@@ -101,7 +92,7 @@ const SS: Record<string, any> = {
   diagnostic: { fg: '#d8b4fe', bd: '#a855f7', bg: 'rgba(168,85,247,0.1)', lb: 'DIAGNOSTIC' },
 }
 
-// ─── DRAWING HELPERS ──────────────────────────────────────────────
+// ─── DRAWING ──────────────────────────────────────────────────────
 function hexRgb(hex: string) {
   const n = parseInt(hex.replace('#', ''), 16)
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
@@ -112,14 +103,8 @@ function lx(hex: string, n: number = 40) {
 }
 function drawTile(ctx: CanvasRenderingContext2D, c: number, r: number, fill: string) {
   const { x, y } = sc(c, r)
-  ctx.beginPath()
-  ctx.moveTo(x, y)
-  ctx.lineTo(x + TW / 2, y + TH / 2)
-  ctx.lineTo(x, y + TH)
-  ctx.lineTo(x - TW / 2, y + TH / 2)
-  ctx.closePath()
-  ctx.fillStyle = fill; ctx.fill()
-  ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 0.5; ctx.stroke()
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + TW / 2, y + TH / 2); ctx.lineTo(x, y + TH); ctx.lineTo(x - TW / 2, y + TH / 2); ctx.closePath()
+  ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.03)'; ctx.lineWidth = 0.5; ctx.stroke()
 }
 function drawCube(ctx: CanvasRenderingContext2D, c: number, r: number, h: number, top: string, left: string, right: string) {
   const { x, y } = sc(c, r); const ty = y - h
@@ -226,31 +211,31 @@ export default function TradingOffice() {
   const prevEpisodeIdsRef = useRef<Set<string>>(new Set())
 
   const [states, setStates] = useState<Record<string, string>>(() =>
-    Object.fromEntries(BOTS.map((b: any) => [b.id, 'exploiting']))
-  )
+    Object.fromEntries(BOTS.map(b => [b.id, 'exploiting'])))
   const [active, setActive] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(BOTS.map((b: any) => [b.id, false]))
-  )
+    Object.fromEntries(BOTS.map(b => [b.id, false])))
   const [selected, setSelected] = useState<string | null>(null)
   const [bubbles, setBubbles] = useState<any[]>([])
   const [log, setLog] = useState<any[]>([])
   const [regime, setRegime] = useState<string>('normal')
   const [time, setTime] = useState<string>('')
-  const [scoreMode, setScoreMode] = useState<'pnl' | 'winrate'>('pnl')
   const [loopHealthy, setLoopHealthy] = useState<boolean>(true)
   const [simStats, setSimStats] = useState<any>(null)
   const [lastUpdated, setLastUpdated] = useState<string>('–')
 
-  // ── Real data polling ──────────────────────────────────────────
   useEffect(() => {
     async function poll() {
       try {
-        // 1. Simulation stats
-        const sRes = await fetch('/api/simulation-stats', { cache: 'no-store' })
+        const [sRes, bRes, hRes, rRes, eRes] = await Promise.all([
+          fetch('/api/simulation-stats', { cache: 'no-store' }),
+          fetch('/api/bot-states', { cache: 'no-store' }),
+          fetch('/api/loop-health', { cache: 'no-store' }),
+          fetch('/api/regime', { cache: 'no-store' }),
+          fetch('/api/episodes?limit=20', { cache: 'no-store' }),
+        ])
+
         if (sRes.ok) setSimStats(await sRes.json())
 
-        // 2. Bot states
-        const bRes = await fetch('/api/bot-states', { cache: 'no-store' })
         if (bRes.ok) {
           const { bot_states } = await bRes.json()
           const newStates: Record<string, string> = {}
@@ -261,31 +246,23 @@ export default function TradingOffice() {
           if (Object.keys(newStates).length > 0) setStates(s => ({ ...s, ...newStates }))
         }
 
-        // 3. Loop health
-        const hRes = await fetch('/api/loop-health', { cache: 'no-store' })
         if (hRes.ok) {
           const h = await hRes.json()
           setLoopHealthy(Boolean(h.healthy))
           if (h.lastEpisodeAt) {
             const mins = h.minutesAgo
-            setLastUpdated(mins === 0 ? 'just now' : mins === 1 ? '1 min ago' : `${mins} min ago`)
+            setLastUpdated(mins === 0 ? 'just now' : mins === 1 ? '1m ago' : `${mins}m ago`)
           }
         }
 
-        // 4. Regime
-        const rRes = await fetch('/api/regime', { cache: 'no-store' })
         if (rRes.ok) {
           const { regime: rData } = await rRes.json()
-          const r = rData?.value?.vol_regime ?? 'normal'
-          setRegime(r)
+          setRegime(rData?.value?.vol_regime ?? 'normal')
         }
 
-        // 5. Recent episodes — fire bubbles for new ones
-        const eRes = await fetch('/api/episodes?limit=20', { cache: 'no-store' })
         if (eRes.ok) {
           const { episodes } = await eRes.json()
           const newEps = (episodes ?? []).filter((ep: any) => !prevEpisodeIdsRef.current.has(ep.id))
-
           for (const ep of newEps.slice(0, 3)) {
             prevEpisodeIdsRef.current.add(ep.id)
             const cid = resolveBotId(String(ep.bot_id ?? ''))
@@ -293,53 +270,35 @@ export default function TradingOffice() {
             const bot = BOTS.find(b => b.id === cid)
             if (!bot) continue
             const taskType = String(ep.task_type ?? '')
-            if (taskType === 'loop_heartbeat') continue // skip heartbeats
-
-            const msg = TASK_MESSAGES[taskType] ?? `${taskType.replace(/_/g, ' ')}`
+            if (taskType === 'loop_heartbeat') continue
+            const msg = TASK_MESSAGES[taskType] ?? taskType.replace(/_/g, ' ')
             const id = Date.now() + Math.random()
-
             setActive(a => ({ ...a, [cid]: true }))
             setTimeout(() => setActive(a => ({ ...a, [cid]: false })), 3000)
-
             setBubbles(b => [...b.slice(-5), { id, botId: cid, msg, born: Date.now() }])
             setTimeout(() => setBubbles(b => b.filter((x: any) => x.id !== id)), 3500)
-
-            setLog(l => [{
-              time: new Date(ep.created_at).toLocaleTimeString(),
-              label: bot.label,
-              hex: bot.hex,
-              msg,
-              outcome: ep.outcome,
-            }, ...l.slice(0, 19)])
+            setLog(l => [{ time: new Date(ep.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), label: bot.label, hex: bot.hex, e: bot.e, msg, outcome: ep.outcome }, ...l.slice(0, 29)])
           }
-
-          // Init set on first load
-          if (prevEpisodeIdsRef.current.size === 0 || prevEpisodeIdsRef.current.size < 20) {
+          if (prevEpisodeIdsRef.current.size < 20) {
             for (const ep of episodes ?? []) prevEpisodeIdsRef.current.add(ep.id)
           }
         }
-      } catch {
-        // ignore fetch errors
-      }
+      } catch {}
     }
-
     poll()
     const iv = setInterval(poll, 15000)
     return () => clearInterval(iv)
   }, [])
 
-  // Sync refs
   useEffect(() => { statesRef.current = states }, [states])
   useEffect(() => { activeRef.current = active }, [active])
   useEffect(() => { selRef.current = selected }, [selected])
 
-  // Clock
   useEffect(() => {
-    const t = setInterval(() => setTime(new Date().toLocaleTimeString()), 1000)
+    const t = setInterval(() => setTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })), 1000)
     return () => clearInterval(t)
   }, [])
 
-  // Canvas loop
   useEffect(() => {
     const canvas = cvs.current
     if (!canvas) return
@@ -353,7 +312,6 @@ export default function TradingOffice() {
     return () => { if (raf.current) cancelAnimationFrame(raf.current) }
   }, [])
 
-  // Click to select
   const handleClick = useCallback((e: any) => {
     const canvas = cvs.current
     if (!canvas) return
@@ -373,171 +331,183 @@ export default function TradingOffice() {
   const rc = REGIMES[regime] || REGIMES.normal
   const capital = Number(simStats?.currentCapital ?? 5000)
   const totalPnl = Number(simStats?.totalPnl ?? 0)
-  const winRate = Number(simStats?.winRate ?? 0)
+  const pnlColor = totalPnl >= 0 ? '#00c896' : '#ff3c6e'
+  const selectedBot = selected ? BOTS.find(b => b.id === selected) : null
+  const selectedState = selected ? (SS[states[selected] || 'exploiting']) : null
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: P.bg, fontFamily: "'Courier New', monospace", color: '#e2e8f0', overflowX: 'hidden' }}>
-      {/* Top Bar */}
-      <div className="px-4 py-2 border-b border-zinc-800/60" style={{ background: 'rgba(0,0,0,0.5)', fontSize: 10, letterSpacing: 2 }}>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: '#3b82f6', fontSize: 14 }}>⬡</span>
-            <span style={{ color: '#7c9ccc', textTransform: 'uppercase' }}>The Brain — Trading Floor</span>
-          </div>
+    <div style={{ background: '#07090f', minHeight: '100vh', display: 'flex', flexDirection: 'column', fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif", color: '#f0f0f0' }}>
+      <style>{`
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+        @keyframes shimmer { 0%{transform:translateX(-200%)} 100%{transform:translateX(200%)} }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+      `}</style>
 
-          {/* SCOREBOARD */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 0, border: '1px solid rgba(0,240,255,0.2)', borderRadius: 4, overflow: 'hidden', background: 'rgba(0,10,30,0.8)' }}>
-            <div style={{ padding: '5px 16px', borderRight: '1px solid rgba(0,240,255,0.15)' }}>
-              <div style={{ fontSize: 7, letterSpacing: 2, color: 'rgba(0,240,255,0.5)', textTransform: 'uppercase', marginBottom: 2 }}>Total Capital</div>
-              <div style={{ fontSize: 15, fontWeight: 'bold', color: '#00f0ff', fontFamily: 'monospace', textShadow: '0 0 12px #00f0ff88', letterSpacing: -0.5 }}>
-                ${capital.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-            </div>
-            <div style={{ padding: '5px 14px', borderRight: '1px solid rgba(0,240,255,0.15)', minWidth: 110 }}>
-              <div style={{ fontSize: 7, letterSpacing: 2, color: 'rgba(0,240,255,0.5)', textTransform: 'uppercase', marginBottom: 2 }}>
-                {scoreMode === 'pnl' ? 'Net P&L' : 'Win Rate'}
-              </div>
-              <div style={{ fontSize: 15, fontWeight: 'bold', fontFamily: 'monospace', letterSpacing: -0.5, color: scoreMode === 'pnl' ? (totalPnl >= 0 ? '#00ff9f' : '#ff3c6e') : (winRate >= 55 ? '#00ff9f' : '#ffe600'), textShadow: `0 0 12px ${scoreMode === 'pnl' ? (totalPnl >= 0 ? '#00ff9f' : '#ff3c6e') : '#00ff9f'}88` }}>
-                {scoreMode === 'pnl' ? `${totalPnl >= 0 ? '+' : ''}$${Math.abs(totalPnl).toFixed(2)}` : `${winRate.toFixed(1)}%`}
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '4px 6px' }}>
-              {(['pnl', 'winrate'] as const).map(m => (
-                <button key={m} onClick={() => setScoreMode(m)} style={{ fontSize: 7, letterSpacing: 1, padding: '2px 7px', border: `1px solid ${scoreMode === m ? '#00f0ff' : 'rgba(0,240,255,0.2)'}`, background: scoreMode === m ? 'rgba(0,240,255,0.15)' : 'transparent', color: scoreMode === m ? '#00f0ff' : 'rgba(0,240,255,0.4)', cursor: 'pointer', borderRadius: 2, fontFamily: 'monospace', textTransform: 'uppercase', transition: 'all 0.15s' }}>
-                  {m === 'pnl' ? 'P&L' : 'WIN%'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 12px', border: `1px solid ${rc.bd}`, background: rc.bg, color: rc.tx, letterSpacing: 2, textTransform: 'uppercase', fontSize: 9 }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: rc.bd, display: 'inline-block', boxShadow: `0 0 6px ${rc.bd}` }} />
-              {rc.label}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 8, color: loopHealthy ? '#22c55e' : '#ef4444' }}>
-              <span style={{ width: 5, height: 5, borderRadius: '50%', background: loopHealthy ? '#22c55e' : '#ef4444', display: 'inline-block', boxShadow: loopHealthy ? '0 0 6px #22c55e' : 'none' }} />
-              {loopHealthy ? 'LIVE' : 'STALE'}
-            </div>
-            <span style={{ color: '#334155', fontSize: 9 }}>{time}</span>
-          </div>
+      {/* ── Status bar ── */}
+      <div style={{ padding: '10px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        {/* Regime pill */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 20, background: rc.bg, border: `1px solid ${rc.border}` }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: rc.color, boxShadow: `0 0 8px ${rc.color}`, animation: 'pulse 2s infinite' }} />
+          <span style={{ fontSize: 12, fontWeight: 600, color: rc.color }}>{rc.label}</span>
         </div>
+
+        {/* Capital */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>Capital</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#00f0ff', fontFamily: "'Courier New', monospace" }}>
+            ${capital.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </span>
+        </div>
+
+        {/* P&L */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>P&L</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: pnlColor, fontFamily: "'Courier New', monospace" }}>
+            {totalPnl >= 0 ? '+' : ''}${Math.abs(totalPnl).toFixed(2)}
+          </span>
+        </div>
+
+        <div style={{ flex: 1 }} />
+
+        {/* Health */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: loopHealthy ? '#00c896' : '#ff3c6e', boxShadow: loopHealthy ? '0 0 8px #00c896' : 'none', animation: loopHealthy ? 'pulse 2s infinite' : 'none' }} />
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: "'Courier New', monospace" }}>
+            {loopHealthy ? `LIVE · ${lastUpdated}` : 'STALE'}
+          </span>
+        </div>
+
+        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', fontFamily: "'Courier New', monospace" }}>{time}</span>
       </div>
 
-      {/* Main */}
-      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
-        <div className="relative w-full overflow-hidden md:flex-1" style={{ aspectRatio: `${CW}/${CH}` }}>
-          <canvas ref={cvs} width={CW} height={CH} onClick={handleClick} style={{ display: 'block', cursor: 'crosshair', width: '100%', height: 'auto', imageRendering: 'pixelated' }} />
+      {/* ── Main layout ── */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
 
+        {/* Canvas area */}
+        <div style={{ flex: 1, position: 'relative', minHeight: 0 }}>
+          <canvas
+            ref={cvs}
+            width={CW}
+            height={CH}
+            onClick={handleClick}
+            style={{ display: 'block', width: '100%', height: 'auto', cursor: 'crosshair', imageRendering: 'pixelated' }}
+          />
+
+          {/* Speech bubbles */}
           {bubbles.map((b: any) => {
-            const bot: any = BOTS.find((x) => x.id === b.botId)
+            const bot: any = BOTS.find(x => x.id === b.botId)
             if (!bot) return null
             const { x, y } = sc(bot.c, bot.r + 0.6)
             const age = Math.min(1, (Date.now() - b.born) / 3500)
             const op = age > 0.7 ? 1 - (age - 0.7) / 0.3 : Math.min(1, age * 5)
             return (
-              <div key={b.id} style={{ position: 'absolute', left: `${(x / CW) * 100}%`, top: `${((y - 85) / CH) * 100}%`, transform: 'translateX(-50%)', background: 'rgba(6,9,18,0.96)', border: `1px solid ${bot.hex}`, borderRadius: 5, padding: '4px 8px', fontSize: 9, whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 20, opacity: op, boxShadow: `0 0 12px ${bot.hex}44`, color: '#e2e8f0', transition: 'opacity 0.1s' }}>
+              <div key={b.id} style={{ position: 'absolute', left: `${(x / CW) * 100}%`, top: `${((y - 85) / CH) * 100}%`, transform: 'translateX(-50%)', background: 'rgba(7,9,15,0.96)', border: `1px solid ${bot.hex}66`, borderRadius: 8, padding: '5px 10px', fontSize: 11, whiteSpace: 'nowrap', pointerEvents: 'none', zIndex: 20, opacity: op, boxShadow: `0 4px 20px ${bot.hex}33`, color: '#f0f0f0', fontFamily: '-apple-system, sans-serif', fontWeight: 500, backdropFilter: 'blur(8px)' }}>
                 {b.msg}
-                <div style={{ position: 'absolute', bottom: -6, left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: `6px solid ${bot.hex}` }} />
+                <div style={{ position: 'absolute', bottom: -5, left: '50%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderTop: `5px solid ${bot.hex}66` }} />
               </div>
             )
           })}
         </div>
 
-        {/* Right Panel */}
-        <div className="hidden md:flex w-[210px] border-l border-zinc-800/60 flex-col flex-shrink-0">
-          <div style={{ padding: '7px 10px', borderBottom: '1px solid rgba(60,100,200,0.12)', fontSize: 8, letterSpacing: 2, color: '#334155', textTransform: 'uppercase' }}>Bot Status</div>
-          <div style={{ flex: 1, overflow: 'auto', padding: '6px 8px' }}>
-            {BOTS.map((bot) => {
+        {/* ── Desktop right panel ── */}
+        <div style={{ width: 220, borderLeft: '1px solid rgba(255,255,255,0.06)', display: 'flex', flexDirection: 'column', background: 'rgba(0,0,0,0.2)', flexShrink: 0 }} className="hide-on-mobile">
+          
+          {/* Selected bot detail */}
+          {selectedBot && selectedState ? (
+            <div style={{ padding: '14px 14px 12px', borderBottom: '1px solid rgba(255,255,255,0.06)', background: `${selectedBot.hex}0d` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <span style={{ fontSize: 20 }}>{selectedBot.e}</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: selectedBot.hex }}>{selectedBot.label}</div>
+                  <div style={{ fontSize: 10, color: selectedState.fg, marginTop: 1, letterSpacing: '0.08em' }}>{selectedState.lb}</div>
+                </div>
+              </div>
+              <button onClick={() => setSelected(null)} style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}>
+                Tap to deselect
+              </button>
+            </div>
+          ) : (
+            <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Bot Status</div>
+            </div>
+          )}
+
+          {/* Bot list */}
+          <div style={{ flex: 1, overflow: 'auto', padding: '8px 10px' }}>
+            {BOTS.map(bot => {
               const st = SS[states[bot.id] || 'exploiting']
               const isAct = active[bot.id]
               const isSel = selected === bot.id
               return (
-                <div key={bot.id} onClick={() => setSelected(s => s === bot.id ? null : bot.id)} style={{ marginBottom: 5, padding: '6px 8px', border: `1px solid ${isSel ? '#ffffff' : st.bd + '55'}`, borderRadius: 4, background: isSel ? 'rgba(255,255,255,0.06)' : st.bg, cursor: 'pointer', position: 'relative', overflow: 'hidden', transition: 'border-color 0.2s' }}>
-                  {isAct && <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(90deg,transparent,${bot.hex}18,transparent)`, animation: 'shimmer 1.2s ease-in-out infinite' }} />}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
-                    <span style={{ fontSize: 13 }}>{bot.e}</span>
-                    <span style={{ fontSize: 10, color: '#cbd5e1', fontWeight: 'bold', flex: 1 }}>{bot.label}</span>
-                    {isAct && <span style={{ width: 6, height: 6, borderRadius: '50%', background: bot.hex, boxShadow: `0 0 6px ${bot.hex}`, flexShrink: 0, animation: 'blink 0.6s infinite' }} />}
+                <div key={bot.id} onClick={() => setSelected(s => s === bot.id ? null : bot.id)}
+                  style={{ marginBottom: 4, padding: '8px 10px', borderRadius: 8, border: `1px solid ${isSel ? bot.hex + '88' : 'rgba(255,255,255,0.05)'}`, background: isSel ? bot.hex + '12' : isAct ? bot.hex + '08' : 'transparent', cursor: 'pointer', position: 'relative', overflow: 'hidden', transition: 'all 0.15s' }}>
+                  {isAct && <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(90deg,transparent,${bot.hex}15,transparent)`, animation: 'shimmer 1.2s infinite' }} />}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: 14 }}>{bot.e}</span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 11, fontWeight: 500, color: isAct ? '#f0f0f0' : 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{bot.label}</div>
+                      <div style={{ fontSize: 9, color: st.fg, marginTop: 1, letterSpacing: '0.06em' }}>{st.lb}</div>
+                    </div>
+                    {isAct && <div style={{ width: 5, height: 5, borderRadius: '50%', background: bot.hex, flexShrink: 0, animation: 'blink 0.6s infinite', boxShadow: `0 0 6px ${bot.hex}` }} />}
                   </div>
-                  <div style={{ fontSize: 8, color: st.fg, letterSpacing: 1.5, fontWeight: 'bold' }}>{st.lb}</div>
                 </div>
               )
             })}
           </div>
 
-          {selected && (() => {
-            const bot: any = BOTS.find(b => b.id === selected)
-            const st = SS[states[selected] || 'exploiting']
-            return bot ? (
-              <div style={{ borderTop: '1px solid rgba(60,100,200,0.15)', padding: '8px 10px', background: 'rgba(0,0,0,0.3)' }}>
-                <div style={{ fontSize: 8, letterSpacing: 2, color: '#334155', textTransform: 'uppercase', marginBottom: 6 }}>Selected</div>
-                <div style={{ fontSize: 11, color: bot.hex, fontWeight: 'bold', marginBottom: 3 }}>{bot.e} {bot.label}</div>
-                <div style={{ fontSize: 8, color: st.fg, letterSpacing: 1 }}>{st.lb}</div>
-                <div style={{ marginTop: 6, fontSize: 8, color: '#475569' }}>Click again to deselect</div>
-              </div>
-            ) : null
-          })()}
-
-          <div style={{ borderTop: '1px solid rgba(60,100,200,0.12)', padding: '7px 10px', fontSize: 8, letterSpacing: 2, color: '#334155', textTransform: 'uppercase' }}>Activity Log</div>
-          <div style={{ height: 140, overflow: 'auto', padding: '4px 8px' }}>
-            {log.length === 0 && <div style={{ fontSize: 8, color: '#1e3a5f', padding: '4px 0' }}>Waiting for episodes...</div>}
-            {log.map((entry: any, i: number) => (
-              <div key={i} style={{ marginBottom: 4, paddingBottom: 3, borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: 8, lineHeight: 1.5 }}>
-                <span style={{ color: '#334155' }}>{entry.time} </span>
-                <span style={{ color: entry.hex }}>{entry.label.split(' ')[0]}: </span>
-                <span style={{ color: entry.outcome === 'correct' || entry.outcome === 'partial' ? '#4ade80' : '#64748b' }}>{entry.msg}</span>
-              </div>
-            ))}
+          {/* Activity log */}
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+            <div style={{ padding: '8px 14px 6px', fontSize: 10, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Activity</div>
+            <div style={{ height: 160, overflow: 'auto', padding: '0 10px 8px' }}>
+              {log.length === 0 && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.2)', padding: '4px 4px' }}>Waiting for activity...</div>}
+              {log.map((entry: any, i: number) => (
+                <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-start', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                  <span style={{ fontSize: 12, flexShrink: 0, marginTop: 1 }}>{entry.e}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.65)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.msg}</div>
+                    <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.2)', marginTop: 1 }}>{entry.time}</div>
+                  </div>
+                  <div style={{ width: 4, height: 4, borderRadius: '50%', background: entry.outcome === 'correct' || entry.outcome === 'partial' ? '#00c896' : 'rgba(255,255,255,0.15)', flexShrink: 0, marginTop: 4 }} />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Mobile activity feed */}
-      <div className="md:hidden" style={{ borderTop: '1px solid rgba(60,100,200,0.15)', background: 'rgba(0,0,0,0.6)' }}>
-        {/* Mobile bot strip */}
-        <div style={{ display: 'flex', overflowX: 'auto', gap: 8, padding: '8px 12px', borderBottom: '1px solid rgba(60,100,200,0.1)' }}>
-          {BOTS.map((bot) => {
+      {/* ── Mobile bot strip + log ── */}
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.5)' }} className="show-on-mobile">
+        {/* Scrollable bot chips */}
+        <div style={{ display: 'flex', overflowX: 'auto', gap: 8, padding: '10px 16px', scrollbarWidth: 'none' }}>
+          {BOTS.map(bot => {
             const st = SS[states[bot.id] || 'exploiting']
             const isAct = active[bot.id]
             return (
-              <div key={bot.id} style={{ flexShrink: 0, padding: '5px 10px', borderRadius: 20, border: `1px solid ${isAct ? bot.hex : st.bd + '44'}`, background: isAct ? bot.hex + '22' : 'transparent', display: 'flex', alignItems: 'center', gap: 5, position: 'relative', overflow: 'hidden' }}>
-                {isAct && <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(90deg,transparent,${bot.hex}22,transparent)`, animation: 'shimmer 1.2s infinite' }} />}
-                <span style={{ fontSize: 12 }}>{bot.e}</span>
-                <span style={{ fontSize: 9, color: isAct ? bot.hex : st.fg, fontFamily: "'Courier New', monospace", whiteSpace: 'nowrap', fontWeight: isAct ? 'bold' : 'normal' }}>
-                  {bot.label.split(' ')[0]}
-                </span>
-                {isAct && <span style={{ width: 5, height: 5, borderRadius: '50%', background: bot.hex, flexShrink: 0, animation: 'blink 0.6s infinite' }} />}
+              <div key={bot.id} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20, border: `1px solid ${isAct ? bot.hex + '88' : 'rgba(255,255,255,0.08)'}`, background: isAct ? bot.hex + '18' : 'rgba(255,255,255,0.03)', position: 'relative', overflow: 'hidden', transition: 'all 0.2s' }}>
+                {isAct && <div style={{ position: 'absolute', inset: 0, background: `linear-gradient(90deg,transparent,${bot.hex}20,transparent)`, animation: 'shimmer 1.2s infinite' }} />}
+                <span style={{ fontSize: 14 }}>{bot.e}</span>
+                <span style={{ fontSize: 11, fontWeight: isAct ? 600 : 400, color: isAct ? '#f0f0f0' : 'rgba(255,255,255,0.4)', whiteSpace: 'nowrap' }}>{bot.label}</span>
+                {isAct && <div style={{ width: 5, height: 5, borderRadius: '50%', background: bot.hex, animation: 'blink 0.6s infinite', boxShadow: `0 0 6px ${bot.hex}` }} />}
               </div>
             )
           })}
         </div>
-        {/* Mobile log */}
-        <div style={{ padding: '6px 12px', maxHeight: 120, overflowY: 'auto' }}>
-          {log.length === 0 && <div style={{ fontSize: 9, color: '#1e3a5f', fontFamily: "'Courier New', monospace", padding: '4px 0' }}>Waiting for activity...</div>}
-          {log.slice(0, 8).map((entry: any, i: number) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-              <span style={{ fontSize: 9, color: '#334155', fontFamily: "'Courier New', monospace", flexShrink: 0 }}>{entry.time}</span>
-              <span style={{ width: 5, height: 5, borderRadius: '50%', background: entry.hex, flexShrink: 0 }} />
-              <span style={{ fontSize: 9, color: entry.outcome === 'correct' || entry.outcome === 'partial' ? '#4ade80' : '#94a3b8', fontFamily: "'Courier New', monospace", overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.msg}</span>
-            </div>
-          ))}
-        </div>
+        {/* Mini log */}
+        {log.length > 0 && (
+          <div style={{ padding: '0 16px 12px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {log.slice(0, 5).map((entry: any, i: number) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
+                <span style={{ fontSize: 12 }}>{entry.e}</span>
+                <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.msg}</span>
+                <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.2)' }}>{entry.time}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-
-      {/* Bottom bar */}
-      <div style={{ padding: '5px 16px', borderTop: '1px solid rgba(60,100,200,0.12)', background: 'rgba(0,0,0,0.4)', display: 'flex', gap: 20, fontSize: 8, color: '#1e3a5f', letterSpacing: 1 }}>
-        <span>SIMULATION RUNNING · ALPACA PAPER · {lastUpdated}</span>
-        <span style={{ marginLeft: 'auto' }}>CLICK BOT TO INSPECT</span>
-      </div>
-
-      <style>{`
-        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
-        @keyframes shimmer { 0%{transform:translateX(-200%)} 100%{transform:translateX(200%)} }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #1e3a5f; border-radius: 2px; }
-      `}</style>
     </div>
   )
 }

@@ -25,3 +25,10 @@ body {
     text-wrap: balance;
   }
 }
+
+.hide-on-mobile { display: flex; }
+.show-on-mobile { display: none; }
+@media (max-width: 768px) {
+  .hide-on-mobile { display: none !important; }
+  .show-on-mobile { display: block !important; }
+}
