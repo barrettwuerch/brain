@@ -162,15 +162,19 @@ export default function ScoreboardPage() {
     return () => clearInterval(t)
   }, [])
 
-  const equity = Number(prices?.equity ?? 50000)
+  const STARTING_CAPITAL = 50000
   const positions = useMemo(() => Array.isArray(prices?.positions) ? prices.positions : [], [prices])
   const deployedCapital = useMemo(() =>
     positions.map((p: any) => Math.abs(Number(p.market_value ?? 0))).filter(Number.isFinite).reduce((s: number, n: number) => s + n, 0)
   , [positions])
-  const availableCapital = Math.max(0, equity - deployedCapital)
+  const unrealizedPnl = useMemo(() =>
+    positions.map((p: any) => Number(p.unrealized_pl ?? 0)).filter(Number.isFinite).reduce((s: number, n: number) => s + n, 0)
+  , [positions])
   const closedTrades = trades.filter(t => t.pnl != null && t.status === 'closed')
   const openTrades = trades.filter(t => t.status === 'open' || t.status === 'filled')
   const totalPnl = closedTrades.reduce((s, t) => s + Number(t.pnl ?? 0), 0)
+  const equity = STARTING_CAPITAL + totalPnl + unrealizedPnl
+  const availableCapital = Math.max(0, STARTING_CAPITAL - deployedCapital)
   const wins = closedTrades.filter(t => Number(t.pnl ?? 0) > 0).length
   const losses = closedTrades.filter(t => Number(t.pnl ?? 0) < 0).length
   const winRate = closedTrades.length ? (wins / closedTrades.length) * 100 : 0
