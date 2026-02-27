@@ -284,6 +284,23 @@ export class BrainLoop {
             const exitReason = r === 'profit_target_hit' ? 'profit_target' : r === 'stop_hit' ? 'stop_loss' : 'manual';
             await closePosition(pos.id, Number(t.current_price), exitReason as any, storeOut.episode_id);
 
+            // Place the actual closing order on Alpaca
+            try {
+              const closeSide = String(pos.side) === 'yes' ? 'sell' : 'buy';
+              const closeSymbol = String(pos.market_ticker); // e.g. BTCUSD or BTC/USD
+              const closeQty = String(pos.remaining_size);
+              await alpacaPlaceOrder({
+                symbol: closeSymbol,
+                qty: closeQty,
+                side: closeSide as any,
+                type: 'market',
+                time_in_force: 'gtc',
+              });
+              console.log(`[EXECUTION] Closing order placed: ${closeSide} ${closeQty} ${closeSymbol} reason=${exitReason}`);
+            } catch (e: any) {
+              console.error('[EXECUTION] Failed to place closing order on Alpaca:', e?.message);
+            }
+
             // Feedback loop: forward-test outcomes → strategy_outcomes → research_findings status.
             try {
               if (pos.strategy_id) {
