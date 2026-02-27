@@ -78,7 +78,7 @@ async function gate0Check(c: any): Promise<{ ok: boolean; reason?: string }> {
       const t = ts ? new Date(ts).getTime() : NaN;
       const ageMin = (now - t) / 60000;
 
-      if (!Number.isFinite(ageMin) || ageMin > 5) {
+      if (!Number.isFinite(ageMin) || ageMin > 10) {
         const reason = `Gate 0 blocked: ${ticker} bar age=${Number.isFinite(ageMin) ? Math.round(ageMin) + 'min' : 'unknown'} (threshold: 5min)`;
         console.log(`[SCANNER] ${reason}`);
         await logGateBlock('gate_0', ticker, reason);
