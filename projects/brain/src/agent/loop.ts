@@ -1679,7 +1679,7 @@ Return ONLY valid JSON with keys: edge_type, description, mechanism, failure_con
         recommendation: 'investigate_further',
         backtest_result: null,
         supporting_episode_ids: [],
-        notes: \`Generated from raw market data for \${ticker}. No pre-filled fields.\`,
+        notes: `Generated from raw market data for ${ticker}. No pre-filled fields.`,
         parent_finding_id: null,
       };
 
@@ -1693,7 +1693,7 @@ Return ONLY valid JSON with keys: edge_type, description, mechanism, failure_con
       const { error: insErr } = await supabaseAdmin.from('research_findings').insert(draft);
       if (insErr) throw insErr;
 
-      console.log(\`[RESEARCH] generate_research_finding: saved \${ticker} edge=\${parsed.edge_type} rqs=\${draft.rqs_score?.toFixed(3)}\`);
+      console.log(`[RESEARCH] generate_research_finding: saved ${ticker} edge=${parsed.edge_type} rqs=${draft.rqs_score?.toFixed(3)}`);
       return { action_taken, result: { status: 'finding_saved', ticker, edge_type: parsed.edge_type, rqs_score: draft.rqs_score }, outcome_score: 1 };
     }
 
