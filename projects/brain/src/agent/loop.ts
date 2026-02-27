@@ -1654,8 +1654,25 @@ Return ONLY valid JSON with keys: edge_type, description, mechanism, failure_con
       });
 
       const parsed = extractFirstJsonObject(text) ?? {};
+      const VALID_EDGE_TYPES = new Set(['liquidity', 'microstructure', 'behavioral', 'structural_flow', 'late_resolution', 'no_edge']);
       if (!parsed.edge_type || !parsed.description || !parsed.mechanism) {
         return { action_taken, result: { status: 'incomplete_finding', reason: 'LLM missing required fields', raw: text.slice(0, 300) }, outcome_score: 0.5 };
+      }
+      // Normalize edge_type to allowed DB values
+      if (!VALID_EDGE_TYPES.has(parsed.edge_type)) {
+        const lower = String(parsed.edge_type).toLowerCase();
+        if (lower.includes('liquid')) parsed.edge_type = 'liquidity';
+        else if (lower.includes('micro') || lower.includes('momentum') || lower.includes('mean')) parsed.edge_type = 'microstructure';
+        else if (lower.includes('behav') || lower.includes('sentiment')) parsed.edge_type = 'behavioral';
+        else if (lower.includes('flow') || lower.includes('struct') || lower.includes('fund')) parsed.edge_type = 'structural_flow';
+        else if (lower.includes('resolut') || lower.includes('expir')) parsed.edge_type = 'late_resolution';
+        else parsed.edge_type = 'microstructure'; // safe default
+        console.log(`[RESEARCH] normalized edge_type '${lower}' → '${parsed.edge_type}'`);
+      }
+      // no_edge means bot found nothing — save as preliminary but don't promote
+      if (parsed.edge_type === 'no_edge') {
+        console.log(`[RESEARCH] Bot found no edge for ${ticker} — skipping DB insert`);
+        return { action_taken, result: { status: 'no_edge_found', ticker }, outcome_score: 0.7 };
       }
 
       const draft: any = {
