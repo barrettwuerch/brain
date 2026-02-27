@@ -1213,18 +1213,16 @@ export class BrainLoop {
             bot_id: String(args.task.bot_id ?? 'crypto-execution-bot-1'),
             desk: 'crypto_markets',
             market_ticker: symbol,
-            symbol,
-            side: side as any,
+            side: (side === 'buy' ? 'yes' : 'no') as any,
             entry_price: limitPrice,
             remaining_size: parseFloat(orderQty),
-            contracts: parseFloat(orderQty),
             stop_level: stopLevel,
             profit_target: profitTarget,
             status: 'open',
           } as any);
           console.log(`[EXECUTION] Position opened: ${symbol} entry=${limitPrice} stop=${stopLevel.toFixed(2)} target=${profitTarget.toFixed(2)}`);
         } catch (e: any) {
-          console.error('[EXECUTION] Failed to write position row:', e?.message);
+          console.error('[EXECUTION] Failed to write position row:', e?.message, JSON.stringify(e));
         }
       }
 
