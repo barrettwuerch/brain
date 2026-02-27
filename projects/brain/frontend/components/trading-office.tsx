@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { usePrices } from '@/hooks/use-prices';
+import { usePrices } from '@/hooks/use-prices'; // eslint-disable-line @typescript-eslint/no-unused-vars
 
 // ─── CANVAS CONSTANTS ─────────────────────────────────────────────
 const CW = 900, CH = 620;

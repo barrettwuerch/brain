@@ -181,7 +181,7 @@ export default function IntelligencePage() {
     load()
     const t = setInterval(load, 30000)
     return () => clearInterval(t)
-  }, [load, hours])
+  }, [load, hours])  // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = episodes.filter(ep => {
     if (filter === 'all') return true
