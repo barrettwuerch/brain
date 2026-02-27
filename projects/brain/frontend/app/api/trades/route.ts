@@ -4,23 +4,6 @@ import { getSupabaseAdmin } from '@/lib/supabase-admin'
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
-function baseUrl() {
-  return (process.env.ALPACA_BASE_URL ?? 'https://paper-api.alpaca.markets').replace(/\/$/, '')
-}
-function authHeaders() {
-  const key = process.env.ALPACA_API_KEY
-  const secret = process.env.ALPACA_SECRET_KEY
-  if (!key || !secret) throw new Error('Missing Alpaca keys')
-  return { 'APCA-API-KEY-ID': key, 'APCA-API-SECRET-KEY': secret }
-}
-async function fetchJson(url: string) {
-  const res = await fetch(url, { headers: authHeaders(), cache: 'no-store' })
-  const text = await res.text()
-  const j = text ? JSON.parse(text) : null
-  if (!res.ok) throw new Error(`Alpaca ${res.status}: ${JSON.stringify(j)}`)
-  return j
-}
-function stripSlash(s: string) { return s.replace('/', '') }
 function normalizeSide(s: string) {
   if (s === 'yes') return 'buy'
   if (s === 'no') return 'sell'
@@ -30,11 +13,8 @@ function normalizeSide(s: string) {
 export async function GET() {
   try {
     const trades: any[] = []
-    const alpacaSymbols = new Set<string>()
 
-    // Alpaca used only for symbol dedup tracking — positions come from Supabase
-
-    // Supabase positions — only non-crypto or crypto not already in Alpaca
+    // Supabase positions — source of truth for all trades
     try {
       const supabase = getSupabaseAdmin()
       const { data: positions } = await supabase
