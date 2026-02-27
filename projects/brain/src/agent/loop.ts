@@ -294,7 +294,14 @@ export class BrainLoop {
           if (shouldExit && pos) {
             const r = hardStopHit ? 'stop_hit' : targetHit ? 'profit_target_hit' : dynamicStopHit ? 'trailing_stop_hit' : String(evalRes?.reason ?? 'ai_discretion');
             const exitReason = r === 'profit_target_hit' ? 'profit_target' : (r === 'stop_hit' || r === 'trailing_stop_hit') ? 'stop_loss' : 'manual';
-            await closePosition(pos.id, Number(t.current_price), exitReason as any, storeOut.episode_id);
+            // Fetch Alpaca qty before closing so P&L uses real coin qty
+            let alpacaQtyForPnl: number | undefined;
+            try {
+              const alpacaSymbolPnl = String(pos.market_ticker).replace("/", "");
+              const posResPnl = await fetch(`https://paper-api.alpaca.markets/v2/positions/${alpacaSymbolPnl}`, { headers: { "APCA-API-KEY-ID": process.env.ALPACA_KEY ?? "", "APCA-API-SECRET-KEY": process.env.ALPACA_SECRET ?? "" } });
+              if (posResPnl.ok) { const ap = await posResPnl.json() as any; alpacaQtyForPnl = Math.abs(parseFloat(ap.qty)); }
+            } catch {}
+            await closePosition(pos.id, Number(t.current_price), exitReason as any, storeOut.episode_id, alpacaQtyForPnl);
 
             // Place the actual closing order on Alpaca
             try {

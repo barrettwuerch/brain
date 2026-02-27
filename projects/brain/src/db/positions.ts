@@ -22,6 +22,7 @@ export async function closePosition(
   exitPrice: number,
   exitReason: ExitReason,
   exitEpisodeId?: string,
+  actualQty?: number,
 ): Promise<void> {
   const { data, error } = await supabaseAdmin
     .from('positions')
@@ -34,7 +35,8 @@ export async function closePosition(
   const remaining_size = Number((data as any).remaining_size);
   const side = String((data as any).side) as 'yes' | 'no';
 
-  const pnl = (Number(exitPrice) - entry_price) * remaining_size * (side === 'yes' ? 1 : -1);
+  const qty = actualQty ?? remaining_size;
+  const pnl = (Number(exitPrice) - entry_price) * qty * (side === 'yes' ? 1 : -1);
 
   const patch: any = {
     status: 'closed',
