@@ -336,7 +336,7 @@ export default function TradingOffice() {
   const selectedState = selected ? (SS[states[selected] || 'exploiting']) : null
 
   return (
-    <div style={{ background: '#07090f', minHeight: '100vh', display: 'flex', flexDirection: 'column', fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif", color: '#f0f0f0' }}>
+    <div style={{ background: '#07090f', display: 'flex', flexDirection: 'column', fontFamily: "-apple-system, BlinkMacSystemFont, 'Inter', sans-serif", color: '#f0f0f0' }}>
       <style>{`
         @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
         @keyframes shimmer { 0%{transform:translateX(-200%)} 100%{transform:translateX(200%)} }
@@ -393,7 +393,7 @@ export default function TradingOffice() {
             width={CW}
             height={CH}
             onClick={handleClick}
-            style={{ display: 'block', width: '100%', height: 'auto', cursor: 'crosshair', imageRendering: 'pixelated' }}
+            style={{ display: 'block', width: '100%', height: 'auto', cursor: 'crosshair', imageRendering: 'pixelated', maxHeight: '65vh' }}
           />
 
           {/* Speech bubbles */}
