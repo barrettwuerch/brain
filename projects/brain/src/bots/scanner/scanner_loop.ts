@@ -1,6 +1,10 @@
 import 'dotenv/config';
-
 import { supabaseAdmin } from '../../lib/supabase';
+import { getActiveWatchConditions, updateAfterTrigger, expireStaleConditions } from '../../db/watch_conditions';
+import { shouldFire } from './condition_evaluator';
+import { fetchMetricValue } from './metric_fetcher';
+
+// ─── Logging ────────────────────────────────────────────────────────────────
 
 async function logGateBlock(
   gate: 'gate_0' | 'gate_1' | 'gate_2' | 'gate_3',
@@ -10,23 +14,16 @@ async function logGateBlock(
 ) {
   try {
     await supabaseAdmin.from('scanner_gate_events').insert({
-      gate,
-      ticker,
-      reason,
+      gate, ticker, reason,
       edge: extras.edge ?? null,
       score: extras.score ?? null,
     } as any);
-  } catch {
-    // never throw from logging
-  }
+  } catch { /* never throw from logging */ }
 }
-import { getActiveWatchConditions, updateAfterTrigger, expireStaleConditions } from '../../db/watch_conditions';
-import { shouldFire } from './condition_evaluator';
-import { fetchMetricValue } from './metric_fetcher';
+
+// ─── Regime ─────────────────────────────────────────────────────────────────
 
 async function getVolRegimeFallback(): Promise<string> {
-  // Authoritative regime_state is published by Risk Bot.
-  // Expect format: "current_vol_regime={regime} desk=crypto as_of={ISO}"
   try {
     const { data } = await supabaseAdmin
       .from('operational_state')
@@ -35,195 +32,212 @@ async function getVolRegimeFallback(): Promise<string> {
       .eq('key', 'vol_regime')
       .gt('expires_at', new Date().toISOString())
       .maybeSingle();
-
-    if (!data) {
-      console.log('[SCANNER] WARNING: No fresh regime_state from Risk Bot — defaulting to normal');
-      return 'normal';
-    }
-
-    const v: any = (data as any).value ?? {};
-    const r = String(v.vol_regime ?? 'normal').toLowerCase();
-    if (!['low', 'normal', 'elevated', 'extreme'].includes(r)) return 'normal';
-    return r;
+    if (!data) return 'normal';
+    const r = String((data as any).value?.vol_regime ?? 'normal').toLowerCase();
+    return ['low', 'normal', 'elevated', 'extreme'].includes(r) ? r : 'normal';
   } catch {
-    console.log('[SCANNER] WARNING: No fresh regime_state from Risk Bot — defaulting to normal');
     return 'normal';
   }
 }
 
-async function gate0MarketDataFreshness(conditions: any[]): Promise<{ ok: boolean; reason?: string }> {
-  // Gate 0: freshness check
-  // IMPORTANT: reads market data timestamp, NOT task creation time.
+// ─── Gate 0: per-condition freshness check ───────────────────────────────────
+// Called once per condition so a stale Kalshi market doesn't block crypto.
 
+async function gate0Check(c: any): Promise<{ ok: boolean; reason?: string }> {
   const now = Date.now();
+  const ticker = String(c.ticker ?? '');
+  const marketType = String(c.market_type ?? '');
 
-  const hasCrypto = (conditions ?? []).some((c: any) => String(c.market_type ?? '') === 'crypto');
-  const hasPrediction = (conditions ?? []).some((c: any) => String(c.market_type ?? '') === 'prediction');
+  // Skip unsupported market types entirely
+  if (marketType === 'equity') {
+    return { ok: false, reason: `Gate 0 blocked: equity market type not supported (${ticker})` };
+  }
 
-  // ── Crypto (Alpaca): bar.t freshness, threshold 5 minutes ────────────────
-  if (hasCrypto) {
+  // ── Crypto: Alpaca bar freshness, threshold 5 min ──────────────────────────
+  if (marketType === 'crypto') {
     try {
-      const url = new URL('https://data.alpaca.markets/v1beta3/crypto/us/bars');
-      url.searchParams.set('symbols', 'BTC/USD');
+      const symbol = ticker.replace('/', '%2F');
+      const url = new URL(`https://data.alpaca.markets/v1beta3/crypto/us/bars`);
+      url.searchParams.set('symbols', ticker);
       url.searchParams.set('timeframe', '1Min');
-      url.searchParams.set('limit', '10');
-      // Request a narrow window so the returned bar.t reflects *recent* market data.
+      url.searchParams.set('limit', '5');
       url.searchParams.set('start', new Date(Date.now() - 10 * 60 * 1000).toISOString());
       url.searchParams.set('end', new Date().toISOString());
 
-      const resp = await fetch(url.toString());
-      const raw = await resp.text();
-      if (!resp.ok) throw new Error(`alpaca bars fetch failed ${resp.status}: ${raw.slice(0, 200)}`);
-      const j = JSON.parse(raw);
-      const arr = (j?.bars?.['BTC/USD'] ?? []) as any[];
-      const b = arr.length ? arr[arr.length - 1] : null;
-      const ts = String(b?.t ?? b?.timestamp ?? '');
+      const resp = await fetch(url.toString(), {
+        headers: {
+          'APCA-API-KEY-ID': process.env.ALPACA_API_KEY!,
+          'APCA-API-SECRET-KEY': process.env.ALPACA_SECRET_KEY!,
+        },
+      });
+      if (!resp.ok) throw new Error(`Alpaca ${resp.status}`);
+      const j = await resp.json();
+      const arr = (j?.bars?.[ticker] ?? []) as any[];
+      const bar = arr.length ? arr[arr.length - 1] : null;
+      const ts = String(bar?.t ?? '');
       const t = ts ? new Date(ts).getTime() : NaN;
-      const ageMin = (now - t) / (1000 * 60);
+      const ageMin = (now - t) / 60000;
 
-      if (!Number.isFinite(ageMin)) {
-        const reason = `Gate 0 blocked: Alpaca bar.t missing/invalid (threshold: 5 min)`;
+      if (!Number.isFinite(ageMin) || ageMin > 5) {
+        const reason = `Gate 0 blocked: ${ticker} bar age=${Number.isFinite(ageMin) ? Math.round(ageMin) + 'min' : 'unknown'} (threshold: 5min)`;
         console.log(`[SCANNER] ${reason}`);
+        await logGateBlock('gate_0', ticker, reason);
         return { ok: false, reason };
       }
 
-      if (ageMin > 5) {
-        const reason = `Gate 0 blocked: Alpaca bar.t=${new Date(t).toISOString()} is ${Math.round(ageMin)} min old (threshold: 5 min)`;
-        console.log(`[SCANNER] ${reason}`);
-        return { ok: false, reason };
-      }
-
-      console.log(`[SCANNER] Gate 0 passed: Alpaca bar.t=${new Date(t).toISOString()} age=${ageMin.toFixed(2)} min (threshold: 5 min)`);
+      console.log(`[SCANNER] Gate 0 passed: ${ticker} bar age=${ageMin.toFixed(1)}min`);
+      return { ok: true };
     } catch (e: any) {
-      const reason = `Gate 0 blocked: Alpaca freshness check failed (${e?.message ?? e})`;
+      const reason = `Gate 0 blocked: ${ticker} Alpaca check failed (${e?.message})`;
       console.log(`[SCANNER] ${reason}`);
+      await logGateBlock('gate_0', ticker, reason);
       return { ok: false, reason };
     }
   }
 
-  // ── Prediction (Kalshi): market.updated_time + volume_24h > 0, threshold 15 minutes ──
-  if (hasPrediction) {
-    // Choose a representative ticker from active conditions (if any)
-    const ticker = String((conditions ?? []).find((c: any) => String(c.market_type ?? '') === 'prediction')?.ticker ?? '');
-
-    if (!ticker) {
-      const reason = `Gate 0 blocked: Kalshi freshness check missing market ticker (threshold: 15 min)`;
-      console.log(`[SCANNER] ${reason}`);
-      return { ok: false, reason };
-    }
-
+  // ── Prediction: Kalshi market freshness ────────────────────────────────────
+  if (marketType === 'prediction') {
     try {
-      // Use the authenticated Kalshi client base URL so demo/prod is consistent.
       const { getMarket } = await import('../../lib/kalshi');
       const m: any = await getMarket(ticker);
 
-      // Demo market payload does not include updated_time/volume_24h reliably.
-      // Use close_time freshness and basic bid/ask existence instead.
       const close = String(m?.close_time ?? '');
       const t = close ? new Date(close).getTime() : NaN;
-      const ageMin = (now - t) / (1000 * 60);
-      const vol = Number(m?.volume ?? 0);
+      const ageMin = (now - t) / 60000;
       const yesBid = Number(m?.yes_bid ?? 0);
       const yesAsk = Number(m?.yes_ask ?? 0);
+      const vol = Number(m?.volume ?? 0);
+      const hasLiquidity = (yesAsk > 0 && yesAsk <= 100) || (yesBid > 0 && yesBid <= 100) || vol > 0;
 
       if (!Number.isFinite(ageMin)) {
-        const reason = `Gate 0 blocked: Kalshi market.close_time missing/invalid (threshold: 24h)`;
-        console.log(`[SCANNER] ${reason}`);
+        const reason = `Gate 0 blocked: ${ticker} close_time missing`;
+        await logGateBlock('gate_0', ticker, reason);
         return { ok: false, reason };
       }
-
-      // Consider the data "fresh" if the market is actively trading (bid/ask present) OR has nonzero volume.
-      const hasLiquidity = (yesAsk > 0 && yesAsk <= 100) || (yesBid > 0 && yesBid <= 100) || vol > 0;
-      if (!hasLiquidity) {
-        const reason = `Gate 0 blocked: Kalshi market has no liquidity signals (yes_bid=${yesBid}, yes_ask=${yesAsk}, volume=${vol})`;
-        console.log(`[SCANNER] ${reason}`);
-        return { ok: false, reason };
-      }
-
-      // close_time in the past is expected for settled markets; block if close is >24h old.
       if (ageMin > 24 * 60) {
-        const reason = `Gate 0 blocked: Kalshi market.close_time=${new Date(t).toISOString()} is ${Math.round(ageMin)} min old (threshold: 1440 min)`;
+        const reason = `Gate 0 blocked: ${ticker} market settled ${Math.round(ageMin / 60)}h ago`;
         console.log(`[SCANNER] ${reason}`);
+        await logGateBlock('gate_0', ticker, reason);
+        // Auto-expire stale prediction conditions
+        await supabaseAdmin.from('watch_conditions').update({ status: 'expired' }).eq('id', c.id);
+        console.log(`[SCANNER] Auto-expired condition ${c.id} (${ticker})`);
+        return { ok: false, reason };
+      }
+      if (!hasLiquidity) {
+        const reason = `Gate 0 blocked: ${ticker} no liquidity (bid=${yesBid} ask=${yesAsk} vol=${vol})`;
+        await logGateBlock('gate_0', ticker, reason);
         return { ok: false, reason };
       }
 
-      console.log(
-        `[SCANNER] Gate 0 passed: Kalshi market.close_time=${new Date(t).toISOString()} age=${ageMin.toFixed(2)} min, yes_bid=${yesBid}, yes_ask=${yesAsk}, volume=${vol}`,
-      );
+      console.log(`[SCANNER] Gate 0 passed: ${ticker} age=${ageMin.toFixed(0)}min bid=${yesBid} ask=${yesAsk}`);
+      return { ok: true };
     } catch (e: any) {
-      const reason = `Gate 0 blocked: Kalshi freshness check failed (${e?.message ?? e})`;
-      console.log(`[SCANNER] ${reason}`);
+      const reason = `Gate 0 blocked: ${ticker} Kalshi check failed (${e?.message})`;
+      await logGateBlock('gate_0', ticker, reason);
       return { ok: false, reason };
     }
   }
 
-  return { ok: true };
+  return { ok: false, reason: `Gate 0 blocked: unknown market_type=${marketType}` };
 }
+
+// ─── Live price fetch for crypto limit orders ────────────────────────────────
+
+async function getLivePrice(ticker: string): Promise<number | null> {
+  try {
+    const url = new URL('https://data.alpaca.markets/v1beta3/crypto/us/latest/quotes');
+    url.searchParams.set('symbols', ticker);
+    const resp = await fetch(url.toString(), {
+      headers: {
+        'APCA-API-KEY-ID': process.env.ALPACA_API_KEY!,
+        'APCA-API-SECRET-KEY': process.env.ALPACA_SECRET_KEY!,
+      },
+    });
+    if (!resp.ok) return null;
+    const j = await resp.json();
+    const q = j?.quotes?.[ticker];
+    // Use midpoint of bid/ask
+    const bid = Number(q?.bp ?? 0);
+    const ask = Number(q?.ap ?? 0);
+    if (bid > 0 && ask > 0) return (bid + ask) / 2;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// ─── Main scanner cycle ──────────────────────────────────────────────────────
 
 export async function runScannerCycle(): Promise<{ conditionsChecked: number; fired: number; tasksCreated: number }> {
   const expired = await expireStaleConditions();
-  if (expired) console.log('[SCANNER] expired conditions:', expired);
+  if (expired) console.log(`[SCANNER] Expired ${expired} stale conditions`);
 
   const conditions = await getActiveWatchConditions();
-
-  // FIX 6: Gate 0 freshness check — blocks before any strategy evaluation attempt.
-  const gate0 = await gate0MarketDataFreshness(conditions as any);
-  if (!gate0.ok) {
-    // Explicitly return before we fetch any metrics or evaluate any conditions.
-    return { conditionsChecked: conditions.length, fired: 0, tasksCreated: 0 };
-  }
+  console.log(`[SCANNER] Checking ${conditions.length} active conditions`);
 
   const volRegime = await getVolRegimeFallback();
+  console.log(`[SCANNER] Vol regime: ${volRegime}`);
 
   let fired = 0;
   let tasksCreated = 0;
 
   for (const c of conditions) {
+    const ticker = String(c.ticker ?? '');
+
+    // Gate 0: per-condition freshness (replaces global check)
+    const g0 = await gate0Check(c);
+    if (!g0.ok) continue;
+
+    // Vol regime gate
+    if (c.vol_regime_gate && c.vol_regime_gate !== volRegime) {
+      console.log(`[SCANNER] ${ticker} skipped — vol_regime_gate=${c.vol_regime_gate} current=${volRegime}`);
+      continue;
+    }
+
+    // Fetch metric and evaluate condition
     const { current, previous } = await fetchMetricValue(c);
     const result = shouldFire(c, current, previous, volRegime);
-
-    console.log(`[SCANNER] ${c.ticker} ${c.metric}=${current} fired=${result.fire} reason=${result.reason}`);
+    console.log(`[SCANNER] ${ticker} metric=${c.metric} current=${current} fired=${result.fire} reason=${result.reason}`);
 
     if (!result.fire) continue;
 
+    // ── size_position ────────────────────────────────────────────────────────
     if (c.action_type === 'size_position') {
-      console.log('[SCANNER] action=size_position branch taken for condition', c.id);
-
-      // NOTE: drawdownPct must be fetched at *fire time* from bot_states.
-      // Do not cache bot_state at cycle start; drawdown needs to reflect current risk posture.
       const { getAccount } = await import('../../lib/alpaca');
-
-      // Cache equity once per scanner cycle.
-      // Simulation safety: cap deployable equity to simulation_capital_alpaca.
       const account = await getAccount();
       const equityRaw = Number(account.equity);
       const { capAlpacaDeployableEquity } = await import('../../lib/simulation_capital');
       const equity = await capAlpacaDeployableEquity(equityRaw);
 
-      // Fetch current state + drawdown for the target execution bot.
-      // Gate 2 requirement: do NOT seed new position sizing tasks while the bot is PAUSED/DIAGNOSTIC.
-      const { data: bs, error: bsErr } = await supabaseAdmin
+      const { data: bs } = await supabaseAdmin
         .from('bot_states')
         .select('current_state,current_drawdown')
         .eq('bot_id', String(c.bot_id))
         .maybeSingle();
-      if (bsErr) throw bsErr;
 
-      const curState = String((bs as any)?.current_state ?? 'exploiting');
+      const curState = String((bs as any)?.current_state ?? 'exploiting').toLowerCase();
       if (curState === 'paused' || curState === 'diagnostic') {
-        console.log(`[SCANNER] Skipping seed for bot_id=${c.bot_id} because current_state=${curState}`);
+        console.log(`[SCANNER] Skipping — bot ${c.bot_id} is ${curState}`);
         continue;
       }
 
       const dd = Number((bs as any)?.current_drawdown ?? 0);
+      if (dd > 0.15) {
+        const reason = `Gate 3 blocked: drawdown=${dd.toFixed(2)} > 0.15`;
+        console.log(`[SCANNER] ${reason}`);
+        await logGateBlock('gate_3', ticker, reason);
+        continue;
+      }
 
-      const BASE_POSITION_FRACTION = 0.02; // TODO: replace with edge.confidence when available
+      const BASE_POSITION_FRACTION = 0.02;
       const baseKellySize = equity * BASE_POSITION_FRACTION;
 
       const { error } = await supabaseAdmin.from('tasks').insert({
         task_type: 'size_position',
         task_input: {
           ...(c.action_params ?? {}),
+          ticker,
+          market_type: c.market_type,
           drawdownPct: dd,
           baseKellySize,
         },
@@ -234,17 +248,33 @@ export async function runScannerCycle(): Promise<{ conditionsChecked: number; fi
         desk: c.market_type === 'crypto' ? 'crypto_markets' : 'prediction_markets',
       });
       if (error) throw error;
+      console.log(`[SCANNER] Created size_position task for ${ticker} baseKelly=$${baseKellySize.toFixed(2)}`);
       tasksCreated++;
-    } else if (c.action_type === 'place_limit_order') {
+    }
+
+    // ── place_limit_order / place_kalshi_order ───────────────────────────────
+    else if (c.action_type === 'place_limit_order') {
       const taskType = c.market_type === 'crypto' ? 'place_limit_order' : 'place_kalshi_order';
       const desk = c.market_type === 'crypto' ? 'crypto_markets' : 'prediction_markets';
+
+      // For crypto: fetch live price if useMarketPrice or limitPrice is null/1
+      let actionParams = { ...(c.action_params ?? {}), ticker, market_type: c.market_type };
+      if (c.market_type === 'crypto') {
+        const livePrice = await getLivePrice(ticker);
+        if (livePrice) {
+          // Use 0.1% below mid as limit price (maker order)
+          actionParams.limitPrice = parseFloat((livePrice * 0.999).toFixed(2));
+          console.log(`[SCANNER] ${ticker} live mid=$${livePrice.toFixed(2)} limit=$${actionParams.limitPrice}`);
+        } else {
+          console.log(`[SCANNER] ${ticker} could not fetch live price — skipping`);
+          continue;
+        }
+      }
 
       const { error } = await supabaseAdmin.from('tasks').insert({
         task_type: taskType,
         task_input: {
-          ...c.action_params,
-          ticker: c.ticker,
-          market_type: c.market_type,
+          ...actionParams,
           triggered_by_condition: c.id,
         },
         status: 'queued',
@@ -254,14 +284,19 @@ export async function runScannerCycle(): Promise<{ conditionsChecked: number; fi
         desk,
       });
       if (error) throw error;
+      console.log(`[SCANNER] Created ${taskType} task for ${ticker}`);
       tasksCreated++;
-    } else {
-      console.log(`[SCANNER ALERT] ${c.ticker} ${c.metric} ${c.operator} ${c.value} — condition ${c.id}`);
+    }
+
+    // ── alert_only ───────────────────────────────────────────────────────────
+    else {
+      console.log(`[SCANNER ALERT] ${ticker} ${c.metric} ${c.operator} ${c.value} — condition ${c.id}`);
     }
 
     await updateAfterTrigger(c.id);
     fired++;
   }
 
+  console.log(`[SCANNER] Cycle complete — checked=${conditions.length} fired=${fired} tasks=${tasksCreated}`);
   return { conditionsChecked: conditions.length, fired, tasksCreated };
 }
