@@ -438,7 +438,7 @@ export default function TradingOffice() {
           {/* Bot list */}
           <div style={{ flex: 1, overflow: 'auto', padding: '8px 10px' }}>
             {BOTS.map(bot => {
-              const st = SS[states[bot.id] || 'exploiting']
+              // state unused
               const isAct = active[bot.id]
               const isSel = selected === bot.id
               return (
@@ -483,7 +483,7 @@ export default function TradingOffice() {
         {/* Scrollable bot chips */}
         <div style={{ display: 'flex', overflowX: 'auto', gap: 8, padding: '10px 16px', scrollbarWidth: 'none' }}>
           {BOTS.map(bot => {
-            const st = SS[states[bot.id] || 'exploiting']
+            // state unused
             const isAct = active[bot.id]
             return (
               <div key={bot.id} style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 20, border: `1px solid ${isAct ? bot.hex + '88' : 'rgba(255,255,255,0.08)'}`, background: isAct ? bot.hex + '18' : 'rgba(255,255,255,0.03)', position: 'relative', overflow: 'hidden', transition: 'all 0.2s' }}>
