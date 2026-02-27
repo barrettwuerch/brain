@@ -279,9 +279,21 @@ export class BrainLoop {
             await updatePositionPrice(pos.id, Number(t.current_price));
           }
 
-          if (evalRes?.action === 'exit' && pos) {
-            const r = String(evalRes.reason ?? 'manual');
-            const exitReason = r === 'profit_target_hit' ? 'profit_target' : r === 'stop_hit' ? 'stop_loss' : 'manual';
+          // Hard stop — always fires, no AI override
+          const t_ctx = (t as any).context ?? {};
+          const hardStop = Number(t_ctx.hard_stop ?? t.stop_level);
+          const dynamicStop = Number(t_ctx.dynamic_stop ?? t.stop_level);
+          const curPx = Number(t.current_price);
+          const isLong = String(pos?.side ?? 'yes') === 'yes';
+          const hardStopHit = pos && isLong && curPx <= hardStop;
+          const targetHit = pos && isLong && curPx >= Number(t.profit_target);
+          const aiExit = evalRes?.action === 'exit' || (actOut as any)?.action_taken?.action === 'exit';
+          const dynamicStopHit = pos && isLong && curPx <= dynamicStop;
+          const shouldExit = hardStopHit || targetHit || dynamicStopHit || aiExit;
+
+          if (shouldExit && pos) {
+            const r = hardStopHit ? 'stop_hit' : targetHit ? 'profit_target_hit' : dynamicStopHit ? 'trailing_stop_hit' : String(evalRes?.reason ?? 'ai_discretion');
+            const exitReason = r === 'profit_target_hit' ? 'profit_target' : (r === 'stop_hit' || r === 'trailing_stop_hit') ? 'stop_loss' : 'manual';
             await closePosition(pos.id, Number(t.current_price), exitReason as any, storeOut.episode_id);
 
             // Place the actual closing order on Alpaca

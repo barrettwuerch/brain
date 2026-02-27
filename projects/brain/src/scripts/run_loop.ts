@@ -43,8 +43,55 @@ async function main() {
           const p = pos as any;
           let currentPrice = Number(p.entry_price);
           try { const ticker = String(p.market_ticker).replace(/USD$/, "/USD"); const q = await getLatestQuote(ticker); currentPrice = (q.bid + q.ask) / 2; } catch (e: any) { console.warn(`[LOOP] Quote failed for ${p.market_ticker}:`, e?.message); }
-          await supabaseAdmin.from('tasks').insert({ task_type: 'manage_crypto_position', agent_role: 'execution', bot_id: 'crypto-execution-bot-1', desk: 'crypto_markets', status: 'queued', task_input: { symbol: p.symbol ?? p.market_ticker, market_ticker: p.symbol ?? p.market_ticker, market_type: 'crypto', current_price: currentPrice, max_hold_days: 7, order: { market_ticker: p.symbol ?? p.market_ticker, fill_price: Number(p.entry_price), side: String(p.side ?? 'buy') }, stop_level: Number(p.stop_level), profit_target: Number(p.profit_target), position_id: p.id } } as any);
-          console.log(`[LOOP] Position check queued: ${p.market_ticker} cur=${currentPrice.toFixed(2)}`);
+          const entryPrice = Number(p.entry_price);
+          const peakPrice = Number(p.peak_price ?? entryPrice);
+          const unrealizedPct = ((currentPrice - entryPrice) / entryPrice) * 100;
+          const daysHeld = (Date.now() - new Date(p.created_at).getTime()) / (1000 * 60 * 60 * 24);
+          const pctFromPeak = ((currentPrice - peakPrice) / peakPrice) * 100;
+          const distToStop = ((currentPrice - Number(p.stop_level)) / currentPrice) * 100;
+          const distToTarget = ((Number(p.profit_target) - currentPrice) / currentPrice) * 100;
+
+          // Trailing stop: ratchet up as position gains
+          let dynamicStop = Number(p.stop_level);
+          if (unrealizedPct > 8) dynamicStop = Math.max(dynamicStop, entryPrice * 1.04);
+          else if (unrealizedPct > 5) dynamicStop = Math.max(dynamicStop, entryPrice * 1.001);
+
+          const exitHint = unrealizedPct < -3 ? 'approaching_stop'
+            : unrealizedPct > 7 ? 'near_target'
+            : pctFromPeak < -3 ? 'pulling_back_from_peak'
+            : 'within_bands';
+
+          await supabaseAdmin.from('tasks').insert({
+            task_type: 'manage_crypto_position',
+            agent_role: 'execution',
+            bot_id: 'crypto-execution-bot-1',
+            desk: 'crypto_markets',
+            status: 'queued',
+            task_input: {
+              symbol: p.symbol ?? p.market_ticker,
+              market_ticker: p.symbol ?? p.market_ticker,
+              market_type: 'crypto',
+              current_price: currentPrice,
+              max_hold_days: 7,
+              order: { market_ticker: p.symbol ?? p.market_ticker, fill_price: entryPrice, side: String(p.side ?? 'buy') },
+              stop_level: dynamicStop,
+              profit_target: Number(p.profit_target),
+              position_id: p.id,
+              context: {
+                days_held: parseFloat(daysHeld.toFixed(2)),
+                unrealized_pct: parseFloat(unrealizedPct.toFixed(2)),
+                peak_price: peakPrice,
+                pct_from_peak: parseFloat(pctFromPeak.toFixed(2)),
+                dist_to_stop_pct: parseFloat(distToStop.toFixed(2)),
+                dist_to_target_pct: parseFloat(distToTarget.toFixed(2)),
+                trailing_stop_updated: dynamicStop > Number(p.stop_level),
+                hard_stop: Number(p.stop_level),
+                dynamic_stop: dynamicStop,
+                exit_hint: exitHint,
+              },
+            },
+          } as any);
+          console.log(`[LOOP] Position check queued: ${p.market_ticker} cur=${currentPrice.toFixed(2)} unrealized=${unrealizedPct.toFixed(2)}% hint=${exitHint}`);
         }
       } catch (e: any) { console.error('[LOOP] Position manager error:', e?.message); }
     }
