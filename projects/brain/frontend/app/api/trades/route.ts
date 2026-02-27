@@ -20,6 +20,7 @@ async function fetchJson(url: string) {
   if (!res.ok) throw new Error(`Alpaca ${res.status}: ${JSON.stringify(j)}`)
   return j
 }
+function stripSlash(s: string) { return s.replace('/', '') }
 function normalizeSide(s: string) {
   if (s === 'yes') return 'buy'
   if (s === 'no') return 'sell'
@@ -76,14 +77,14 @@ export async function GET() {
         const desk = String(p.desk ?? 'prediction')
 
         // Skip crypto positions that are already represented by Alpaca orders
-        if (desk === 'crypto_markets' && alpacaSymbols.has(ticker)) continue
+        if (desk === 'crypto_markets' && alpacaSymbols.has(stripSlash(ticker))) continue
 
         trades.push({
           id: p.id,
           desk: desk === 'crypto_markets' ? 'crypto' : 'prediction',
           symbol: ticker,
           side: normalizeSide(String(p.side ?? 'buy')),
-          qty: p.remaining_size ?? 1,
+          qty: (() => { const raw = Number(p.remaining_size ?? p.size ?? 1); return (desk === 'crypto_markets' && raw > 1000) ? raw / 1e8 : raw; })(),
           entry_price: p.entry_price ?? null,
           exit_price: p.exit_price ?? null,
           pnl: p.realized_pnl ?? null,
