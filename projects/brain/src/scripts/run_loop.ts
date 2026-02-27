@@ -29,11 +29,26 @@ async function main() {
   let lastHeartbeatAt = 0;
   let lastScannerAt = 0
   let lastPositionCheckAt = 0;
+  let lastStuckTaskCheckAt = 0;
 
   console.log('[LOOP] Starting Brain loop with scanner integration');
 
   while (true) {
     const now = Date.now();
+    // ── Stuck task watchdog: every 5 min ──────────────────────────────────────
+    if (now - lastStuckTaskCheckAt > 5 * 60 * 1000) {
+      lastStuckTaskCheckAt = now;
+      try {
+        const stuckCutoff = new Date(now - 5 * 60 * 1000).toISOString();
+        const { data: stuck } = await supabaseAdmin.from('tasks').select('id,task_type').eq('status', 'running').lt('updated_at', stuckCutoff);
+        if (stuck && stuck.length > 0) {
+          const ids = stuck.map((t: any) => t.id);
+          await supabaseAdmin.from('tasks').update({ status: 'queued' }).in('id', ids);
+          console.log(`[WATCHDOG] Reset ${stuck.length} stuck tasks:`, stuck.map((t: any) => t.task_type).join(', '));
+        }
+      } catch (e: any) { console.error('[WATCHDOG] Error:', e?.message); }
+    }
+
     // ── Position manager: every 30 min ────────────────────────────────────────
     if (now - lastPositionCheckAt > 10 * 60 * 1000) {
       lastPositionCheckAt = now;
