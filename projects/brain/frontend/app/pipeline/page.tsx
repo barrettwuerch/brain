@@ -13,7 +13,6 @@ const GREEN = '#00c896'
 const RED = '#ff3c6e'
 const YELLOW = '#f5a623'
 const BLUE = '#60a5fa'
-const PURPLE = '#a78bfa'
 const DIM = '#6b7280'
 const TEXT = '#f0f0f0'
 const SUBTEXT = '#9ca3af'
@@ -36,7 +35,7 @@ function fmtTime(iso: string) {
 }
 
 export default function PipelinePage() {
-  const { data, error, loading } = usePipeline()
+  const { data, error } = usePipeline()
   const [gateStats, setGateStats] = useState<any>(null)
 
   useEffect(() => {
