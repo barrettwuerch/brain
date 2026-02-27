@@ -32,35 +32,7 @@ export async function GET() {
     const trades: any[] = []
     const alpacaSymbols = new Set<string>()
 
-    // Alpaca filled orders — source of truth for crypto
-    try {
-      const url = new URL(baseUrl() + '/v2/orders')
-      url.searchParams.set('status', 'closed')
-      url.searchParams.set('limit', '50')
-      url.searchParams.set('direction', 'desc')
-      const orders = (await fetchJson(url.toString())) as any[]
-      for (const o of orders ?? []) {
-        if (String(o.status) !== 'filled') continue
-        const sym = String(o.symbol)
-        alpacaSymbols.add(sym)
-        trades.push({
-          id: o.id,
-          desk: 'crypto',
-          symbol: sym,
-          side: normalizeSide(String(o.side)),
-          qty: Number(o.filled_qty ?? o.qty ?? 0),
-          entry_price: o.filled_avg_price != null ? Number(o.filled_avg_price) : null,
-          exit_price: null,
-          pnl: null,
-          status: 'open',
-          opened_at: o.submitted_at,
-          closed_at: o.filled_at ?? o.updated_at ?? null,
-          source: 'alpaca',
-        })
-      }
-    } catch (e: any) {
-      console.error('Alpaca error:', e?.message)
-    }
+    // Alpaca used only for symbol dedup tracking — positions come from Supabase
 
     // Supabase positions — only non-crypto or crypto not already in Alpaca
     try {
@@ -75,9 +47,6 @@ export async function GET() {
         const p = pos as any
         const ticker = String(p.market_ticker ?? p.symbol ?? '—')
         const desk = String(p.desk ?? 'prediction')
-
-        // Skip crypto positions that are already represented by Alpaca orders
-        if (desk === 'crypto_markets' && alpacaSymbols.has(stripSlash(ticker))) continue
 
         trades.push({
           id: p.id,
