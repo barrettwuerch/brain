@@ -37,7 +37,7 @@ export async function GET() {
           desk: desk === 'crypto_markets' ? 'crypto' : 'prediction',
           symbol: ticker,
           side: normalizeSide(String(p.side ?? 'buy')),
-          qty: (() => { const raw = Number(p.remaining_size ?? p.size ?? 1); return (desk === 'crypto_markets' && raw > 1000) ? raw / 1e8 : raw; })(),
+          qty: (() => { const raw = Number(p.closed_at ? (p.size ?? p.remaining_size ?? 1) : (p.remaining_size ?? p.size ?? 1)); return (desk === 'crypto_markets' && raw > 1000) ? raw / 1e8 : raw; })(),
           entry_price: p.entry_price ?? null,
           exit_price: p.exit_price ?? null,
           pnl: p.realized_pnl ?? null,
