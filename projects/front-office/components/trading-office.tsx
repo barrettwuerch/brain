@@ -622,30 +622,25 @@ export default function TradingOffice() {
 
   return (
     <div
+      className="min-h-screen flex flex-col"
       style={{
         background: P.bg,
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
         fontFamily: "'Courier New', monospace",
         color: '#e2e8f0',
-        overflow: 'hidden',
+        overflowX: 'hidden',
       }}
     >
       {/* Top Bar */}
       <div
+        className="px-4 py-2 border-b border-zinc-800/60"
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '7px 16px',
-          borderBottom: '1px solid rgba(60,100,200,0.2)',
           background: 'rgba(0,0,0,0.5)',
           fontSize: 10,
           letterSpacing: 2,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ color: '#3b82f6', fontSize: 14 }}>⬡</span>
           <span style={{ color: '#7c9ccc', textTransform: 'uppercase' }}>The Brain — Trading Floor</span>
         </div>
@@ -758,7 +753,7 @@ export default function TradingOffice() {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="flex items-center gap-2 sm:gap-3">
           <div
             style={{
               display: 'flex',
@@ -787,12 +782,13 @@ export default function TradingOffice() {
           </div>
           <span style={{ color: '#334155', fontSize: 9 }}>{time}</span>
         </div>
+        </div>
       </div>
 
       {/* Main */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* Canvas */}
-        <div style={{ position: 'relative', flex: 1 }}>
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
+        {/* Canvas — desktop only */}
+        <div className="hidden md:block relative flex-1">
           <canvas
             ref={cvs}
             width={CW}
@@ -855,15 +851,38 @@ export default function TradingOffice() {
           })}
         </div>
 
-        {/* Right Panel */}
+        {/* Mobile bot grid — shown instead of canvas on small screens */}
+        <div className="md:hidden p-4 grid grid-cols-2 gap-3">
+          {(BOTS as any[]).map((bot) => {
+            const st = SS[states[bot.id] || 'exploiting']
+            const isAct = active[bot.id]
+            return (
+              <div
+                key={bot.id}
+                className="rounded-lg p-3 border"
+                style={{ borderColor: st.bd + '55', background: st.bg }}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-lg">{bot.e}</span>
+                  <span className="text-xs font-bold text-white truncate">{bot.label}</span>
+                  {isAct ? (
+                    <span
+                      className="w-2 h-2 rounded-full ml-auto flex-shrink-0 animate-pulse"
+                      style={{ background: bot.hex }}
+                    />
+                  ) : null}
+                </div>
+                <div className="text-xs font-bold" style={{ color: st.fg }}>
+                  {st.lb}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Right Panel — full width on mobile, sidebar on desktop */}
         <div
-          style={{
-            width: 210,
-            borderLeft: '1px solid rgba(60,100,200,0.15)',
-            display: 'flex',
-            flexDirection: 'column',
-            flexShrink: 0,
-          }}
+          className="w-full md:w-[210px] border-t md:border-t-0 md:border-l border-zinc-800/60 flex flex-col flex-shrink-0"
         >
           {/* Bot Status */}
           <div

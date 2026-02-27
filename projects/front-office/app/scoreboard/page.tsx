@@ -51,7 +51,7 @@ export default function ScoreboardPage() {
     <div>
       <h1 className="text-xl font-semibold">Scoreboard</h1>
 
-      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatBlock label="Total Capital" value={formatMoney(equity)} />
         <StatBlock label="Buying Power" value={formatMoney(Number(prices?.buying_power ?? 0))} />
         <StatBlock label="Open Positions" value={String(positions.length)} />
@@ -59,13 +59,15 @@ export default function ScoreboardPage() {
       </div>
 
       <div className="mt-6">
-        <PortfolioChart data={chart} />
+        <div className="h-48 md:h-64 w-full">
+          <PortfolioChart data={chart} />
+        </div>
       </div>
 
       <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-900/40 p-4">
         <div className="text-sm font-medium">Recent strategy outcomes</div>
-        <div className="mt-3 overflow-auto">
-          <table className="min-w-full text-sm">
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full min-w-[520px] text-sm">
             <thead className="text-zinc-400">
               <tr>
                 <th className="text-left p-2">Date</th>

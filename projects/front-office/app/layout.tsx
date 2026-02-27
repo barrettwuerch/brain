@@ -15,9 +15,15 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Front Office",
-  description: "Brain front office dashboard",
+  title: "BRAIN",
+  description: "Trading Intelligence Dashboard",
 };
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+}
 
 export default function RootLayout({
   children,

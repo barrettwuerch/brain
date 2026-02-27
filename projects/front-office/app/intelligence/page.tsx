@@ -20,7 +20,7 @@ export default function IntelligencePage() {
       {error ? <div className="mt-4 rounded border border-rose-800 bg-rose-950/40 p-3 text-sm">{error}</div> : null}
       {loading && !rows ? <div className="mt-4 text-sm text-zinc-400">Loading…</div> : null}
 
-      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="mt-6 space-y-3">
         {Array.from(latest.values()).slice(0, 20).map((r) => (
           <ISScoreBar key={r.id} row={r} />
         ))}
