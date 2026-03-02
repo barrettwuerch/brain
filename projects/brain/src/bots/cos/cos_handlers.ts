@@ -591,3 +591,148 @@ function formatDateRange(start: string, end: string): string {
   }
   return `${months[s.getMonth()]} ${s.getDate()} – ${months[e.getMonth()]} ${e.getDate()}`;
 }
+
+// ── cos_system_review ────────────────────────────────────────────────────────
+export async function handleCosSystemReview(task: any, db: any): Promise<any> {
+  const now = new Date().toISOString();
+  const actions: any[] = [];
+  const recommendations: any[] = [];
+
+  // 1. Load approved findings
+  const { data: findings } = await db
+    .from('research_findings')
+    .select('id,rqs_score,status,edge_type,notes,failure_conditions,brier_score,brier_n')
+    .eq('status', 'approved_for_forward_test');
+
+  // 2. Load open positions with finding_id
+  const { data: positions } = await db
+    .from('positions')
+    .select('id,market_ticker,finding_id,entry_price,stop_level,profit_target,created_at,desk')
+    .is('closed_at', null);
+
+  // 3. Load bot states
+  const { data: botStates } = await db
+    .from('bot_states')
+    .select('bot_id,current_state,current_drawdown,agent_role');
+
+  // 4. Load current vol regime
+  const { data: regimeRow } = await db
+    .from('operational_state')
+    .select('value')
+    .eq('domain', 'market')
+    .eq('key', 'vol_regime')
+    .maybeSingle();
+  const volRegime = String((regimeRow as any)?.value?.regime ?? 'normal').toLowerCase();
+
+  // 5. Auto-register watch conditions from approved findings
+  for (const finding of findings ?? []) {
+    const { data: existingConditions } = await db
+      .from('watch_conditions')
+      .select('id')
+      .eq('strategy_id', `finding_${finding.id}`)
+      .in('status', ['active', 'max_reached']);
+
+    if (!existingConditions || existingConditions.length === 0) {
+      // Register a volume anomaly watch condition for this finding
+      const desk = finding.edge_type === 'liquidity' ? 'crypto_markets' : 'prediction_markets';
+      const tickers = desk === 'crypto_markets' ? ['BTC/USD', 'ETH/USD', 'SOL/USD'] : [];
+
+      for (const ticker of tickers) {
+        await db.from('watch_conditions').insert({
+          strategy_id: `finding_${finding.id}`,
+          bot_id: 'risk-bot-1',
+          market_type: desk === 'crypto_markets' ? 'crypto' : 'prediction',
+          ticker,
+          condition_type: 'threshold',
+          metric: 'volume_ratio',
+          operator: '>',
+          value: 1.5,
+          timeframe: '1h',
+          action_type: 'size_position',
+          action_params: {
+            side: 'buy',
+            symbol: ticker,
+            market_type: 'crypto',
+            finding_id: finding.id,
+          },
+          max_triggers_per_day: 2,
+          cooldown_minutes: 120,
+          status: 'active',
+          registered_by: 'cos_system_review',
+          version: 1,
+        });
+        actions.push({ type: 'auto', action: 'registered_watch_condition', ticker, finding_id: finding.id });
+        console.log(`[COS] Registered watch condition for ${ticker} from finding ${finding.id.slice(0,8)}`);
+      }
+    }
+  }
+
+  // 6. Check positions missing finding_id
+  const orphanPositions = (positions ?? []).filter((p: any) => !p.finding_id);
+  if (orphanPositions.length > 0) {
+    recommendations.push({
+      action_type: 'flag_orphan_positions',
+      payload: { position_ids: orphanPositions.map((p: any) => p.id), count: orphanPositions.length },
+    });
+  }
+
+  // 7. Check bots in unexpected states
+  for (const bot of botStates ?? []) {
+    const state = String((bot as any).current_state ?? '').toLowerCase();
+    if (state === 'paused' || state === 'diagnostic') {
+      recommendations.push({
+        action_type: 'flag_bot_for_review',
+        payload: { bot_id: bot.bot_id, current_state: state, drawdown: bot.current_drawdown },
+      });
+    }
+  }
+
+  // 8. Pause watch conditions incompatible with current regime
+  const { data: activeConditions } = await db
+    .from('watch_conditions')
+    .select('id,ticker,strategy_id')
+    .eq('status', 'active');
+
+  for (const cond of activeConditions ?? []) {
+    const strategyId = String((cond as any).strategy_id ?? '');
+    if (strategyId.startsWith('finding_')) {
+      const findingId = strategyId.replace('finding_', '');
+      const finding = (findings ?? []).find((f: any) => f.id === findingId);
+      if (finding) {
+        const notes = String((finding as any).notes ?? '').toLowerCase();
+        const shouldPause =
+          (volRegime === 'elevated' && notes.includes('low vol only')) ||
+          (volRegime === 'extreme' && (notes.includes('low vol only') || notes.includes('normal vol only')));
+        if (shouldPause) {
+          await db.from('watch_conditions').update({ status: 'paused' }).eq('id', cond.id);
+          actions.push({ type: 'auto', action: 'paused_condition', id: cond.id, reason: `regime=${volRegime}` });
+          console.log(`[COS] Auto-paused condition ${cond.id} (regime=${volRegime})`);
+        }
+      }
+    }
+  }
+
+  // 9. Write high-risk recommendations to cos_recommendations table
+  for (const rec of recommendations) {
+    await db.from('cos_recommendations').insert({
+      action_type: rec.action_type,
+      payload: rec.payload,
+      status: 'pending',
+    });
+  }
+
+  console.log(`[COS] System review complete — auto_actions=${actions.length} recommendations=${recommendations.length}`);
+
+  return {
+    observation: {
+      ok: true,
+      vol_regime: volRegime,
+      approved_findings: (findings ?? []).length,
+      open_positions: (positions ?? []).length,
+      auto_actions: actions,
+      queued_recommendations: recommendations.length,
+      timestamp: now,
+    },
+    outcome_score: 1,
+  };
+}

@@ -28,6 +28,7 @@ import {
   handleGenerateDecisionPacket,
   handleReviewRegimeStrategyAlignment,
   handleEvaluateBottlenecks,
+  handleCosSystemReview,
 } from '../bots/cos/cos_handlers';
 import {
   computeDrawdownVelocity,
@@ -1476,6 +1477,8 @@ export class BrainLoop {
             return await handleGenerateWeeklyMemo(args.task, db);
           case 'detect_systematic_blind_spots':
             return await handleDetectSystematicBlindSpots(args.task, db);
+          case 'cos_system_review':
+            return await handleCosSystemReview(args.task, db);
           case 'generate_decision_packet':
             return await handleGenerateDecisionPacket(args.task, db);
           case 'review_regime_strategy_alignment':

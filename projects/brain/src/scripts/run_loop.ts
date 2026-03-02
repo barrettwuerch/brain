@@ -31,6 +31,7 @@ async function main() {
   let lastPositionCheckAt = 0;
   let lastStuckTaskCheckAt = 0;
   let lastCapitalSyncAt = 0;
+  let lastCosReviewAt = 0;
 
   console.log('[LOOP] Starting Brain loop with scanner integration');
 
@@ -92,6 +93,7 @@ async function main() {
               order: { market_ticker: p.symbol ?? p.market_ticker, fill_price: entryPrice, side: String(p.side ?? 'buy') },
               stop_level: dynamicStop,
               profit_target: Number(p.profit_target),
+              finding_id: p.finding_id ?? null,
               position_id: p.id,
               context: {
                 days_held: parseFloat(daysHeld.toFixed(2)),
@@ -154,7 +156,24 @@ async function main() {
       }
     }
 
-    // ── Capital sync: every 15 min ────────────────────────────────────────
+    // -- CoS system review: every 4 hours
+    if (now - lastCosReviewAt > 4 * 60 * 60 * 1000) {
+      lastCosReviewAt = now;
+      try {
+        await supabaseAdmin.from('tasks').insert({
+          task_type: 'cos_system_review',
+          agent_role: 'chief_of_staff',
+          bot_id: 'cos-bot-1',
+          desk: 'all_desks',
+          status: 'queued',
+          task_input: { source: 'scheduler', triggered_at: new Date().toISOString() },
+          tags: ['cos', 'scheduled'],
+        } as any);
+        console.log('[COS] Queued cos_system_review');
+      } catch (e: any) { console.error('[COS] Failed to queue review:', e?.message); }
+    }
+
+        // ── Capital sync: every 15 min ────────────────────────────────────────
     if (now - lastCapitalSyncAt > 15 * 60 * 1000) {
       lastCapitalSyncAt = now;
       try {
