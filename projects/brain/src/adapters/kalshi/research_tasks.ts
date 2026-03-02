@@ -168,7 +168,8 @@ if (process.argv[1]?.endsWith('research_tasks.ts')) {
 // Brier score tracking will measure calibration drift empirically over time.
 
 async function fetchBtcLivePrice(): Promise<{ price: number; realized_vol: number }> {
-  const url = 'https://data.alpaca.markets/v1beta3/crypto/us/bars?symbols=BTC%2FUSD&timeframe=4H&limit=30';
+  // Use 1H bars with limit=72 (3 days) for reliable vol estimate
+  const url = 'https://data.alpaca.markets/v1beta3/crypto/us/bars?symbols=BTC%2FUSD&timeframe=1H&limit=72';
   const resp = await fetch(url, {
     headers: {
       'APCA-API-KEY-ID': process.env.ALPACA_API_KEY ?? '',
@@ -178,7 +179,7 @@ async function fetchBtcLivePrice(): Promise<{ price: number; realized_vol: numbe
   if (!resp.ok) throw new Error(`Alpaca bars fetch failed ${resp.status}`);
   const j = await resp.json() as any;
   const bars = j?.bars?.['BTC/USD'] ?? [];
-  if (bars.length < 2) throw new Error('Not enough BTC bars for vol estimate');
+  if (bars.length < 5) throw new Error(`Not enough BTC bars for vol estimate (got ${bars.length})`);
 
   const closes = bars.map((b: any) => Number(b.c));
   const latest = closes[closes.length - 1];
@@ -189,9 +190,10 @@ async function fetchBtcLivePrice(): Promise<{ price: number; realized_vol: numbe
     logReturns.push(Math.log(closes[i] / closes[i - 1]));
   }
   const mean = logReturns.reduce((a, b) => a + b, 0) / logReturns.length;
-  const variance = logReturns.reduce((s, r) => s + (r - mean) ** 2, 0) / logReturns.length;
-  // 4h bars → annualize: sqrt(365 * 6) = sqrt(2190)
-  const realizedVol = Math.sqrt(variance * 2190);
+  const variance = logReturns.reduce((s, r) => s + (r - mean) ** 2, 0) / (logReturns.length - 1); // sample variance
+  // 1h bars → annualize: sqrt(365 * 24) = sqrt(8760)
+  const realizedVol = Math.sqrt(variance * 8760);
+  console.log(`[MC] BTC bars=${bars.length} latest=$${latest.toFixed(0)} vol=${(realizedVol*100).toFixed(1)}%`);
 
   return { price: latest, realized_vol: parseFloat(realizedVol.toFixed(4)) };
 }
