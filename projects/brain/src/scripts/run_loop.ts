@@ -222,12 +222,26 @@ async function main() {
         const startingEquity = 100000; // Alpaca paper starting equity
         const startingCap = 40000;     // Our sim cap at launch
         const newCap = Math.round((currentEquity / startingEquity) * startingCap);
+        const kalshiCapRow = await supabaseAdmin
+          .from('operational_state')
+          .select('value')
+          .eq('domain', 'simulation')
+          .eq('key', 'simulation_capital_kalshi')
+          .maybeSingle();
+        const kalshiCap = Number((kalshiCapRow.data as any)?.value?.amount ?? 10000);
+        const totalCap = newCap + kalshiCap;
+
         await supabaseAdmin
           .from('operational_state')
           .update({ value: { amount: newCap } })
           .eq('domain', 'simulation')
           .eq('key', 'simulation_capital_alpaca');
-        console.log(`[CAPITAL] Synced sim cap: $${newCap} (equity=$${currentEquity.toFixed(2)})`);
+        await supabaseAdmin
+          .from('operational_state')
+          .update({ value: { amount: totalCap } })
+          .eq('domain', 'simulation')
+          .eq('key', 'simulation_capital_total');
+        console.log(`[CAPITAL] Synced sim cap: alpaca=$${newCap} kalshi=$${kalshiCap} total=$${totalCap} (equity=$${currentEquity.toFixed(2)})`);
       } catch (e: any) { console.error('[CAPITAL] Sync error:', e?.message); }
     }
 
