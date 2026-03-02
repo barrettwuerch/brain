@@ -225,7 +225,7 @@ function modelPrice(S0: number, K: number, sigma: number, T: number, mu: number 
 
 export async function seedBtcMispricingScan(): Promise<void> {
   const TRANSACTION_COST = 0.02;
-  const DISCREPANCY_THRESHOLD = 0.06;
+  const DISCREPANCY_THRESHOLD = 0.04; // lowered from 0.06 to generate more candidates for research bot
 
   let btcData: { price: number; realized_vol: number };
   try {
