@@ -121,8 +121,9 @@ async function main() {
               },
             },
           } as any);
-          // Fetch real qty from Alpaca and update DB
-          let realQty: number | null = null;
+          // Fetch unrealized P&L directly from Alpaca
+          let alpacaUnrealized: number | null = null;
+          let alpacaCurrentPrice: number | null = null;
           try {
             const alpacaSymbol = String(p.market_ticker).replace('/', '');
             const posRes = await fetch(`https://paper-api.alpaca.markets/v2/positions/${alpacaSymbol}`, {
@@ -130,14 +131,14 @@ async function main() {
             });
             if (posRes.ok) {
               const ap = await posRes.json() as any;
-              realQty = Math.abs(parseFloat(ap.qty));
+              alpacaUnrealized = parseFloat(ap.unrealized_pl);
+              alpacaCurrentPrice = parseFloat(ap.current_price);
             }
           } catch {}
-          const newUnrealized = realQty !== null ? (currentPrice - entryPrice) * realQty : null;
           await supabaseAdmin.from('positions').update({
-            current_price: currentPrice,
-            ...(newUnrealized !== null ? { unrealized_pnl: parseFloat(newUnrealized.toFixed(2)) } : {}),
-            peak_price: Math.max(peakPrice, currentPrice),
+            current_price: alpacaCurrentPrice ?? currentPrice,
+            ...(alpacaUnrealized !== null && Number.isFinite(alpacaUnrealized) ? { unrealized_pnl: parseFloat(alpacaUnrealized.toFixed(2)) } : {}),
+            peak_price: Math.max(peakPrice, alpacaCurrentPrice ?? currentPrice),
           }).eq('id', p.id);
           console.log(`[LOOP] Position check queued: ${p.market_ticker} cur=${currentPrice.toFixed(2)} unrealized=${unrealizedPct.toFixed(2)}% hint=${exitHint}`);
         }
