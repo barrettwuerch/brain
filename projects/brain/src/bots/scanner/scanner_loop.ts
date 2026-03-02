@@ -248,8 +248,36 @@ export async function runScannerCycle(): Promise<{ conditionsChecked: number; fi
         continue;
       }
 
+      // ── Quality gate: find approved finding with RQS >= 0.55 + regime match ──
+      const RQS_MIN = 0.55;
+      const volRegime = (c.action_params as any)?.vol_regime ?? 'normal';
+      const { data: qualifyingFindings } = await supabaseAdmin
+        .from('research_findings')
+        .select('id,rqs_score,rqs_components,notes')
+        .eq('status', 'approved_for_forward_test')
+        .gte('rqs_score', RQS_MIN)
+        .order('rqs_score', { ascending: false })
+        .limit(5);
+
+      // Regime filter: skip findings whose regime_notes explicitly exclude current regime
+      const finding = (qualifyingFindings ?? []).find((f: any) => {
+        const notes = String(f.notes ?? '').toLowerCase();
+        if (volRegime === 'elevated' && notes.includes('low vol only')) return false;
+        if (volRegime === 'extreme' && (notes.includes('low vol only') || notes.includes('normal vol only'))) return false;
+        return true;
+      }) ?? null;
+
+      if (!finding) {
+        console.log(`[SCANNER] ${ticker} skipped — no qualifying finding (RQS >= ${RQS_MIN}, regime=${volRegime})`);
+        continue;
+      }
+      console.log(`[SCANNER] ${ticker} using finding ${finding.id} rqs=${finding.rqs_score}`);
+
+      // ── RQS-scaled Kelly (corrected formula) ──────────────────────────────
       const BASE_POSITION_FRACTION = 0.02;
-      const baseKellySize = equity * BASE_POSITION_FRACTION;
+      const rqsModifier = Math.min(1.0, Math.max(0.25, (finding.rqs_score - 0.45) / 0.35));
+      const baseKellySize = equity * BASE_POSITION_FRACTION * rqsModifier;
+      console.log(`[SCANNER] rqs_modifier=${rqsModifier.toFixed(2)} → kellySize=$${baseKellySize.toFixed(2)}`);
 
       const livePrice = c.market_type === 'crypto' ? await getLivePrice(ticker) : null;
       const stopLevel = livePrice ? parseFloat((livePrice * 0.97).toFixed(4)) : null;
@@ -267,6 +295,8 @@ export async function runScannerCycle(): Promise<{ conditionsChecked: number; fi
           market_type: c.market_type,
           drawdownPct: dd,
           baseKellySize,
+          finding_id: finding.id,
+          rqs_modifier: rqsModifier,
           continuation: {
             task_type: 'place_limit_order',
             agent_role: 'execution',
@@ -281,6 +311,7 @@ export async function runScannerCycle(): Promise<{ conditionsChecked: number; fi
               useMarketPrice: true,
               stop_level: stopLevel,
               profit_target: profitTarget,
+              finding_id: finding.id,
             },
           },
         },

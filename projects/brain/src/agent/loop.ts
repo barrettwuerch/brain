@@ -303,6 +303,33 @@ export class BrainLoop {
             } catch {}
             await closePosition(pos.id, Number(t.current_price), exitReason as any, storeOut.episode_id, alpacaQtyForPnl);
 
+            // ── Brier score update ───────────────────────────────────────────
+            const posFindingIdForBrier = (pos as any)?.finding_id ?? null;
+            if (posFindingIdForBrier) {
+              try {
+                const { data: bf } = await supabaseAdmin
+                  .from('research_findings')
+                  .select('id,rqs_score,brier_score,brier_n')
+                  .eq('id', posFindingIdForBrier)
+                  .maybeSingle();
+                if (bf) {
+                  const outcome = exitReason === 'profit_target' ? 1 : 0;
+                  const rqsNorm = Math.min(1, Math.max(0, (Number((bf as any).rqs_score ?? 0.5) - 0.45) / 0.35));
+                  const oldBrier = Number((bf as any).brier_score ?? 0.25);
+                  const oldN = Number((bf as any).brier_n ?? 0);
+                  const newN = oldN + 1;
+                  const newBrier = (oldBrier * oldN + Math.pow(outcome - rqsNorm, 2)) / newN;
+                  await supabaseAdmin
+                    .from('research_findings')
+                    .update({ brier_score: newBrier, brier_n: newN })
+                    .eq('id', posFindingIdForBrier);
+                  console.log(`[BRIER] finding=${posFindingIdForBrier.slice(0,8)} outcome=${outcome} brier=${newBrier.toFixed(3)} n=${newN}`);
+                }
+              } catch (e: any) {
+                console.warn('[BRIER] Failed to update brier score:', e?.message);
+              }
+            }
+
             // Place the actual closing order on Alpaca
             try {
               const closeSide = String(pos.side) === 'yes' ? 'sell' : 'buy';
@@ -1308,8 +1335,10 @@ export class BrainLoop {
             slippage_assumed: 0,
             status: 'open',
             closed_at: null,
+            finding_id: tInput.finding_id ?? null,
           } as any);
-          console.log(`[EXECUTION] Position opened: ${symbol} entry=${limitPrice} stop=${stopLevel.toFixed(2)} target=${profitTarget.toFixed(2)}`);
+          const findingTag = tInput.finding_id ? ` finding=${tInput.finding_id.slice(0,8)}` : '';
+          console.log(`[EXECUTION] Position opened: ${symbol} entry=${limitPrice} stop=${stopLevel.toFixed(2)} target=${profitTarget.toFixed(2)}${findingTag}`);
         } catch (e: any) {
           console.error('[EXECUTION] Failed to write position row:', e?.message, JSON.stringify(e));
         }
@@ -1374,7 +1403,47 @@ export class BrainLoop {
       const { findOpenPositionByBotAndTicker } = await import('../db/positions');
       const pos = await findOpenPositionByBotAndTicker(String(args.task.bot_id), String(o.market_ticker));
 
-      const maxHoldDays = Number(tInput.max_hold_days ?? 7);
+      // ── Load finding if position has one ───────────────────────────────────
+      const posFindingId = (pos as any)?.finding_id ?? tInput.finding_id ?? null;
+      let findingStop = Number(tInput.stop_level);
+      let findingTarget = Number(tInput.profit_target);
+      let maxHoldDays = Number(tInput.max_hold_days ?? 7);
+
+      if (posFindingId) {
+        try {
+          const { data: finding } = await supabaseAdmin
+            .from('research_findings')
+            .select('id,rqs_score,failure_conditions,notes,rqs_components')
+            .eq('id', posFindingId)
+            .maybeSingle();
+
+          if (finding) {
+            // Use finding-derived exits if available via rqs_components or notes
+            // For now: scale stop tightness by rqs_score — higher conviction = wider stop
+            const rqs = Number((finding as any).rqs_score ?? 0.5);
+            const stopBuffer = isLong
+              ? fill * (1 - (0.03 + (1 - rqs) * 0.02))  // rqs=0.8 → 3% stop, rqs=0.45 → 5% stop
+              : fill * (1 + (0.03 + (1 - rqs) * 0.02));
+            findingStop = stopBuffer;
+
+            // Check failure conditions against current regime
+            const failureConditions = String((finding as any).failure_conditions ?? '').toLowerCase();
+            const currentVolRegime = String(tInput.vol_regime ?? 'normal').toLowerCase();
+            if (
+              (failureConditions.includes('elevated') && currentVolRegime === 'elevated') ||
+              (failureConditions.includes('extreme') && currentVolRegime === 'extreme') ||
+              (failureConditions.includes('regime shift') && currentVolRegime !== 'normal')
+            ) {
+              console.log(`[EXECUTION] Finding ${posFindingId.slice(0,8)} failure condition triggered (regime=${currentVolRegime}) — flagging for review`);
+              // Don't force exit — flag it. CoS will review.
+            }
+            console.log(`[EXECUTION] Using finding ${posFindingId.slice(0,8)} rqs=${rqs} stop=${findingStop.toFixed(2)} target=${findingTarget.toFixed(2)}`);
+          }
+        } catch (e: any) {
+          console.warn(`[EXECUTION] Could not load finding ${posFindingId}: ${e?.message}`);
+        }
+      }
+
       const createdAt = pos ? new Date(String((pos as any).created_at)).getTime() : Date.now();
       const holdDays = (Date.now() - createdAt) / (1000 * 60 * 60 * 24);
       const holdPct = holdDays / Math.max(maxHoldDays, 1e-9);
@@ -1384,7 +1453,7 @@ export class BrainLoop {
         return { action_taken, result: { action: 'exit', reason: 'max_hold_approaching_take_profit' }, outcome_score: 1 };
       }
 
-      const res = evaluateExit(fill, cur, Number(tInput.stop_level), Number(tInput.profit_target), side as any);
+      const res = evaluateExit(fill, cur, findingStop, findingTarget, side as any);
       return { action_taken, result: res, outcome_score: 1 };
     }
 
