@@ -59,7 +59,7 @@ async function main() {
         for (const pos of openPos ?? []) {
           const p = pos as any;
           let currentPrice = Number(p.entry_price);
-          try { const ticker = String(p.market_ticker).replace(/USD$/, "/USD"); const q = await getLatestQuote(ticker); currentPrice = (q.bid + q.ask) / 2; } catch (e: any) { console.warn(`[LOOP] Quote failed for ${p.market_ticker}:`, e?.message); }
+          try { const rawTicker = String(p.market_ticker); const ticker = rawTicker.includes("/") ? rawTicker : rawTicker.replace(/USD$/, "/USD"); const q = await getLatestQuote(ticker); currentPrice = (q.bid + q.ask) / 2; } catch (e: any) { console.warn(`[LOOP] Quote failed for ${p.market_ticker}:`, e?.message); }
           const entryPrice = Number(p.entry_price);
           const peakPrice = Number(p.peak_price ?? entryPrice);
           const unrealizedPct = ((currentPrice - entryPrice) / entryPrice) * 100;
