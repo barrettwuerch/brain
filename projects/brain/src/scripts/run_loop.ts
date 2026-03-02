@@ -57,7 +57,18 @@ async function main() {
       lastPositionCheckAt = now;
       try {
         const { data: openPos } = await supabaseAdmin.from('positions').select('*').is('closed_at', null).eq('desk', 'crypto_markets');
-        for (const pos of openPos ?? []) {
+        // Deduplicate by normalized ticker — BTCUSD and BTC/USD are the same position
+        const seenTickers = new Set<string>();
+        const deduped = (openPos ?? []).filter((p: any) => {
+          const normalized = String(p.market_ticker).replace('/', '');
+          if (seenTickers.has(normalized)) return false;
+          seenTickers.add(normalized);
+          return true;
+        });
+        if (deduped.length < (openPos ?? []).length) {
+          console.log(`[LOOP] Deduped ${(openPos ?? []).length} → ${deduped.length} positions by normalized ticker`);
+        }
+        for (const pos of deduped) {
           const p = pos as any;
           let currentPrice = Number(p.entry_price);
           try { const rawTicker = String(p.market_ticker); const ticker = rawTicker.includes("/") ? rawTicker : rawTicker.replace(/USD$/, "/USD"); const q = await getLatestQuote(ticker); currentPrice = (q.bid + q.ask) / 2; } catch (e: any) { console.warn(`[LOOP] Quote failed for ${p.market_ticker}:`, e?.message); }
