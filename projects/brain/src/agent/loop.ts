@@ -1685,6 +1685,9 @@ export class BrainLoop {
 
       const ticker = String(tInput.market_ticker ?? '');
       const rawData = tInput.raw_data ?? {};
+      const scanType = String(tInput.scan_type ?? '');
+      const mcCandidates = tInput.candidates ?? null;
+      const btcSnapshot = tInput.btc_snapshot ?? null;
 
       const GATE1_EXAMPLE = {
         edge_type: 'microstructure',
@@ -1695,11 +1698,32 @@ export class BrainLoop {
         rqs_components: { novelty: 0.7, mechanism_clarity: 0.55, statistical_rigor: 0.75, cost_adjusted_edge: 0.8 },
       };
 
+      // Build Monte Carlo context block if this is a mispricing scan
+      const mcContext = (scanType === 'monte_carlo_mispricing' && mcCandidates)
+        ? `
+SCAN TYPE: Monte Carlo GBM Mispricing Scan
+BTC Snapshot: price=$${btcSnapshot?.price?.toFixed(0)} realized_vol=${((btcSnapshot?.realized_vol ?? 0) * 100).toFixed(1)}%
+
+MODEL: Black-Scholes digital call P(BTC > K at T) = N(d2) where d2 = (log(S0/K) + (mu - 0.5*sigma^2)*T) / (sigma*sqrt(T))
+LIMITATION: GBM does not model fat tails or regime jumps. This is an approximation. statistical_rigor max = 0.55 until 20+ contracts resolved.
+
+MISPRICED CONTRACTS FOUND (model_price - market_price, after 0.02 transaction cost):
+${JSON.stringify(mcCandidates, null, 2)}
+
+Your job: evaluate whether the largest discrepancy represents a genuine edge.
+- Is the direction consistent across contracts (all model_above_market or mixed)?
+- Is T_hours > 2? (near-resolution contracts have binary risk, avoid T < 1h)
+- Is volume > 0? (zero-volume contracts may have stale quotes)
+- What is the mechanism? (market maker inventory? Retail anchoring bias? Structural underpricing of tail?)
+- Set statistical_rigor = 0.50 maximum — this is in-sample model vs market, no out-of-sample validation yet.
+`
+        : '';
+
       const prompt = `You are a quantitative research bot analyzing a live prediction market. You have been given raw market data. Your job is to generate a genuine trading edge hypothesis — NOT a template, NOT a hedge.
 
 RAW MARKET DATA for ${ticker}:
 ${JSON.stringify(rawData, null, 2)}
-
+${mcContext}
 You must apply the six-question standard:
 1. WHAT is the pattern? (specific, numeric thresholds)
 2. WHY does it exist? (falsifiable mechanism — name the market participants and their behavior)

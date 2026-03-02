@@ -32,6 +32,7 @@ async function main() {
   let lastStuckTaskCheckAt = 0;
   let lastCapitalSyncAt = 0;
   let lastCosReviewAt = 0;
+  let lastMcScanAt = 0;
 
   console.log('[LOOP] Starting Brain loop with scanner integration');
 
@@ -154,6 +155,15 @@ async function main() {
       } catch (e: any) {
         console.warn('[LOOP] Heartbeat insert failed:', e?.message ?? e);
       }
+    }
+
+    // -- Monte Carlo BTC mispricing scan: every 30 min
+    if (now - lastMcScanAt > 30 * 60 * 1000) {
+      lastMcScanAt = now;
+      try {
+        const { seedBtcMispricingScan } = await import('../adapters/kalshi/research_tasks');
+        await seedBtcMispricingScan();
+      } catch (e: any) { console.error('[MC] Scan error:', e?.message); }
     }
 
     // -- CoS system review: every 4 hours
