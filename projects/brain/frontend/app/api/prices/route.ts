@@ -27,12 +27,10 @@ export async function GET() {
       .not('exit_reason', 'eq', 'manual')
     const realizedPnl = (closedPos ?? []).reduce((s: number, p: any) => s + Number(p.realized_pnl ?? 0), 0)
 
-    // Get unrealized P&L from open positions
-    const { data: openPos } = await supabase
-      .from('positions')
-      .select('unrealized_pnl')
-      .is('closed_at', null)
-    const unrealizedPnl = (openPos ?? []).reduce((s: number, p: any) => s + Number(p.unrealized_pnl ?? 0), 0)
+    // Get unrealized P&L directly from Alpaca positions (already fetched above)
+    const unrealizedPnl = Array.isArray(positions)
+      ? positions.reduce((s: number, p: any) => s + Number(p.unrealized_pl ?? 0), 0)
+      : 0
 
     return json({
       ok: true,
