@@ -766,6 +766,7 @@ export class BrainLoop {
       if (input.task.task_type === 'monitor_approved_findings') proposed_action = { type: 'monitor_approved_findings' };
       if (input.task.task_type === 'generate_weekly_report') proposed_action = { type: 'generate_weekly_report' };
       if (input.task.task_type === 'review_dead_ends') proposed_action = { type: 'review_dead_ends' };
+      if (input.task.task_type === 'manage_crypto_position') proposed_action = { type: 'manage_open_position' };
       if (input.task.task_type === 'assess_strategic_priorities') proposed_action = { type: 'assess_strategic_priorities' };
       if (input.task.task_type === 'generate_daily_brief') proposed_action = { type: 'generate_daily_brief' };
       if (input.task.task_type === 'generate_weekly_memo') proposed_action = { type: 'generate_weekly_memo' };
