@@ -121,6 +121,24 @@ async function main() {
               },
             },
           } as any);
+          // Fetch real qty from Alpaca and update DB
+          let realQty: number | null = null;
+          try {
+            const alpacaSymbol = String(p.market_ticker).replace('/', '');
+            const posRes = await fetch(`https://paper-api.alpaca.markets/v2/positions/${alpacaSymbol}`, {
+              headers: { 'APCA-API-KEY-ID': process.env.ALPACA_API_KEY ?? '', 'APCA-API-SECRET-KEY': process.env.ALPACA_SECRET_KEY ?? '' }
+            });
+            if (posRes.ok) {
+              const ap = await posRes.json() as any;
+              realQty = Math.abs(parseFloat(ap.qty));
+            }
+          } catch {}
+          const newUnrealized = realQty !== null ? (currentPrice - entryPrice) * realQty : null;
+          await supabaseAdmin.from('positions').update({
+            current_price: currentPrice,
+            ...(newUnrealized !== null ? { unrealized_pnl: parseFloat(newUnrealized.toFixed(2)) } : {}),
+            peak_price: Math.max(peakPrice, currentPrice),
+          }).eq('id', p.id);
           console.log(`[LOOP] Position check queued: ${p.market_ticker} cur=${currentPrice.toFixed(2)} unrealized=${unrealizedPct.toFixed(2)}% hint=${exitHint}`);
         }
       } catch (e: any) { console.error('[LOOP] Position manager error:', e?.message); }
