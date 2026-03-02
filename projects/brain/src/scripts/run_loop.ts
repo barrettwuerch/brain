@@ -187,8 +187,8 @@ async function main() {
       }
     }
 
-    // -- Monte Carlo BTC mispricing scan: every 30 min
-    if (now - lastMcScanAt > 30 * 60 * 1000) {
+    // -- Monte Carlo BTC mispricing scan: every 60 min (Kalshi rate limit)
+    if (now - lastMcScanAt > 60 * 60 * 1000) {
       lastMcScanAt = now;
       try {
         const { seedBtcMispricingScan } = await import('../adapters/kalshi/research_tasks');

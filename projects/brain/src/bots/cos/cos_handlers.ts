@@ -712,13 +712,21 @@ export async function handleCosSystemReview(task: any, db: any): Promise<any> {
     }
   }
 
-  // 9. Write high-risk recommendations to cos_recommendations table
+  // 9. Write high-risk recommendations — dedup by action_type + pending status
   for (const rec of recommendations) {
-    await db.from('cos_recommendations').insert({
-      action_type: rec.action_type,
-      payload: rec.payload,
-      status: 'pending',
-    });
+    const { data: existing } = await db
+      .from('cos_recommendations')
+      .select('id')
+      .eq('action_type', rec.action_type)
+      .eq('status', 'pending')
+      .maybeSingle();
+    if (!existing) {
+      await db.from('cos_recommendations').insert({
+        action_type: rec.action_type,
+        payload: rec.payload,
+        status: 'pending',
+      });
+    }
   }
 
   console.log(`[COS] System review complete — auto_actions=${actions.length} recommendations=${recommendations.length}`);
